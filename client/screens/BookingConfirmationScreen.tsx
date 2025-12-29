@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useState } from "react";
-import { StyleSheet, View, ScrollView, Pressable, Alert } from "react-native";
+import React, { useCallback, useState, useMemo } from "react";
+import { StyleSheet, View, ScrollView, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, CommonActions } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -11,8 +11,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useTrips } from "@/hooks/useTrips";
+import { useVehicle } from "@/hooks/useVehicles";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
-import { getVehicleById } from "@/lib/mockData";
 import { Trip } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -25,13 +25,10 @@ export default function BookingConfirmationScreen() {
   const route = useRoute<RouteProps>();
   const { theme } = useTheme();
   const { addTrip } = useTrips();
+  const { data: vehicle, isLoading: isLoadingVehicle } = useVehicle(route.params.vehicleId);
 
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-  const vehicle = useMemo(() => {
-    return getVehicleById(route.params.vehicleId);
-  }, [route.params.vehicleId]);
 
   const startDate = new Date(route.params.startDate);
   const endDate = new Date(route.params.endDate);
@@ -113,6 +110,15 @@ export default function BookingConfirmationScreen() {
       setIsLoading(false);
     }
   }, [agreedToTerms, vehicle, startDate, endDate, totalCost, addTrip, navigation]);
+
+  if (isLoadingVehicle) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading vehicle...</ThemedText>
+      </View>
+    );
+  }
 
   if (!vehicle) {
     return (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, Pressable, Alert, Platform } from "react-native";
+import { StyleSheet, View, Pressable, Alert, Platform, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -11,8 +11,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { useVehicle } from "@/hooks/useVehicles";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
-import { getVehicleById } from "@/lib/mockData";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -24,10 +24,7 @@ export default function BookingScreen() {
   const route = useRoute<RouteProps>();
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
-
-  const vehicle = useMemo(() => {
-    return getVehicleById(route.params.vehicleId);
-  }, [route.params.vehicleId]);
+  const { data: vehicle, isLoading: isLoadingVehicle } = useVehicle(route.params.vehicleId);
 
   const now = new Date();
   const [startDate, setStartDate] = useState(new Date(now.getTime() + 60 * 60 * 1000));
@@ -113,6 +110,15 @@ export default function BookingScreen() {
       });
     }
   }, [isAuthenticated, vehicle, startDate, endDate, navigation]);
+
+  if (isLoadingVehicle) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading vehicle...</ThemedText>
+      </View>
+    );
+  }
 
   if (!vehicle) {
     return (

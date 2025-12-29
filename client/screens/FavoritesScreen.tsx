@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from "react";
-import { StyleSheet, View, FlatList } from "react-native";
+import { StyleSheet, View, FlatList, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -10,8 +10,9 @@ import { ThemedView } from "@/components/ThemedView";
 import { VehicleCard } from "@/components/VehicleCard";
 import { EmptyState } from "@/components/EmptyState";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useVehicles } from "@/hooks/useVehicles";
+import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
-import { MOCK_VEHICLES } from "@/lib/mockData";
 import { Vehicle } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -22,10 +23,12 @@ export default function FavoritesScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<NavigationProp>();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const { data: vehicles = [], isLoading } = useVehicles();
+  const { theme } = useTheme();
 
   const favoriteVehicles = useMemo(() => {
-    return MOCK_VEHICLES.filter((v) => favorites.includes(v.id));
-  }, [favorites]);
+    return vehicles.filter((v) => favorites.includes(v.id));
+  }, [vehicles, favorites]);
 
   const handleVehiclePress = useCallback(
     (vehicle: Vehicle) => {
@@ -64,6 +67,15 @@ export default function FavoritesScreen() {
       onAction={handleBrowse}
     />
   );
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading favorites...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -104,6 +116,10 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     paddingHorizontal: Spacing.xl,

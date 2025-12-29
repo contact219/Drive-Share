@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, FlatList, ScrollView } from "react-native";
+import { StyleSheet, View, FlatList, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -13,12 +13,32 @@ import { CategoryChip } from "@/components/CategoryChip";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useVehicles } from "@/hooks/useVehicles";
 import { Colors, Spacing } from "@/constants/theme";
-import { MOCK_VEHICLES, filterVehicles } from "@/lib/mockData";
 import { VEHICLE_TYPES, Vehicle } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function filterVehicles(
+  vehicles: Vehicle[],
+  filters: { search?: string; types?: string[] }
+): Vehicle[] {
+  return vehicles.filter((v) => {
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const match =
+        v.name.toLowerCase().includes(q) ||
+        v.brand.toLowerCase().includes(q) ||
+        v.model.toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    if (filters.types && filters.types.length > 0) {
+      if (!filters.types.includes(v.type)) return false;
+    }
+    return true;
+  });
+}
 
 export default function BrowseScreen() {
   const insets = useSafeAreaInsets();
@@ -26,16 +46,17 @@ export default function BrowseScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { data: vehicles = [], isLoading } = useVehicles();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
   const filteredVehicles = useMemo(() => {
-    return filterVehicles(MOCK_VEHICLES, {
+    return filterVehicles(vehicles, {
       search: searchQuery,
       types: selectedTypes.length > 0 ? selectedTypes : undefined,
     });
-  }, [searchQuery, selectedTypes]);
+  }, [vehicles, searchQuery, selectedTypes]);
 
   const handleTypeToggle = useCallback((type: string) => {
     setSelectedTypes((prev) =>
@@ -135,6 +156,15 @@ export default function BrowseScreen() {
     []
   );
 
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading vehicles...</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <FlatList
@@ -160,6 +190,10 @@ export default function BrowseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   listContent: {
     paddingHorizontal: Spacing.xl,

@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from "react";
-import { StyleSheet, View, ScrollView, Pressable } from "react-native";
+import React, { useCallback } from "react";
+import { StyleSheet, View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -12,8 +12,8 @@ import { ThemedView } from "@/components/ThemedView";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useVehicle } from "@/hooks/useVehicles";
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { getVehicleById } from "@/lib/mockData";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -25,10 +25,7 @@ export default function VehicleDetailScreen() {
   const route = useRoute<RouteProps>();
   const { theme } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
-
-  const vehicle = useMemo(() => {
-    return getVehicleById(route.params.vehicleId);
-  }, [route.params.vehicleId]);
+  const { data: vehicle, isLoading } = useVehicle(route.params.vehicleId);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -46,6 +43,15 @@ export default function VehicleDetailScreen() {
       navigation.navigate("Booking", { vehicleId: vehicle.id });
     }
   }, [vehicle, navigation]);
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.errorContainer]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={{ marginTop: Spacing.md }}>Loading vehicle...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   if (!vehicle) {
     return (

@@ -62,9 +62,16 @@ server/
 - The Express backend runs on port 5000
 
 ## Data Persistence
-- Uses AsyncStorage for local data persistence
-- Mock data in `client/lib/mockData.ts`
-- Storage utilities in `client/lib/storage.ts`
+- **Database:** PostgreSQL with Drizzle ORM
+- **Schema:** `shared/schema.ts` - vehicles, users, trips, favorites tables
+- **API:** REST endpoints in `server/routes.ts`
+- Local storage for auth state and favorites: `client/lib/storage.ts`
+- The mobile app now fetches vehicle data from `/api/vehicles`
+
+## Admin Dashboard
+- **URL:** `/admin` (port 5000)
+- **Credentials:** admin@rush.com / admin123
+- **Features:** Vehicle CRUD, user management, trip overview, stats dashboard
 
 ## Recent Changes
 - Initial MVP build with complete navigation structure
