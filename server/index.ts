@@ -155,6 +155,18 @@ function serveLandingPage({
   res.status(200).send(html);
 }
 
+function serveAdminDashboard(res: Response) {
+  const adminPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "admin.html",
+  );
+  const adminHtml = fs.readFileSync(adminPath, "utf-8");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(adminHtml);
+}
+
 function configureExpoAndLanding(app: express.Application) {
   const templatePath = path.resolve(
     process.cwd(),
@@ -170,6 +182,10 @@ function configureExpoAndLanding(app: express.Application) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
+    }
+
+    if (req.path === "/admin") {
+      return serveAdminDashboard(res);
     }
 
     if (req.path !== "/" && req.path !== "/manifest") {
