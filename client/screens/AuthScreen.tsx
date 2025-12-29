@@ -16,7 +16,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -38,16 +38,20 @@ export default function AuthScreen() {
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      await login(email, name || email.split("@")[0]);
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await register(email, name, password);
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
-      Alert.alert("Error", "Failed to authenticate. Please try again.");
+      const message = error instanceof Error ? error.message : "Authentication failed";
+      Alert.alert("Error", message);
     } finally {
       setIsLoading(false);
     }
-  }, [isFormValid, email, name, login, navigation]);
+  }, [isFormValid, isLogin, email, name, password, login, register, navigation]);
 
   const handleSocialAuth = useCallback((provider: string) => {
     Alert.alert(
@@ -219,7 +223,7 @@ export default function AuthScreen() {
           </Pressable>
         </View>
 
-        <ThemedText type="caption" style={[styles.terms, { color: theme.textSecondary }]}>
+        <ThemedText type="small" style={[styles.terms, { color: theme.textSecondary }]}>
           By continuing, you agree to our Terms of Service and Privacy Policy
         </ThemedText>
       </KeyboardAwareScrollViewCompat>

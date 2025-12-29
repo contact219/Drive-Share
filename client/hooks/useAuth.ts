@@ -1,12 +1,40 @@
 import { useState, useEffect, useCallback } from "react";
 import * as storage from "@/lib/storage";
 import { User } from "@/types";
-import { MOCK_USER } from "@/lib/mockData";
+import { getApiUrl, apiRequest } from "@/lib/query-client";
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
+}
+
+interface ApiUser {
+  id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  avatarIndex: number;
+  rating: string;
+  tripsCompleted: number;
+  isAdmin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function transformApiUser(apiUser: ApiUser): User {
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    name: apiUser.name,
+    avatarIndex: apiUser.avatarIndex,
+    rating: parseFloat(apiUser.rating),
+    tripsCompleted: apiUser.tripsCompleted,
+    memberSince: new Date(apiUser.createdAt).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    }),
+  };
 }
 
 export function useAuth() {
@@ -41,13 +69,47 @@ export function useAuth() {
     checkAuth();
   }, [checkAuth]);
 
-  const login = useCallback(async (email: string, name: string) => {
-    const user: User = {
-      ...MOCK_USER,
-      id: `user_${Date.now()}`,
-      email,
-      name,
-    };
+  const register = useCallback(async (email: string, name: string, password: string): Promise<void> => {
+    const url = new URL("/api/auth/register", getApiUrl());
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Registration failed");
+    }
+
+    const apiUser: ApiUser = await response.json();
+    const user = transformApiUser(apiUser);
+
+    await storage.setUser(user);
+    await storage.setIsAuthenticated(true);
+    setState({
+      isAuthenticated: true,
+      isLoading: false,
+      user,
+    });
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
+    const url = new URL("/api/auth/login", getApiUrl());
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Login failed");
+    }
+
+    const apiUser: ApiUser = await response.json();
+    const user = transformApiUser(apiUser);
+
     await storage.setUser(user);
     await storage.setIsAuthenticated(true);
     setState({
@@ -81,6 +143,7 @@ export function useAuth() {
   return {
     ...state,
     login,
+    register,
     logout,
     updateUser,
     refresh: checkAuth,
