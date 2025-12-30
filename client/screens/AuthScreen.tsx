@@ -2,6 +2,8 @@ import React, { useState, useCallback } from "react";
 import { StyleSheet, View, TextInput, Pressable, Alert, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -14,7 +16,7 @@ import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { login, register } = useAuth();
 
@@ -210,6 +212,17 @@ export default function AuthScreen() {
               ? "Sign In"
               : "Create Account"}
           </Button>
+
+          {isLogin ? (
+            <Pressable
+              onPress={() => navigation.replace("ForgotPassword")}
+              style={styles.forgotPassword}
+            >
+              <ThemedText type="body" style={{ color: Colors.light.primary }}>
+                Change Password
+              </ThemedText>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.footer}>
@@ -295,6 +308,10 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   submitButton: {
+    marginTop: Spacing.md,
+  },
+  forgotPassword: {
+    alignSelf: "center",
     marginTop: Spacing.md,
   },
   footer: {

@@ -8,6 +8,7 @@ import FilterScreen from "@/screens/FilterScreen";
 import AuthScreen from "@/screens/AuthScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import ActiveTripScreen from "@/screens/ActiveTripScreen";
+import ForgotPasswordScreen from "@/screens/ForgotPasswordScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -17,6 +18,7 @@ export type RootStackParamList = {
   BookingConfirmation: { vehicleId: string; startDate: string; endDate: string };
   Filter: undefined;
   Auth: undefined;
+  ForgotPassword: undefined;
   Settings: undefined;
   ActiveTrip: { tripId: string };
 };
@@ -66,6 +68,14 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="Auth"
         component={AuthScreen}
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
         options={{
           presentation: "modal",
           headerShown: false,

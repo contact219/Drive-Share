@@ -90,8 +90,9 @@
         </div>
 
         <div id="content-users" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b">
+          <div class="p-6 border-b flex justify-between items-center">
             <h2 class="text-xl font-semibold">User Management</h2>
+            <button onclick="openUserModal()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-90">+ Add User</button>
           </div>
           <div id="users-list" class="divide-y"></div>
         </div>
@@ -102,6 +103,61 @@
           </div>
           <div id="trips-list" class="divide-y"></div>
         </div>
+      </div>
+    </div>
+
+    <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 id="user-modal-title" class="text-xl font-semibold mb-4">Add User</h3>
+        <form id="user-form" class="space-y-4">
+          <input type="hidden" id="user-id">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" id="user-name" class="w-full px-3 py-2 border rounded-lg" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="user-email" class="w-full px-3 py-2 border rounded-lg" required>
+          </div>
+          <div id="user-password-field">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="user-password" class="w-full px-3 py-2 border rounded-lg" minlength="6">
+          </div>
+          <div>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="user-is-admin" class="w-4 h-4 text-primary rounded">
+              <span class="text-sm font-medium text-gray-700">Administrator</span>
+            </label>
+          </div>
+          <p id="user-error" class="text-red-500 text-sm hidden"></p>
+          <div class="flex gap-4 pt-4">
+            <button type="button" onclick="closeUserModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold mb-4">Change Password</h3>
+        <form id="password-form" class="space-y-4">
+          <input type="hidden" id="password-user-id">
+          <p id="password-user-email" class="text-gray-600 text-sm mb-2"></p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+            <input type="password" id="new-password" class="w-full px-3 py-2 border rounded-lg" minlength="6" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+            <input type="password" id="confirm-password" class="w-full px-3 py-2 border rounded-lg" minlength="6" required>
+          </div>
+          <p id="password-error" class="text-red-500 text-sm hidden"></p>
+          <div class="flex gap-4 pt-4">
+            <button type="button" onclick="closePasswordModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Change Password</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -281,13 +337,186 @@
             <p class="font-semibold">${u.name}</p>
             <p class="text-sm text-gray-500">${u.email}</p>
           </div>
-          <div class="text-right">
+          <div class="text-right mr-4">
             <p class="text-sm">${u.tripsCompleted || 0} trips</p>
             <p class="text-sm ${u.isAdmin ? 'text-primary font-medium' : 'text-gray-500'}">${u.isAdmin ? 'Admin' : 'User'}</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="editUser('${u.id}')" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Edit</button>
+            <button onclick="changeUserPassword('${u.id}', '${u.email}')" class="px-3 py-1 text-sm border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">Password</button>
+            <button onclick="toggleAdmin('${u.id}', ${u.isAdmin})" class="px-3 py-1 text-sm border ${u.isAdmin ? 'border-orange-300 text-orange-600 hover:bg-orange-50' : 'border-green-300 text-green-600 hover:bg-green-50'} rounded-lg">${u.isAdmin ? 'Remove Admin' : 'Make Admin'}</button>
+            <button onclick="deleteUser('${u.id}', '${u.email}')" class="px-3 py-1 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Delete</button>
           </div>
         </div>
       `).join('');
     }
+
+    let allUsers = [];
+
+    function openUserModal(user = null) {
+      document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add User';
+      document.getElementById('user-modal').classList.remove('hidden');
+      document.getElementById('user-modal').classList.add('flex');
+      document.getElementById('user-error').classList.add('hidden');
+
+      if (user) {
+        document.getElementById('user-id').value = user.id;
+        document.getElementById('user-name').value = user.name;
+        document.getElementById('user-email').value = user.email;
+        document.getElementById('user-email').disabled = true;
+        document.getElementById('user-password').value = '';
+        document.getElementById('user-password').placeholder = 'Leave blank to keep current';
+        document.getElementById('user-password').required = false;
+        document.getElementById('user-is-admin').checked = user.isAdmin;
+        document.getElementById('user-password-field').classList.add('hidden');
+      } else {
+        document.getElementById('user-form').reset();
+        document.getElementById('user-id').value = '';
+        document.getElementById('user-email').disabled = false;
+        document.getElementById('user-password').placeholder = '';
+        document.getElementById('user-password').required = true;
+        document.getElementById('user-password-field').classList.remove('hidden');
+      }
+    }
+
+    function closeUserModal() {
+      document.getElementById('user-modal').classList.add('hidden');
+      document.getElementById('user-modal').classList.remove('flex');
+    }
+
+    async function editUser(id) {
+      const res = await fetch(`${API_BASE}/admin/users`);
+      const users = await res.json();
+      const user = users.find(u => u.id === id);
+      if (user) openUserModal(user);
+    }
+
+    async function deleteUser(id, email) {
+      if (id === currentUser.id) {
+        alert('You cannot delete your own account');
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete user ${email}?`)) return;
+      await fetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
+      loadUsers();
+      loadStats();
+    }
+
+    async function toggleAdmin(id, currentIsAdmin) {
+      if (id === currentUser.id) {
+        alert('You cannot change your own admin status');
+        return;
+      }
+      const action = currentIsAdmin ? 'remove admin rights from' : 'make admin';
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+      
+      await fetch(`${API_BASE}/admin/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isAdmin: !currentIsAdmin })
+      });
+      loadUsers();
+    }
+
+    function changeUserPassword(id, email) {
+      document.getElementById('password-user-id').value = id;
+      document.getElementById('password-user-email').textContent = `Changing password for: ${email}`;
+      document.getElementById('password-modal').classList.remove('hidden');
+      document.getElementById('password-modal').classList.add('flex');
+      document.getElementById('password-error').classList.add('hidden');
+      document.getElementById('password-form').reset();
+    }
+
+    function closePasswordModal() {
+      document.getElementById('password-modal').classList.add('hidden');
+      document.getElementById('password-modal').classList.remove('flex');
+    }
+
+    document.getElementById('user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('user-id').value;
+      const errorEl = document.getElementById('user-error');
+      errorEl.classList.add('hidden');
+
+      try {
+        if (id) {
+          const data = {
+            name: document.getElementById('user-name').value,
+            isAdmin: document.getElementById('user-is-admin').checked
+          };
+          await fetch(`${API_BASE}/admin/users/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } else {
+          const password = document.getElementById('user-password').value;
+          if (password.length < 6) {
+            errorEl.textContent = 'Password must be at least 6 characters';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+          const res = await fetch(`${API_BASE}/admin/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: document.getElementById('user-name').value,
+              email: document.getElementById('user-email').value,
+              password: password,
+              isAdmin: document.getElementById('user-is-admin').checked
+            })
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to create user');
+          }
+        }
+        closeUserModal();
+        loadUsers();
+        loadStats();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('password-user-id').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      const errorEl = document.getElementById('password-error');
+      errorEl.classList.add('hidden');
+
+      if (newPassword !== confirmPassword) {
+        errorEl.textContent = 'Passwords do not match';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        errorEl.textContent = 'Password must be at least 6 characters';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/admin/users/${id}/password`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: newPassword })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to change password');
+        }
+        closePasswordModal();
+        alert('Password changed successfully');
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+      }
+    });
 
     async function loadTrips() {
       const res = await fetch(`${API_BASE}/admin/trips`);

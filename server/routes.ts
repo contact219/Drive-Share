@@ -140,6 +140,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/users", async (req: Request, res: Response) => {
+    try {
+      const { email, name, password, isAdmin } = req.body;
+      
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({
+        email,
+        name,
+        password: hashedPassword,
+        isAdmin: isAdmin || false,
+      });
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/password", async (req: Request, res: Response) => {
+    try {
+      const { password } = req.body;
+      if (!password || password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.updateUser(req.params.id, { password: hashedPassword });
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update password" });
+    }
+  });
+
+  app.post("/api/auth/change-password", async (req: Request, res: Response) => {
+    try {
+      const { email, currentPassword, newPassword } = req.body;
+      
+      if (!email || !currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Email, current password, and new password are required" });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "New password must be at least 6 characters" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashedPassword });
+      
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { email, newPassword, securityAnswer } = req.body;
+      
+      if (!email || !newPassword) {
+        return res.status(400).json({ error: "Email and new password are required" });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(200).json({ message: "If an account exists, the password has been reset" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashedPassword });
+      
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
   app.get("/api/admin/vehicles", async (_req: Request, res: Response) => {
     try {
       const vehicles = await storage.getAllVehicles();
