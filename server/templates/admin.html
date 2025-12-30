@@ -488,6 +488,9 @@
       const errorEl = document.getElementById('password-error');
       errorEl.classList.add('hidden');
 
+      console.log('[ADMIN] Password form submitted for user:', id);
+      console.log('[ADMIN] Password length:', newPassword.length);
+
       if (newPassword !== confirmPassword) {
         errorEl.textContent = 'Passwords do not match';
         errorEl.classList.remove('hidden');
@@ -501,19 +504,31 @@
       }
 
       try {
-        const res = await fetch(`${API_BASE}/admin/users/${id}/password`, {
+        const url = `${API_BASE}/admin/users/${id}/password`;
+        console.log('[ADMIN] Making request to:', url);
+        
+        const res = await fetch(url, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: newPassword })
         });
+        
+        console.log('[ADMIN] Response status:', res.status);
+        const responseText = await res.text();
+        console.log('[ADMIN] Response body:', responseText);
+        
         if (!res.ok) {
-          const err = await res.json();
+          const err = JSON.parse(responseText);
           throw new Error(err.error || 'Failed to change password');
         }
+        
+        console.log('[ADMIN] Password update successful');
+        
         closePasswordModal();
         loadUsers();
-        alert('Password changed successfully');
+        alert('Password changed successfully! You can now login with the new password.');
       } catch (err) {
+        console.error('[ADMIN] Password change error:', err);
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
