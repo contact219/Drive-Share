@@ -113,10 +113,15 @@ server/
 - Local storage for auth state and favorites: `client/lib/storage.ts`
 - The mobile app now fetches vehicle data from `/api/vehicles`
 
-## Admin Dashboard
+## Admin Dashboard (v3.0)
 - **URL:** `/admin` (port 5000)
 - **Credentials:** admin@rush.com / admin123
-- **Features:** Vehicle CRUD, user management (add/edit/delete users, toggle admin, reset passwords), trip overview, stats dashboard
+- **Features:**
+  - Analytics dashboard with revenue trends chart, trip status distribution, and top vehicles
+  - Vehicle verification queue with approve/reject workflow and reviewer notes
+  - Insurance policy management for owner-provided and platform coverage
+  - Payment history with platform fees and owner payouts breakdown
+  - Vehicle CRUD, user management, trip overview, stats dashboard
 
 ## User Management
 - Admin can create new users and administrators via the admin dashboard
@@ -130,6 +135,19 @@ server/
 - Password change requires current password verification
 - Users who forget their password should contact an administrator for reset
 - For production: Add authentication middleware to admin endpoints
+
+## Stripe Payment Integration
+- **Setup:** Connected via Replit integration with stripe-replit-sync
+- **Payment Flow:** Create payment intent → Collect payment → Confirm and update trip status
+- **Customer Management:** Auto-creates Stripe customers for users on first payment
+- **Fee Structure:** 10% platform fee, remaining 90% for owner payout
+- **Database Tables:** `payments` and `payouts` for tracking all transactions
+
+## New Database Tables (Phase 3)
+- `vehicle_verifications` - Tracks verification requests with pending/approved/rejected status
+- `insurance_policies` - Owner-provided and platform insurance with verification status
+- `payments` - Stripe payment intents with platform fees and owner payouts
+- `payouts` - Owner payout tracking and status
 
 ## Recent Changes
 - Initial MVP build with complete navigation structure
@@ -146,3 +164,8 @@ server/
   - Push notification infrastructure
   - Vehicle reviews & ratings system
   - Vehicle owner mode (Turo-style P2P hosting)
+- Admin Dashboard v3.0 with new sections:
+  - Analytics dashboard with Chart.js charts
+  - Vehicle verification queue with approve/reject workflow
+  - Insurance policy management
+  - Payment history with fee breakdown

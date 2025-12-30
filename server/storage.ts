@@ -1,5 +1,6 @@
 import { 
   users, vehicles, trips, favorites, reviews, pushTokens, availabilitySlots, ownerProfiles, ownerVehicles,
+  vehicleVerifications, insurancePolicies, payments, payouts,
   type User, type InsertUser,
   type Vehicle, type InsertVehicle,
   type Trip, type InsertTrip,
@@ -9,6 +10,10 @@ import {
   type AvailabilitySlot, type InsertAvailabilitySlot,
   type OwnerProfile, type InsertOwnerProfile,
   type OwnerVehicle, type InsertOwnerVehicle,
+  type VehicleVerification, type InsertVehicleVerification,
+  type InsurancePolicy, type InsertInsurancePolicy,
+  type Payment, type InsertPayment,
+  type Payout, type InsertPayout,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, sql } from "drizzle-orm";
@@ -383,6 +388,173 @@ export class DatabaseStorage implements IStorage {
     }
     
     return result;
+  }
+
+  async getPendingVerifications(): Promise<VehicleVerification[]> {
+    return db.select().from(vehicleVerifications)
+      .where(eq(vehicleVerifications.status, "pending"))
+      .orderBy(desc(vehicleVerifications.submittedAt));
+  }
+
+  async getAllVerifications(): Promise<VehicleVerification[]> {
+    return db.select().from(vehicleVerifications).orderBy(desc(vehicleVerifications.createdAt));
+  }
+
+  async getVerification(id: string): Promise<VehicleVerification | undefined> {
+    const [verification] = await db.select().from(vehicleVerifications).where(eq(vehicleVerifications.id, id));
+    return verification || undefined;
+  }
+
+  async createVerification(data: InsertVehicleVerification): Promise<VehicleVerification> {
+    const [verification] = await db.insert(vehicleVerifications).values(data).returning();
+    return verification;
+  }
+
+  async updateVerification(id: string, updates: Partial<InsertVehicleVerification>): Promise<VehicleVerification | undefined> {
+    const [verification] = await db.update(vehicleVerifications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(vehicleVerifications.id, id))
+      .returning();
+    return verification || undefined;
+  }
+
+  async getInsurancePolicies(): Promise<InsurancePolicy[]> {
+    return db.select().from(insurancePolicies).orderBy(desc(insurancePolicies.createdAt));
+  }
+
+  async getInsurancePolicy(id: string): Promise<InsurancePolicy | undefined> {
+    const [policy] = await db.select().from(insurancePolicies).where(eq(insurancePolicies.id, id));
+    return policy || undefined;
+  }
+
+  async getInsurancePoliciesByOwner(ownerId: string): Promise<InsurancePolicy[]> {
+    return db.select().from(insurancePolicies).where(eq(insurancePolicies.ownerId, ownerId));
+  }
+
+  async createInsurancePolicy(data: InsertInsurancePolicy): Promise<InsurancePolicy> {
+    const [policy] = await db.insert(insurancePolicies).values(data).returning();
+    return policy;
+  }
+
+  async updateInsurancePolicy(id: string, updates: Partial<InsertInsurancePolicy>): Promise<InsurancePolicy | undefined> {
+    const [policy] = await db.update(insurancePolicies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(insurancePolicies.id, id))
+      .returning();
+    return policy || undefined;
+  }
+
+  async getAllPayments(): Promise<Payment[]> {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
+  }
+
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment || undefined;
+  }
+
+  async getPaymentByTrip(tripId: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.tripId, tripId));
+    return payment || undefined;
+  }
+
+  async createPayment(data: InsertPayment): Promise<Payment> {
+    const [payment] = await db.insert(payments).values(data).returning();
+    return payment;
+  }
+
+  async updatePayment(id: string, updates: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [payment] = await db.update(payments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(payments.id, id))
+      .returning();
+    return payment || undefined;
+  }
+
+  async getAllPayouts(): Promise<Payout[]> {
+    return db.select().from(payouts).orderBy(desc(payouts.createdAt));
+  }
+
+  async createPayout(data: InsertPayout): Promise<Payout> {
+    const [payout] = await db.insert(payouts).values(data).returning();
+    return payout;
+  }
+
+  async updatePayout(id: string, updates: Partial<InsertPayout>): Promise<Payout | undefined> {
+    const [payout] = await db.update(payouts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(payouts.id, id))
+      .returning();
+    return payout || undefined;
+  }
+
+  async getAnalytics(): Promise<{
+    totalRevenue: number;
+    totalTrips: number;
+    completedTrips: number;
+    activeTrips: number;
+    pendingVerifications: number;
+    totalOwners: number;
+    totalPayments: number;
+    platformFees: number;
+    revenueByMonth: { month: string; revenue: number }[];
+    tripsByStatus: { status: string; count: number }[];
+    topVehicles: { id: string; name: string; trips: number; revenue: number }[];
+  }> {
+    const allTrips = await this.getAllTrips();
+    const allPayments = await this.getAllPayments();
+    const pendingVerifs = await this.getPendingVerifications();
+    const owners = await db.select().from(ownerProfiles);
+    
+    const totalRevenue = allTrips.reduce((sum, t) => sum + parseFloat(t.totalCost || "0"), 0);
+    const platformFees = allPayments.reduce((sum, p) => sum + parseFloat(p.platformFee || "0"), 0);
+    
+    const tripsByStatus = [
+      { status: "upcoming", count: allTrips.filter(t => t.status === "upcoming").length },
+      { status: "active", count: allTrips.filter(t => t.status === "active").length },
+      { status: "completed", count: allTrips.filter(t => t.status === "completed").length },
+      { status: "cancelled", count: allTrips.filter(t => t.status === "cancelled").length },
+    ];
+    
+    const revenueByMonth: { month: string; revenue: number }[] = [];
+    const monthMap = new Map<string, number>();
+    allTrips.forEach(trip => {
+      const month = new Date(trip.createdAt!).toISOString().slice(0, 7);
+      monthMap.set(month, (monthMap.get(month) || 0) + parseFloat(trip.totalCost || "0"));
+    });
+    monthMap.forEach((revenue, month) => {
+      revenueByMonth.push({ month, revenue });
+    });
+    revenueByMonth.sort((a, b) => a.month.localeCompare(b.month));
+    
+    const vehicleTrips = new Map<string, { count: number; revenue: number; name: string }>();
+    for (const trip of allTrips) {
+      const existing = vehicleTrips.get(trip.vehicleId) || { count: 0, revenue: 0, name: "" };
+      existing.count++;
+      existing.revenue += parseFloat(trip.totalCost || "0");
+      vehicleTrips.set(trip.vehicleId, existing);
+    }
+    
+    const allVehicles = await this.getAllVehicles();
+    const vehicleNames = new Map(allVehicles.map(v => [v.id, v.name]));
+    const topVehicles = Array.from(vehicleTrips.entries())
+      .map(([id, data]) => ({ id, name: vehicleNames.get(id) || "Unknown", trips: data.count, revenue: data.revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+    
+    return {
+      totalRevenue,
+      totalTrips: allTrips.length,
+      completedTrips: allTrips.filter(t => t.status === "completed").length,
+      activeTrips: allTrips.filter(t => t.status === "active").length,
+      pendingVerifications: pendingVerifs.length,
+      totalOwners: owners.length,
+      totalPayments: allPayments.length,
+      platformFees,
+      revenueByMonth,
+      tripsByStatus,
+      topVehicles,
+    };
   }
 }
 

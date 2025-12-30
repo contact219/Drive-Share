@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   isOwner: boolean("is_owner").default(false),
   notificationPrefs: jsonb("notification_prefs").$type<{ push: boolean; email: boolean; sms: boolean }>().default({ push: true, email: true, sms: false }),
   defaultLocation: jsonb("default_location").$type<{ lat: number; lng: number; address: string }>(),
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -226,6 +227,120 @@ export const ownerVehiclesRelations = relations(ownerVehicles, ({ one }) => ({
   }),
 }));
 
+export const vehicleVerifications = pgTable("vehicle_verifications", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  ownerId: varchar("owner_id").notNull().references(() => ownerProfiles.id),
+  status: text("status").notNull().default("pending"),
+  reviewerId: varchar("reviewer_id").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  submittedDocuments: jsonb("submitted_documents").$type<{ registration?: string; insurance?: string; photos?: string[] }>(),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  decidedAt: timestamp("decided_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vehicleVerificationsRelations = relations(vehicleVerifications, ({ one }) => ({
+  vehicle: one(vehicles, {
+    fields: [vehicleVerifications.vehicleId],
+    references: [vehicles.id],
+  }),
+  owner: one(ownerProfiles, {
+    fields: [vehicleVerifications.ownerId],
+    references: [ownerProfiles.id],
+  }),
+  reviewer: one(users, {
+    fields: [vehicleVerifications.reviewerId],
+    references: [users.id],
+  }),
+}));
+
+export const insurancePolicies = pgTable("insurance_policies", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").references(() => ownerProfiles.id),
+  userId: varchar("user_id").references(() => users.id),
+  providerType: text("provider_type").notNull().default("owner"),
+  providerName: text("provider_name"),
+  policyNumber: text("policy_number"),
+  coverageType: text("coverage_type"),
+  effectiveDate: timestamp("effective_date"),
+  expiryDate: timestamp("expiry_date"),
+  documentUrl: text("document_url"),
+  premiumCost: decimal("premium_cost", { precision: 10, scale: 2 }),
+  verificationStatus: text("verification_status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insurancePoliciesRelations = relations(insurancePolicies, ({ one }) => ({
+  owner: one(ownerProfiles, {
+    fields: [insurancePolicies.ownerId],
+    references: [ownerProfiles.id],
+  }),
+  user: one(users, {
+    fields: [insurancePolicies.userId],
+    references: [users.id],
+  }),
+}));
+
+export const payments = pgTable("payments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tripId: varchar("trip_id").notNull().references(() => trips.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }),
+  ownerPayout: decimal("owner_payout", { precision: 10, scale: 2 }),
+  status: text("status").notNull().default("pending"),
+  receiptUrl: text("receipt_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  trip: one(trips, {
+    fields: [payments.tripId],
+    references: [trips.id],
+  }),
+  user: one(users, {
+    fields: [payments.userId],
+    references: [users.id],
+  }),
+}));
+
+export const payouts = pgTable("payouts", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => ownerProfiles.id),
+  paymentId: varchar("payment_id").references(() => payments.id),
+  stripeTransferId: text("stripe_transfer_id"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const payoutsRelations = relations(payouts, ({ one }) => ({
+  owner: one(ownerProfiles, {
+    fields: [payouts.ownerId],
+    references: [ownerProfiles.id],
+  }),
+  payment: one(payments, {
+    fields: [payouts.paymentId],
+    references: [payments.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   name: true,
@@ -280,6 +395,30 @@ export const insertOwnerVehicleSchema = createInsertSchema(ownerVehicles).omit({
   updatedAt: true,
 });
 
+export const insertVehicleVerificationSchema = createInsertSchema(vehicleVerifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInsurancePolicySchema = createInsertSchema(insurancePolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPayoutSchema = createInsertSchema(payouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
@@ -298,3 +437,11 @@ export type InsertOwnerProfile = z.infer<typeof insertOwnerProfileSchema>;
 export type OwnerProfile = typeof ownerProfiles.$inferSelect;
 export type InsertOwnerVehicle = z.infer<typeof insertOwnerVehicleSchema>;
 export type OwnerVehicle = typeof ownerVehicles.$inferSelect;
+export type InsertVehicleVerification = z.infer<typeof insertVehicleVerificationSchema>;
+export type VehicleVerification = typeof vehicleVerifications.$inferSelect;
+export type InsertInsurancePolicy = z.infer<typeof insertInsurancePolicySchema>;
+export type InsurancePolicy = typeof insurancePolicies.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayout = z.infer<typeof insertPayoutSchema>;
+export type Payout = typeof payouts.$inferSelect;

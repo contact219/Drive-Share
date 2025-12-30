@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
 import { insertUserSchema, insertVehicleSchema, insertTripSchema, insertReviewSchema, insertPushTokenSchema } from "@shared/schema";
 import * as bcrypt from "bcryptjs";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -641,6 +642,258 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/verifications", async (_req: Request, res: Response) => {
+    try {
+      const verifications = await storage.getAllVerifications();
+      const enrichedVerifications = await Promise.all(verifications.map(async (v) => {
+        const vehicle = await storage.getVehicle(v.vehicleId);
+        const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
+        const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
+        return {
+          ...v,
+          vehicle,
+          ownerName: owner?.name || "Unknown",
+          ownerEmail: owner?.email || "Unknown",
+        };
+      }));
+      res.json(enrichedVerifications);
+    } catch (error) {
+      console.error("Fetch verifications error:", error);
+      res.status(500).json({ error: "Failed to fetch verifications" });
+    }
+  });
+
+  app.get("/api/admin/verifications/pending", async (_req: Request, res: Response) => {
+    try {
+      const verifications = await storage.getPendingVerifications();
+      const enrichedVerifications = await Promise.all(verifications.map(async (v) => {
+        const vehicle = await storage.getVehicle(v.vehicleId);
+        const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
+        const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
+        return {
+          ...v,
+          vehicle,
+          ownerName: owner?.name || "Unknown",
+          ownerEmail: owner?.email || "Unknown",
+        };
+      }));
+      res.json(enrichedVerifications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending verifications" });
+    }
+  });
+
+  app.patch("/api/admin/verifications/:id/decision", async (req: Request, res: Response) => {
+    try {
+      const { status, reviewerId, reviewNotes, rejectionReason } = req.body;
+      
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const verification = await storage.updateVerification(req.params.id, {
+        status,
+        reviewerId,
+        reviewNotes,
+        rejectionReason: status === "rejected" ? rejectionReason : null,
+        decidedAt: new Date(),
+      });
+
+      if (!verification) {
+        return res.status(404).json({ error: "Verification not found" });
+      }
+
+      if (status === "approved") {
+        await storage.updateVehicle(verification.vehicleId, { isAvailable: true });
+        if (verification.ownerId) {
+          const ownerVehicles = await storage.getOwnerVehicles(verification.ownerId);
+          const ownerVehicle = ownerVehicles.find(ov => ov.vehicleId === verification.vehicleId);
+          if (ownerVehicle) {
+            await storage.updateOwnerVehicle(ownerVehicle.id, { listingStatus: "active" });
+          }
+        }
+      }
+
+      res.json(verification);
+    } catch (error) {
+      console.error("Verification decision error:", error);
+      res.status(500).json({ error: "Failed to update verification" });
+    }
+  });
+
+  app.get("/api/admin/insurance", async (_req: Request, res: Response) => {
+    try {
+      const policies = await storage.getInsurancePolicies();
+      res.json(policies);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch insurance policies" });
+    }
+  });
+
+  app.post("/api/insurance", async (req: Request, res: Response) => {
+    try {
+      const { ownerId, vehicleId, providerType } = req.body;
+      
+      if (!ownerId || !vehicleId || !providerType) {
+        return res.status(400).json({ error: "Missing required fields: ownerId, vehicleId, providerType" });
+      }
+      
+      if (!['platform', 'owner'].includes(providerType)) {
+        return res.status(400).json({ error: "providerType must be 'platform' or 'owner'" });
+      }
+      
+      const policy = await storage.createInsurancePolicy(req.body);
+      res.status(201).json(policy);
+    } catch (error) {
+      console.error("Create insurance error:", error);
+      res.status(500).json({ error: "Failed to create insurance policy" });
+    }
+  });
+
+  app.patch("/api/admin/insurance/:id", async (req: Request, res: Response) => {
+    try {
+      const policy = await storage.updateInsurancePolicy(req.params.id, req.body);
+      if (!policy) {
+        return res.status(404).json({ error: "Policy not found" });
+      }
+      res.json(policy);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update insurance policy" });
+    }
+  });
+
+  app.get("/api/admin/analytics", async (_req: Request, res: Response) => {
+    try {
+      const analytics = await storage.getAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/admin/payments", async (_req: Request, res: Response) => {
+    try {
+      const payments = await storage.getAllPayments();
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
+  app.get("/api/admin/payouts", async (_req: Request, res: Response) => {
+    try {
+      const payouts = await storage.getAllPayouts();
+      res.json(payouts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch payouts" });
+    }
+  });
+
+  app.get("/api/stripe/publishable-key", async (_req: Request, res: Response) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Stripe key error:", error);
+      res.status(500).json({ error: "Failed to get Stripe key" });
+    }
+  });
+
+  app.post("/api/stripe/create-payment-intent", async (req: Request, res: Response) => {
+    try {
+      const { tripId, userId, amount } = req.body;
+      
+      if (!tripId || !userId || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: "Invalid payment parameters" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
+        });
+        customerId = customer.id;
+        await storage.updateUser(userId, { stripeCustomerId: customerId } as any);
+      }
+
+      const amountCents = Math.round(amount * 100);
+      const platformFeeCents = Math.round(amountCents * 0.10);
+      const ownerPayoutCents = amountCents - platformFeeCents;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: "usd",
+        customer: customerId,
+        metadata: {
+          tripId,
+          userId,
+        },
+      });
+
+      const payment = await storage.createPayment({
+        tripId,
+        userId,
+        stripePaymentIntentId: paymentIntent.id,
+        stripeCustomerId: customerId,
+        amount: (amountCents / 100).toFixed(2),
+        platformFee: (platformFeeCents / 100).toFixed(2),
+        ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+        status: "pending",
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentId: payment.id,
+      });
+    } catch (error: any) {
+      console.error("Payment intent error:", error);
+      if (error.type === 'StripeCardError' || error.type === 'StripeInvalidRequestError') {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to create payment intent" });
+    }
+  });
+
+  app.post("/api/stripe/confirm-payment", async (req: Request, res: Response) => {
+    try {
+      const { paymentId, tripId } = req.body;
+      
+      if (!paymentId || !tripId) {
+        return res.status(400).json({ error: "Missing paymentId or tripId" });
+      }
+      
+      const payment = await storage.getPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      
+      await storage.updatePayment(paymentId, { status: "completed" });
+      await storage.updateTrip(tripId, { status: "upcoming" });
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+async function db_getOwnerProfileById(id: string) {
+  const { db } = await import("./db");
+  const { ownerProfiles } = await import("@shared/schema");
+  const { eq } = await import("drizzle-orm");
+  const [profile] = await db.select().from(ownerProfiles).where(eq(ownerProfiles.id, id));
+  return profile || null;
 }
