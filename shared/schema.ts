@@ -455,6 +455,80 @@ export const insertUserDocumentSchema = createInsertSchema(userDocuments).omit({
   updatedAt: true,
 });
 
+// Conversations between users (renter <-> owner)
+export const conversations = pgTable("conversations", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  participant1Id: varchar("participant1_id").notNull().references(() => users.id),
+  participant2Id: varchar("participant2_id").notNull().references(() => users.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
+  tripId: varchar("trip_id").references(() => trips.id),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  lastMessagePreview: text("last_message_preview"),
+  participant1Unread: integer("participant1_unread").default(0),
+  participant2Unread: integer("participant2_unread").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  participant1: one(users, {
+    fields: [conversations.participant1Id],
+    references: [users.id],
+    relationName: "participant1",
+  }),
+  participant2: one(users, {
+    fields: [conversations.participant2Id],
+    references: [users.id],
+    relationName: "participant2",
+  }),
+  vehicle: one(vehicles, {
+    fields: [conversations.vehicleId],
+    references: [vehicles.id],
+  }),
+  trip: one(trips, {
+    fields: [conversations.tripId],
+    references: [trips.id],
+  }),
+  messages: many(messages),
+}));
+
+// Individual messages within a conversation
+export const messages = pgTable("messages", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => conversations.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  messageType: text("message_type").default("text"), // text, image, system
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+  }),
+}));
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
@@ -483,3 +557,7 @@ export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 export type Payout = typeof payouts.$inferSelect;
 export type InsertUserDocument = z.infer<typeof insertUserDocumentSchema>;
 export type UserDocument = typeof userDocuments.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
