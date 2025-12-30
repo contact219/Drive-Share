@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, ActivityIndicator } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, ActivityIndicator, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -31,6 +31,16 @@ export default function DrivingLicenseScreen() {
   const licenseDoc = documents?.find(d => d.documentType === 'drivers_license');
   const insuranceDoc = documents?.find(d => d.documentType === 'insurance_card');
 
+  const openSettings = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      try {
+        await Linking.openSettings();
+      } catch (error) {
+        Alert.alert('Error', 'Could not open settings. Please go to Settings manually.');
+      }
+    }
+  }, []);
+
   const handlePickImage = useCallback(async (docType: DocumentType) => {
     if (Platform.OS === 'web') {
       Alert.alert('Not Supported', 'Document upload is available in the Expo Go app on your mobile device.');
@@ -39,7 +49,18 @@ export default function DrivingLicenseScreen() {
 
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your photo library to upload documents.');
+      if (!permissionResult.canAskAgain) {
+        Alert.alert(
+          'Permission Required',
+          'Photo library access was denied. Please enable it in Settings to upload documents.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: openSettings },
+          ]
+        );
+      } else {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to upload documents.');
+      }
       return;
     }
 
@@ -80,7 +101,7 @@ export default function DrivingLicenseScreen() {
         setIsUploading(false);
       }
     }
-  }, [user, uploadDocument, refetch]);
+  }, [user, uploadDocument, refetch, openSettings]);
 
   const handleTakePhoto = useCallback(async (docType: DocumentType) => {
     if (Platform.OS === 'web') {
@@ -90,7 +111,18 @@ export default function DrivingLicenseScreen() {
 
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow camera access to take photos of your documents.');
+      if (!permissionResult.canAskAgain) {
+        Alert.alert(
+          'Permission Required',
+          'Camera access was denied. Please enable it in Settings to take photos of documents.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: openSettings },
+          ]
+        );
+      } else {
+        Alert.alert('Permission Required', 'Please allow camera access to take photos of your documents.');
+      }
       return;
     }
 
@@ -130,7 +162,7 @@ export default function DrivingLicenseScreen() {
         setIsUploading(false);
       }
     }
-  }, [user, uploadDocument, refetch]);
+  }, [user, uploadDocument, refetch, openSettings]);
 
   const handleUpload = useCallback((docType: DocumentType) => {
     setSelectedDocType(docType);
