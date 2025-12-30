@@ -1,12 +1,17 @@
 import { 
-  users, vehicles, trips, favorites,
+  users, vehicles, trips, favorites, reviews, pushTokens, availabilitySlots, ownerProfiles, ownerVehicles,
   type User, type InsertUser,
   type Vehicle, type InsertVehicle,
   type Trip, type InsertTrip,
   type Favorite, type InsertFavorite,
+  type Review, type InsertReview,
+  type PushToken, type InsertPushToken,
+  type AvailabilitySlot, type InsertAvailabilitySlot,
+  type OwnerProfile, type InsertOwnerProfile,
+  type OwnerVehicle, type InsertOwnerVehicle,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -32,6 +37,42 @@ export interface IStorage {
   getFavoritesByUser(userId: string): Promise<Favorite[]>;
   addFavorite(favorite: InsertFavorite): Promise<Favorite>;
   removeFavorite(userId: string, vehicleId: string): Promise<boolean>;
+
+  getReviewsByVehicle(vehicleId: string): Promise<Review[]>;
+  getReviewsByUser(userId: string): Promise<Review[]>;
+  createReview(review: InsertReview): Promise<Review>;
+  updateReview(id: string, updates: Partial<InsertReview>): Promise<Review | undefined>;
+
+  getPushTokensByUser(userId: string): Promise<PushToken[]>;
+  registerPushToken(token: InsertPushToken): Promise<PushToken>;
+  deactivatePushToken(token: string): Promise<boolean>;
+
+  getAvailabilitySlots(vehicleId: string, startDate: Date, endDate: Date): Promise<AvailabilitySlot[]>;
+  createAvailabilitySlot(slot: InsertAvailabilitySlot): Promise<AvailabilitySlot>;
+  deleteAvailabilitySlot(id: string): Promise<boolean>;
+  checkAvailability(vehicleId: string, startDate: Date, endDate: Date): Promise<boolean>;
+
+  getOwnerProfile(userId: string): Promise<OwnerProfile | undefined>;
+  createOwnerProfile(profile: InsertOwnerProfile): Promise<OwnerProfile>;
+  updateOwnerProfile(id: string, updates: Partial<InsertOwnerProfile>): Promise<OwnerProfile | undefined>;
+
+  getOwnerVehicles(ownerId: string): Promise<OwnerVehicle[]>;
+  createOwnerVehicle(ownerVehicle: InsertOwnerVehicle): Promise<OwnerVehicle>;
+  updateOwnerVehicle(id: string, updates: Partial<InsertOwnerVehicle>): Promise<OwnerVehicle | undefined>;
+  deleteOwnerVehicle(id: string): Promise<boolean>;
+
+  getFilteredVehicles(filters: {
+    fuelType?: string;
+    transmission?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    type?: string;
+    minSeats?: number;
+    features?: string[];
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  }): Promise<Vehicle[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -146,6 +187,202 @@ export class DatabaseStorage implements IStorage {
       and(eq(favorites.userId, userId), eq(favorites.vehicleId, vehicleId))
     );
     return true;
+  }
+
+  async getReviewsByVehicle(vehicleId: string): Promise<Review[]> {
+    return db.select().from(reviews).where(eq(reviews.vehicleId, vehicleId)).orderBy(desc(reviews.createdAt));
+  }
+
+  async getReviewsByUser(userId: string): Promise<Review[]> {
+    return db.select().from(reviews).where(eq(reviews.userId, userId)).orderBy(desc(reviews.createdAt));
+  }
+
+  async createReview(insertReview: InsertReview): Promise<Review> {
+    const [review] = await db.insert(reviews).values(insertReview).returning();
+    if (insertReview.tripId) {
+      await db.update(trips).set({ hasReview: true }).where(eq(trips.id, insertReview.tripId));
+    }
+    const vehicleReviews = await this.getReviewsByVehicle(insertReview.vehicleId);
+    const avgRating = vehicleReviews.reduce((sum, r) => sum + r.rating, 0) / vehicleReviews.length;
+    await db.update(vehicles).set({ 
+      rating: avgRating.toFixed(1), 
+      reviewCount: vehicleReviews.length 
+    }).where(eq(vehicles.id, insertReview.vehicleId));
+    return review;
+  }
+
+  async updateReview(id: string, updates: Partial<InsertReview>): Promise<Review | undefined> {
+    const [review] = await db.update(reviews).set({ ...updates, updatedAt: new Date() }).where(eq(reviews.id, id)).returning();
+    return review || undefined;
+  }
+
+  async getPushTokensByUser(userId: string): Promise<PushToken[]> {
+    return db.select().from(pushTokens).where(and(eq(pushTokens.userId, userId), eq(pushTokens.isActive, true)));
+  }
+
+  async registerPushToken(insertToken: InsertPushToken): Promise<PushToken> {
+    const existing = await db.select().from(pushTokens).where(eq(pushTokens.token, insertToken.token));
+    if (existing.length > 0) {
+      const [updated] = await db.update(pushTokens).set({ isActive: true, updatedAt: new Date() }).where(eq(pushTokens.token, insertToken.token)).returning();
+      return updated;
+    }
+    const [token] = await db.insert(pushTokens).values(insertToken).returning();
+    return token;
+  }
+
+  async deactivatePushToken(token: string): Promise<boolean> {
+    await db.update(pushTokens).set({ isActive: false, updatedAt: new Date() }).where(eq(pushTokens.token, token));
+    return true;
+  }
+
+  async getAvailabilitySlots(vehicleId: string, startDate: Date, endDate: Date): Promise<AvailabilitySlot[]> {
+    return db.select().from(availabilitySlots).where(
+      and(
+        eq(availabilitySlots.vehicleId, vehicleId),
+        or(
+          and(gte(availabilitySlots.startTime, startDate), lte(availabilitySlots.startTime, endDate)),
+          and(gte(availabilitySlots.endTime, startDate), lte(availabilitySlots.endTime, endDate)),
+          and(lte(availabilitySlots.startTime, startDate), gte(availabilitySlots.endTime, endDate))
+        )
+      )
+    );
+  }
+
+  async createAvailabilitySlot(insertSlot: InsertAvailabilitySlot): Promise<AvailabilitySlot> {
+    const [slot] = await db.insert(availabilitySlots).values(insertSlot).returning();
+    return slot;
+  }
+
+  async deleteAvailabilitySlot(id: string): Promise<boolean> {
+    await db.delete(availabilitySlots).where(eq(availabilitySlots.id, id));
+    return true;
+  }
+
+  async checkAvailability(vehicleId: string, startDate: Date, endDate: Date): Promise<boolean> {
+    const conflictingTrips = await db.select().from(trips).where(
+      and(
+        eq(trips.vehicleId, vehicleId),
+        or(eq(trips.status, "upcoming"), eq(trips.status, "active")),
+        or(
+          and(gte(trips.startDate, startDate), lte(trips.startDate, endDate)),
+          and(gte(trips.endDate, startDate), lte(trips.endDate, endDate)),
+          and(lte(trips.startDate, startDate), gte(trips.endDate, endDate))
+        )
+      )
+    );
+    const blockedSlots = await db.select().from(availabilitySlots).where(
+      and(
+        eq(availabilitySlots.vehicleId, vehicleId),
+        eq(availabilitySlots.isBlocked, true),
+        or(
+          and(gte(availabilitySlots.startTime, startDate), lte(availabilitySlots.startTime, endDate)),
+          and(gte(availabilitySlots.endTime, startDate), lte(availabilitySlots.endTime, endDate)),
+          and(lte(availabilitySlots.startTime, startDate), gte(availabilitySlots.endTime, endDate))
+        )
+      )
+    );
+    return conflictingTrips.length === 0 && blockedSlots.length === 0;
+  }
+
+  async getOwnerProfile(userId: string): Promise<OwnerProfile | undefined> {
+    const [profile] = await db.select().from(ownerProfiles).where(eq(ownerProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async createOwnerProfile(insertProfile: InsertOwnerProfile): Promise<OwnerProfile> {
+    const [profile] = await db.insert(ownerProfiles).values(insertProfile).returning();
+    await db.update(users).set({ isOwner: true }).where(eq(users.id, insertProfile.userId));
+    return profile;
+  }
+
+  async updateOwnerProfile(id: string, updates: Partial<InsertOwnerProfile>): Promise<OwnerProfile | undefined> {
+    const [profile] = await db.update(ownerProfiles).set({ ...updates, updatedAt: new Date() }).where(eq(ownerProfiles.id, id)).returning();
+    return profile || undefined;
+  }
+
+  async getOwnerVehicles(ownerId: string): Promise<OwnerVehicle[]> {
+    return db.select().from(ownerVehicles).where(eq(ownerVehicles.ownerId, ownerId));
+  }
+
+  async createOwnerVehicle(insertOwnerVehicle: InsertOwnerVehicle): Promise<OwnerVehicle> {
+    const [ownerVehicle] = await db.insert(ownerVehicles).values(insertOwnerVehicle).returning();
+    return ownerVehicle;
+  }
+
+  async updateOwnerVehicle(id: string, updates: Partial<InsertOwnerVehicle>): Promise<OwnerVehicle | undefined> {
+    const [ownerVehicle] = await db.update(ownerVehicles).set({ ...updates, updatedAt: new Date() }).where(eq(ownerVehicles.id, id)).returning();
+    return ownerVehicle || undefined;
+  }
+
+  async deleteOwnerVehicle(id: string): Promise<boolean> {
+    await db.delete(ownerVehicles).where(eq(ownerVehicles.id, id));
+    return true;
+  }
+
+  async getFilteredVehicles(filters: {
+    fuelType?: string;
+    transmission?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    type?: string;
+    minSeats?: number;
+    features?: string[];
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  }): Promise<Vehicle[]> {
+    let query = db.select().from(vehicles).where(eq(vehicles.isAvailable, true));
+    const conditions = [eq(vehicles.isAvailable, true)];
+    
+    if (filters.fuelType) {
+      conditions.push(eq(vehicles.fuelType, filters.fuelType));
+    }
+    if (filters.transmission) {
+      conditions.push(eq(vehicles.transmission, filters.transmission));
+    }
+    if (filters.type) {
+      conditions.push(eq(vehicles.type, filters.type));
+    }
+    if (filters.minPrice) {
+      conditions.push(gte(vehicles.pricePerHour, filters.minPrice.toString()));
+    }
+    if (filters.maxPrice) {
+      conditions.push(lte(vehicles.pricePerHour, filters.maxPrice.toString()));
+    }
+    if (filters.minSeats) {
+      conditions.push(gte(vehicles.seats, filters.minSeats));
+    }
+
+    const allVehicles = await db.select().from(vehicles).where(and(...conditions)).orderBy(desc(vehicles.createdAt));
+    
+    let result = allVehicles;
+    if (filters.features && filters.features.length > 0) {
+      result = result.filter(v => {
+        const vehicleFeatures = v.features || [];
+        return filters.features!.every(f => vehicleFeatures.includes(f));
+      });
+    }
+    
+    if (filters.lat && filters.lng && filters.radius) {
+      result = result.filter(v => {
+        if (!v.locationLat || !v.locationLng) return true;
+        const lat1 = filters.lat!;
+        const lon1 = filters.lng!;
+        const lat2 = parseFloat(v.locationLat);
+        const lon2 = parseFloat(v.locationLng);
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        return distance <= filters.radius!;
+      });
+    }
+    
+    return result;
   }
 }
 

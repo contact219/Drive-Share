@@ -1,13 +1,34 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
-import { insertUserSchema, insertVehicleSchema, insertTripSchema } from "@shared/schema";
+import { insertUserSchema, insertVehicleSchema, insertTripSchema, insertReviewSchema, insertPushTokenSchema } from "@shared/schema";
 import * as bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  app.get("/api/vehicles", async (_req: Request, res: Response) => {
+  app.get("/api/vehicles", async (req: Request, res: Response) => {
     try {
+      const { fuelType, transmission, minPrice, maxPrice, type, minSeats, features, lat, lng, radius } = req.query;
+      
+      if (fuelType || transmission || minPrice || maxPrice || type || minSeats || features || (lat && lng)) {
+        const filters: any = {};
+        if (fuelType) filters.fuelType = fuelType as string;
+        if (transmission) filters.transmission = transmission as string;
+        if (minPrice) filters.minPrice = parseFloat(minPrice as string);
+        if (maxPrice) filters.maxPrice = parseFloat(maxPrice as string);
+        if (type) filters.type = type as string;
+        if (minSeats) filters.minSeats = parseInt(minSeats as string);
+        if (features) filters.features = (features as string).split(',');
+        if (lat && lng) {
+          filters.lat = parseFloat(lat as string);
+          filters.lng = parseFloat(lng as string);
+          filters.radius = radius ? parseFloat(radius as string) : 50;
+        }
+        
+        const vehicles = await storage.getFilteredVehicles(filters);
+        return res.json(vehicles);
+      }
+      
       const vehicles = await storage.getAvailableVehicles();
       res.json(vehicles);
     } catch (error) {
@@ -355,6 +376,268 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Reviews endpoints
+  app.get("/api/vehicles/:id/reviews", async (req: Request, res: Response) => {
+    try {
+      const reviews = await storage.getReviewsByVehicle(req.params.id);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/reviews", async (req: Request, res: Response) => {
+    try {
+      const reviewData = insertReviewSchema.parse(req.body);
+      const review = await storage.createReview(reviewData);
+      res.status(201).json(review);
+    } catch (error) {
+      console.error("Create review error:", error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+
+  app.get("/api/users/:id/reviews", async (req: Request, res: Response) => {
+    try {
+      const reviews = await storage.getReviewsByUser(req.params.id);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  // Availability endpoints
+  app.get("/api/vehicles/:id/availability", async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Start and end dates are required" });
+      }
+      const slots = await storage.getAvailabilitySlots(
+        req.params.id,
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      res.json(slots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch availability" });
+    }
+  });
+
+  app.post("/api/vehicles/:id/availability/check", async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.body;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Start and end dates are required" });
+      }
+      const isAvailable = await storage.checkAvailability(
+        req.params.id,
+        new Date(startDate),
+        new Date(endDate)
+      );
+      res.json({ available: isAvailable });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check availability" });
+    }
+  });
+
+  // Trip cost estimation
+  app.post("/api/trips/quote", async (req: Request, res: Response) => {
+    try {
+      const { vehicleId, startDate, endDate, includeInsurance } = req.body;
+      
+      const vehicle = await storage.getVehicle(vehicleId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const hours = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const days = Math.ceil(hours / 24);
+      
+      const pricePerHour = parseFloat(vehicle.pricePerHour);
+      const baseCost = hours <= 24 ? hours * pricePerHour : days * pricePerHour * 20;
+      const insuranceCost = includeInsurance ? days * 15 : 0;
+      const serviceFee = baseCost * 0.10;
+      const totalCost = baseCost + insuranceCost + serviceFee;
+
+      const isAvailable = await storage.checkAvailability(vehicleId, start, end);
+
+      res.json({
+        available: isAvailable,
+        hours,
+        days,
+        baseCost: baseCost.toFixed(2),
+        insuranceCost: insuranceCost.toFixed(2),
+        serviceFee: serviceFee.toFixed(2),
+        totalCost: totalCost.toFixed(2),
+        pricePerHour: pricePerHour.toFixed(2),
+        vehicle: {
+          id: vehicle.id,
+          name: vehicle.name,
+          imageUrl: vehicle.imageUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Quote error:", error);
+      res.status(500).json({ error: "Failed to generate quote" });
+    }
+  });
+
+  // Push notification endpoints
+  app.post("/api/notifications/register", async (req: Request, res: Response) => {
+    try {
+      const tokenData = insertPushTokenSchema.parse(req.body);
+      const token = await storage.registerPushToken(tokenData);
+      res.status(201).json(token);
+    } catch (error) {
+      console.error("Register token error:", error);
+      res.status(500).json({ error: "Failed to register push token" });
+    }
+  });
+
+  app.post("/api/notifications/deactivate", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      await storage.deactivatePushToken(token);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to deactivate token" });
+    }
+  });
+
+  // Owner mode endpoints
+  app.get("/api/owner/profile", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+      const profile = await storage.getOwnerProfile(userId as string);
+      res.json(profile || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch owner profile" });
+    }
+  });
+
+  app.post("/api/owner/profile", async (req: Request, res: Response) => {
+    try {
+      const { userId, bio } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+      
+      const existingProfile = await storage.getOwnerProfile(userId);
+      if (existingProfile) {
+        return res.status(400).json({ error: "Owner profile already exists" });
+      }
+
+      const profile = await storage.createOwnerProfile({ userId, bio });
+      res.status(201).json(profile);
+    } catch (error) {
+      console.error("Create owner profile error:", error);
+      res.status(500).json({ error: "Failed to create owner profile" });
+    }
+  });
+
+  app.patch("/api/owner/profile/:id", async (req: Request, res: Response) => {
+    try {
+      const profile = await storage.updateOwnerProfile(req.params.id, req.body);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update owner profile" });
+    }
+  });
+
+  app.get("/api/owner/:ownerId/vehicles", async (req: Request, res: Response) => {
+    try {
+      const ownerVehicles = await storage.getOwnerVehicles(req.params.ownerId);
+      res.json(ownerVehicles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch owner vehicles" });
+    }
+  });
+
+  app.post("/api/owner/vehicles", async (req: Request, res: Response) => {
+    try {
+      const { ownerId, vehicleData } = req.body;
+      
+      const vehicle = await storage.createVehicle({
+        ...vehicleData,
+        isAvailable: false,
+      });
+      
+      const ownerVehicle = await storage.createOwnerVehicle({
+        ownerId,
+        vehicleId: vehicle.id,
+        listingStatus: "pending",
+      });
+      
+      res.status(201).json({ vehicle, ownerVehicle });
+    } catch (error) {
+      console.error("Create owner vehicle error:", error);
+      res.status(500).json({ error: "Failed to create vehicle listing" });
+    }
+  });
+
+  app.patch("/api/owner/vehicles/:id", async (req: Request, res: Response) => {
+    try {
+      const ownerVehicle = await storage.updateOwnerVehicle(req.params.id, req.body);
+      if (!ownerVehicle) {
+        return res.status(404).json({ error: "Owner vehicle not found" });
+      }
+      
+      if (req.body.listingStatus === "active") {
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: true });
+      } else if (req.body.listingStatus === "paused" || req.body.listingStatus === "pending") {
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: false });
+      }
+      
+      res.json(ownerVehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update owner vehicle" });
+    }
+  });
+
+  app.delete("/api/owner/vehicles/:id", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteOwnerVehicle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete owner vehicle" });
+    }
+  });
+
+  // Availability slot management for owners
+  app.post("/api/owner/vehicles/:vehicleId/availability", async (req: Request, res: Response) => {
+    try {
+      const { startTime, endTime, isBlocked } = req.body;
+      const slot = await storage.createAvailabilitySlot({
+        vehicleId: req.params.vehicleId,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        isBlocked: isBlocked || false,
+        source: "owner",
+      });
+      res.status(201).json(slot);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create availability slot" });
+    }
+  });
+
+  app.delete("/api/owner/availability/:id", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteAvailabilitySlot(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete availability slot" });
     }
   });
 

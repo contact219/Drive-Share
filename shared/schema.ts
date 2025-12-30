@@ -15,6 +15,9 @@ export const users = pgTable("users", {
   rating: decimal("rating", { precision: 2, scale: 1 }).default("5.0"),
   tripsCompleted: integer("trips_completed").default(0),
   isAdmin: boolean("is_admin").default(false),
+  isOwner: boolean("is_owner").default(false),
+  notificationPrefs: jsonb("notification_prefs").$type<{ push: boolean; email: boolean; sms: boolean }>().default({ push: true, email: true, sms: false }),
+  defaultLocation: jsonb("default_location").$type<{ lat: number; lng: number; address: string }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -64,7 +67,13 @@ export const trips = pgTable("trips", {
   endDate: timestamp("end_date").notNull(),
   status: text("status").notNull().default("upcoming"),
   totalCost: decimal("total_cost", { precision: 10, scale: 2 }).notNull(),
+  baseCost: decimal("base_cost", { precision: 10, scale: 2 }),
+  insuranceCost: decimal("insurance_cost", { precision: 10, scale: 2 }),
+  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  promoCode: text("promo_code"),
   pickupLocation: text("pickup_location").notNull(),
+  hasReview: boolean("has_review").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -100,6 +109,123 @@ export const favoritesRelations = relations(favorites, ({ one }) => ({
   }),
 }));
 
+export const reviews = pgTable("reviews", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  tripId: varchar("trip_id").references(() => trips.id),
+  rating: integer("rating").notNull(),
+  title: text("title"),
+  comment: text("comment"),
+  ownerResponse: text("owner_response"),
+  helpfulCount: integer("helpful_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  user: one(users, {
+    fields: [reviews.userId],
+    references: [users.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [reviews.vehicleId],
+    references: [vehicles.id],
+  }),
+  trip: one(trips, {
+    fields: [reviews.tripId],
+    references: [trips.id],
+  }),
+}));
+
+export const pushTokens = pgTable("push_tokens", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: text("token").notNull(),
+  platform: text("platform").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pushTokensRelations = relations(pushTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [pushTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const availabilitySlots = pgTable("availability_slots", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  isBlocked: boolean("is_blocked").default(false),
+  source: text("source").default("owner"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const availabilitySlotsRelations = relations(availabilitySlots, ({ one }) => ({
+  vehicle: one(vehicles, {
+    fields: [availabilitySlots.vehicleId],
+    references: [vehicles.id],
+  }),
+}));
+
+export const ownerProfiles = pgTable("owner_profiles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  bio: text("bio"),
+  verificationStatus: text("verification_status").default("pending"),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }).default("100.00"),
+  totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default("0.00"),
+  payoutMethod: jsonb("payout_method").$type<{ type: string; details: Record<string, string> }>(),
+  documents: jsonb("documents").$type<{ license?: string; insurance?: string; proofOfOwnership?: string }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const ownerProfilesRelations = relations(ownerProfiles, ({ one, many }) => ({
+  user: one(users, {
+    fields: [ownerProfiles.userId],
+    references: [users.id],
+  }),
+  ownerVehicles: many(ownerVehicles),
+}));
+
+export const ownerVehicles = pgTable("owner_vehicles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => ownerProfiles.id),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  listingStatus: text("listing_status").default("pending"),
+  instantBook: boolean("instant_book").default(false),
+  minTripDuration: integer("min_trip_duration").default(1),
+  maxTripDuration: integer("max_trip_duration").default(30),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const ownerVehiclesRelations = relations(ownerVehicles, ({ one }) => ({
+  owner: one(ownerProfiles, {
+    fields: [ownerVehicles.ownerId],
+    references: [ownerProfiles.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [ownerVehicles.vehicleId],
+    references: [vehicles.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   name: true,
@@ -125,6 +251,35 @@ export const insertFavoriteSchema = createInsertSchema(favorites).omit({
   createdAt: true,
 });
 
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAvailabilitySlotSchema = createInsertSchema(availabilitySlots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertOwnerProfileSchema = createInsertSchema(ownerProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOwnerVehicleSchema = createInsertSchema(ownerVehicles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
@@ -133,3 +288,13 @@ export type InsertTrip = z.infer<typeof insertTripSchema>;
 export type Trip = typeof trips.$inferSelect;
 export type InsertFavorite = z.infer<typeof insertFavoriteSchema>;
 export type Favorite = typeof favorites.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Review = typeof reviews.$inferSelect;
+export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
+export type PushToken = typeof pushTokens.$inferSelect;
+export type InsertAvailabilitySlot = z.infer<typeof insertAvailabilitySlotSchema>;
+export type AvailabilitySlot = typeof availabilitySlots.$inferSelect;
+export type InsertOwnerProfile = z.infer<typeof insertOwnerProfileSchema>;
+export type OwnerProfile = typeof ownerProfiles.$inferSelect;
+export type InsertOwnerVehicle = z.infer<typeof insertOwnerVehicleSchema>;
+export type OwnerVehicle = typeof ownerVehicles.$inferSelect;
