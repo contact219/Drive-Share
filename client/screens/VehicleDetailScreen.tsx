@@ -13,6 +13,8 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useVehicle } from "@/hooks/useVehicles";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreateConversation } from "@/hooks/useMessages";
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -26,10 +28,30 @@ export default function VehicleDetailScreen() {
   const { theme } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { data: vehicle, isLoading } = useVehicle(route.params.vehicleId);
+  const { user, isAuthenticated } = useAuth();
+  const createConversation = useCreateConversation();
 
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const handleContactHost = useCallback(async () => {
+    if (!isAuthenticated || !user?.id || !vehicle?.ownerId) {
+      navigation.navigate("Auth");
+      return;
+    }
+    
+    try {
+      const conversation = await createConversation.mutateAsync({
+        renterId: user.id,
+        ownerId: vehicle.ownerId,
+        vehicleId: vehicle.id,
+      });
+      navigation.navigate("Chat", { conversationId: conversation.id });
+    } catch (error) {
+      console.error("Failed to create conversation:", error);
+    }
+  }, [isAuthenticated, user?.id, vehicle?.ownerId, vehicle?.id, navigation, createConversation]);
 
   const handleFavorite = useCallback(() => {
     if (vehicle) {
@@ -207,6 +229,12 @@ export default function VehicleDetailScreen() {
             per hour
           </ThemedText>
         </View>
+        <Pressable
+          onPress={handleContactHost}
+          style={[styles.contactButton, { backgroundColor: theme.backgroundDefault }]}
+        >
+          <Feather name="message-circle" size={24} color={theme.primary} />
+        </Pressable>
         <Button onPress={handleBook} style={styles.bookButton}>
           Book Now
         </Button>
@@ -343,6 +371,14 @@ const styles = StyleSheet.create({
   },
   bookButton: {
     flex: 1,
-    marginLeft: Spacing.xl,
+    marginLeft: Spacing.md,
+  },
+  contactButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: Spacing.md,
   },
 });

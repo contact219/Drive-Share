@@ -21,6 +21,7 @@ export interface Vehicle {
     longitude: number;
   };
   available: boolean;
+  ownerId?: string;
 }
 
 export type VehicleType = "sedan" | "suv" | "electric" | "luxury" | "compact" | "truck";

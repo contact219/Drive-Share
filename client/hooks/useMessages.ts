@@ -65,15 +65,21 @@ export function useCreateConversation() {
 
   return useMutation({
     mutationFn: async (data: {
-      participant1Id: string;
-      participant2Id: string;
+      renterId: string;
+      ownerId: string;
       vehicleId?: string;
       tripId?: string;
-    }) => {
-      return apiRequest("POST", "/api/conversations", data);
+    }): Promise<Conversation> => {
+      const response = await apiRequest("POST", "/api/conversations", {
+        participant1Id: data.renterId,
+        participant2Id: data.ownerId,
+        vehicleId: data.vehicleId,
+        tripId: data.tripId,
+      });
+      return response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", variables.participant1Id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", variables.renterId] });
     },
   });
 }

@@ -57,6 +57,10 @@ export default function ProfileScreen() {
     navigation.navigate("OwnerDashboard");
   }, [navigation]);
 
+  const handleMessages = useCallback(() => {
+    navigation.navigate("Conversations");
+  }, [navigation]);
+
   const handleHelpSupport = useCallback(() => {
     navigation.navigate("HelpSupport");
   }, [navigation]);
@@ -196,6 +200,12 @@ export default function ProfileScreen() {
           title="Driving License"
           subtitle="Verify your license"
           onPress={handleDrivingLicense}
+        />
+        <SettingsItem
+          icon="message-circle"
+          title="Messages"
+          subtitle="Chat with hosts and renters"
+          onPress={handleMessages}
         />
 
         <ThemedText type="h4" style={styles.sectionTitle}>
