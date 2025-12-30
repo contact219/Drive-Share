@@ -124,15 +124,23 @@ server/
 - Local storage for auth state and favorites: `client/lib/storage.ts`
 - The mobile app now fetches vehicle data from `/api/vehicles`
 
-## Admin Dashboard (v3.0)
+## Admin Dashboard (v3.1)
 - **URL:** `/admin` (port 5000)
 - **Credentials:** admin@rush.com / admin123
 - **Features:**
   - Analytics dashboard with revenue trends chart, trip status distribution, and top vehicles
+  - **Booking Calendar** with monthly view, color-coded bookings by status, vehicle filtering, and day-detail view
   - Vehicle verification queue with approve/reject workflow and reviewer notes
   - Insurance policy management for owner-provided and platform coverage
   - Payment history with platform fees and owner payouts breakdown
   - Vehicle CRUD, user management, trip overview, stats dashboard
+
+### Booking Calendar
+- **Monthly View:** Navigate between months, quick "Today" button
+- **Color Coding:** Upcoming (amber), Active (blue), Completed (green), Cancelled (gray)
+- **Vehicle Filter:** Filter calendar by specific vehicle
+- **Day Details:** Click any day to see all bookings with vehicle image, user info, dates, and cost
+- **API Endpoint:** `/api/admin/calendar` returns trips with vehicle and user details
 
 ## User Management
 - Admin can create new users and administrators via the admin dashboard

@@ -403,6 +403,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/calendar", async (_req: Request, res: Response) => {
+    try {
+      const [trips, vehicles, users] = await Promise.all([
+        storage.getAllTrips(),
+        storage.getAllVehicles(),
+        storage.getAllUsers(),
+      ]);
+      
+      const vehicleMap = new Map(vehicles.map(v => [v.id, v]));
+      const userMap = new Map(users.map(u => [u.id, u]));
+      
+      const calendarData = trips.map(trip => {
+        const vehicle = vehicleMap.get(trip.vehicleId);
+        const user = userMap.get(trip.userId);
+        return {
+          id: trip.id,
+          vehicleId: trip.vehicleId,
+          vehicleName: vehicle?.name || 'Unknown Vehicle',
+          vehicleImage: vehicle?.imageUrl || '',
+          userId: trip.userId,
+          userName: user?.name || 'Unknown User',
+          userEmail: user?.email || '',
+          startDate: trip.startDate,
+          endDate: trip.endDate,
+          status: trip.status,
+          totalCost: trip.totalCost,
+          pickupLocation: trip.pickupLocation,
+        };
+      });
+      
+      res.json(calendarData);
+    } catch (error) {
+      console.error("Calendar data error:", error);
+      res.status(500).json({ error: "Failed to fetch calendar data" });
+    }
+  });
+
   app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
     try {
       const user = await storage.updateUser(req.params.id, req.body);
