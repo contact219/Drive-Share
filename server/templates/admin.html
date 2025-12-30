@@ -26,7 +26,7 @@
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-primary">Rush Admin</h1>
           <p class="text-gray-600 mt-2">Sign in to manage your fleet</p>
-          <p class="text-xs text-gray-400 mt-1">Version 2.0</p>
+          <p class="text-xs text-gray-400 mt-1">Version 2.1</p>
         </div>
         <form id="login-form" class="space-y-4">
           <div>
@@ -142,7 +142,7 @@
     <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
       <div class="bg-white rounded-xl p-6 w-full max-w-md">
         <h3 class="text-xl font-semibold mb-4">Change Password</h3>
-        <form id="password-form" class="space-y-4">
+        <form id="password-form" class="space-y-4" onsubmit="submitPasswordChange(event); return false;">
           <input type="hidden" id="password-user-id">
           <p id="password-user-email" class="text-gray-600 text-sm mb-2"></p>
           <div>
@@ -156,7 +156,7 @@
           <p id="password-error" class="text-red-500 text-sm hidden"></p>
           <div class="flex gap-4 pt-4">
             <button type="button" onclick="closePasswordModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Change Password</button>
+            <button type="submit" id="password-submit-btn" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Change Password</button>
           </div>
         </form>
       </div>
@@ -481,8 +481,8 @@
       }
     });
 
-    document.getElementById('password-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    async function submitPasswordChange(e) {
+      if (e) e.preventDefault();
       const id = document.getElementById('password-user-id').value;
       const newPassword = document.getElementById('new-password').value;
       const confirmPassword = document.getElementById('confirm-password').value;
@@ -533,7 +533,9 @@
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
-    });
+    }
+    
+    document.getElementById('password-form').addEventListener('submit', submitPasswordChange);
 
     async function loadTrips() {
       const res = await fetch(`${API_BASE}/admin/trips`);
