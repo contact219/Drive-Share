@@ -4,6 +4,13 @@ import { storage } from "./storage";
 import { insertUserSchema, insertVehicleSchema, insertTripSchema, insertReviewSchema, insertPushTokenSchema } from "@shared/schema";
 import * as bcrypt from "bcryptjs";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { 
+  sendBookingConfirmationEmail, 
+  sendNewBookingNotificationToOwner,
+  sendVehicleVerificationApprovedEmail,
+  sendVehicleVerificationRejectedEmail,
+  sendTripCompletedEmail
+} from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -106,6 +113,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const tripData = insertTripSchema.parse(req.body);
       const trip = await storage.createTrip(tripData);
+      
+      // Send email notifications for the booking
+      try {
+        const renter = await storage.getUser(trip.userId);
+        const vehicle = await storage.getVehicle(trip.vehicleId);
+        
+        if (renter && vehicle && renter.email) {
+          // Send confirmation to renter
+          sendBookingConfirmationEmail(
+            renter.email,
+            renter.name,
+            vehicle.name,
+            trip.startDate.toISOString(),
+            trip.endDate.toISOString(),
+            trip.totalCost
+          ).catch(err => console.error("Failed to send renter confirmation email:", err));
+          
+          // Send notification to vehicle owner if they exist
+          if (vehicle.ownerId) {
+            const owner = await storage.getUser(vehicle.ownerId);
+            if (owner && owner.email) {
+              sendNewBookingNotificationToOwner(
+                owner.email,
+                owner.name,
+                renter.name,
+                vehicle.name,
+                trip.startDate.toISOString(),
+                trip.endDate.toISOString(),
+                trip.totalCost
+              ).catch(err => console.error("Failed to send owner notification email:", err));
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error("Email notification error (non-blocking):", emailError);
+      }
+      
       res.status(201).json(trip);
     } catch (error) {
       res.status(500).json({ error: "Failed to create trip" });
@@ -118,6 +162,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!trip) {
         return res.status(404).json({ error: "Trip not found" });
       }
+      
+      // Send email when trip is completed
+      if (req.body.status === "completed") {
+        try {
+          const renter = await storage.getUser(trip.userId);
+          const vehicle = await storage.getVehicle(trip.vehicleId);
+          
+          if (renter && vehicle && renter.email) {
+            // Get owner name for the review prompt
+            let ownerName = "the host";
+            if (vehicle.ownerId) {
+              const owner = await storage.getUser(vehicle.ownerId);
+              if (owner) {
+                ownerName = owner.name;
+              }
+            }
+            
+            sendTripCompletedEmail(
+              renter.email,
+              renter.name,
+              vehicle.name,
+              ownerName
+            ).catch(err => console.error("Failed to send trip completed email:", err));
+          }
+        } catch (emailError) {
+          console.error("Email notification error (non-blocking):", emailError);
+        }
+      }
+      
       res.json(trip);
     } catch (error) {
       res.status(500).json({ error: "Failed to update trip" });
@@ -712,6 +785,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateOwnerVehicle(ownerVehicle.id, { listingStatus: "active" });
           }
         }
+      }
+
+      // Send email notification to owner about verification decision
+      try {
+        const vehicle = await storage.getVehicle(verification.vehicleId);
+        if (verification.ownerId && vehicle) {
+          const ownerProfile = await db_getOwnerProfileById(verification.ownerId);
+          if (ownerProfile) {
+            const owner = await storage.getUser(ownerProfile.userId);
+            if (owner && owner.email) {
+              if (status === "approved") {
+                sendVehicleVerificationApprovedEmail(
+                  owner.email,
+                  owner.name,
+                  vehicle.name
+                ).catch(err => console.error("Failed to send approval email:", err));
+              } else {
+                sendVehicleVerificationRejectedEmail(
+                  owner.email,
+                  owner.name,
+                  vehicle.name,
+                  rejectionReason
+                ).catch(err => console.error("Failed to send rejection email:", err));
+              }
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error("Email notification error (non-blocking):", emailError);
       }
 
       res.json(verification);
