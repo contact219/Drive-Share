@@ -23,6 +23,8 @@ import ShareAppScreen from "@/screens/ShareAppScreen";
 import DataDownloadScreen from "@/screens/DataDownloadScreen";
 import VehicleMapScreen from "@/screens/VehicleMapScreen";
 import OwnerDashboardScreen from "@/screens/OwnerDashboardScreen";
+import ConversationsScreen from "@/screens/ConversationsScreen";
+import ChatScreen from "@/screens/ChatScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -60,6 +62,8 @@ export type RootStackParamList = {
   DataDownload: undefined;
   VehicleMap: undefined;
   OwnerDashboard: undefined;
+  Conversations: undefined;
+  Chat: { conversationId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -209,6 +213,19 @@ export default function RootStackNavigator() {
         name="OwnerDashboard"
         component={OwnerDashboardScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Conversations"
+        component={ConversationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          ...opaqueScreenOptions,
+          headerTitle: "Chat",
+        }}
       />
     </Stack.Navigator>
   );
