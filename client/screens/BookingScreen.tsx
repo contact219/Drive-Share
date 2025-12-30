@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, Pressable, Alert, Platform, ActivityIndicator } from "react-native";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { StyleSheet, View, Pressable, Alert, Platform, ActivityIndicator, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVehicle } from "@/hooks/useVehicles";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "Booking">;
@@ -31,6 +32,18 @@ export default function BookingScreen() {
   const [endDate, setEndDate] = useState(new Date(now.getTime() + 4 * 60 * 60 * 1000));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [includeInsurance, setIncludeInsurance] = useState(true);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "unavailable" | "checking" | null>(null);
+  const [quote, setQuote] = useState<{
+    available: boolean;
+    hours: number;
+    days: number;
+    baseCost: string;
+    insuranceCost: string;
+    serviceFee: string;
+    totalCost: string;
+  } | null>(null);
 
   const duration = useMemo(() => {
     const diff = endDate.getTime() - startDate.getTime();
@@ -38,10 +51,42 @@ export default function BookingScreen() {
     return hours;
   }, [startDate, endDate]);
 
-  const totalCost = useMemo(() => {
-    if (!vehicle) return 0;
-    return duration * vehicle.pricePerHour;
-  }, [duration, vehicle]);
+  useEffect(() => {
+    if (!vehicle) return;
+    
+    const fetchQuote = async () => {
+      setIsCheckingAvailability(true);
+      setAvailabilityStatus("checking");
+      
+      try {
+        const response = await fetch(new URL("/api/trips/quote", getApiUrl()).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vehicleId: vehicle.id,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            includeInsurance,
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setQuote(data);
+          setAvailabilityStatus(data.available ? "available" : "unavailable");
+        } else {
+          setAvailabilityStatus(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quote:", error);
+        setAvailabilityStatus(null);
+      } finally {
+        setIsCheckingAvailability(false);
+      }
+    };
+
+    fetchQuote();
+  }, [vehicle, startDate, endDate, includeInsurance]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
@@ -102,6 +147,15 @@ export default function BookingScreen() {
       return;
     }
 
+    if (availabilityStatus === "unavailable") {
+      Alert.alert(
+        "Not Available",
+        "This vehicle is not available for the selected dates. Please choose different dates.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     if (vehicle) {
       navigation.navigate("BookingConfirmation", {
         vehicleId: vehicle.id,
@@ -109,7 +163,7 @@ export default function BookingScreen() {
         endDate: endDate.toISOString(),
       });
     }
-  }, [isAuthenticated, vehicle, startDate, endDate, navigation]);
+  }, [isAuthenticated, vehicle, startDate, endDate, navigation, availabilityStatus]);
 
   if (isLoadingVehicle) {
     return (
@@ -218,30 +272,84 @@ export default function BookingScreen() {
               Duration
             </ThemedText>
             <ThemedText type="body">
-              {duration} hour{duration !== 1 ? "s" : ""}
+              {quote ? (quote.days > 1 ? `${quote.days} days` : `${quote.hours} hour${quote.hours !== 1 ? "s" : ""}`) : `${duration} hour${duration !== 1 ? "s" : ""}`}
             </ThemedText>
           </View>
           <View style={styles.summaryRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Rate
+              Base Cost
             </ThemedText>
-            <ThemedText type="body">${vehicle.pricePerHour}/hr</ThemedText>
+            <ThemedText type="body">${quote?.baseCost || (duration * vehicle.pricePerHour).toFixed(2)}</ThemedText>
           </View>
+          
+          <View style={styles.insuranceRow}>
+            <View style={styles.insuranceLabel}>
+              <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                Insurance Protection
+              </ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                ${15}/day coverage
+              </ThemedText>
+            </View>
+            <Switch
+              value={includeInsurance}
+              onValueChange={setIncludeInsurance}
+              trackColor={{ false: theme.border, true: Colors.light.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          
+          {includeInsurance && quote ? (
+            <View style={styles.summaryRow}>
+              <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                Insurance
+              </ThemedText>
+              <ThemedText type="body">${quote.insuranceCost}</ThemedText>
+            </View>
+          ) : null}
+          
+          <View style={styles.summaryRow}>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Service Fee (10%)
+            </ThemedText>
+            <ThemedText type="body">${quote?.serviceFee || "0.00"}</ThemedText>
+          </View>
+          
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <ThemedText type="h4">Estimated Total</ThemedText>
-            <ThemedText type="h3" style={{ color: Colors.light.primary }}>
-              ${totalCost.toFixed(2)}
-            </ThemedText>
+            {isCheckingAvailability ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <ThemedText type="h3" style={{ color: Colors.light.primary }}>
+                ${quote?.totalCost || "0.00"}
+              </ThemedText>
+            )}
           </View>
         </View>
 
-        <View style={[styles.availabilityCard, { backgroundColor: Colors.light.success + "20" }]}>
-          <Feather name="check-circle" size={20} color={Colors.light.success} />
-          <ThemedText type="body" style={{ color: Colors.light.success, marginLeft: Spacing.sm }}>
-            Vehicle is available for selected time
-          </ThemedText>
-        </View>
+        {availabilityStatus === "checking" ? (
+          <View style={[styles.availabilityCard, { backgroundColor: theme.backgroundDefault }]}>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
+              Checking availability...
+            </ThemedText>
+          </View>
+        ) : availabilityStatus === "available" ? (
+          <View style={[styles.availabilityCard, { backgroundColor: Colors.light.success + "20" }]}>
+            <Feather name="check-circle" size={20} color={Colors.light.success} />
+            <ThemedText type="body" style={{ color: Colors.light.success, marginLeft: Spacing.sm }}>
+              Vehicle is available for selected time
+            </ThemedText>
+          </View>
+        ) : availabilityStatus === "unavailable" ? (
+          <View style={[styles.availabilityCard, { backgroundColor: Colors.light.error + "20" }]}>
+            <Feather name="x-circle" size={20} color={Colors.light.error} />
+            <ThemedText type="body" style={{ color: Colors.light.error, marginLeft: Spacing.sm }}>
+              Vehicle is not available for this time period
+            </ThemedText>
+          </View>
+        ) : null}
       </KeyboardAwareScrollViewCompat>
 
       <View
@@ -309,6 +417,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: Spacing.sm,
+  },
+  insuranceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+    marginTop: Spacing.sm,
+  },
+  insuranceLabel: {
+    flex: 1,
   },
   divider: {
     height: 1,

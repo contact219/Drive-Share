@@ -53,6 +53,10 @@ export default function ProfileScreen() {
     navigation.navigate("DrivingLicense");
   }, [navigation]);
 
+  const handleOwnerDashboard = useCallback(() => {
+    navigation.navigate("OwnerDashboard");
+  }, [navigation]);
+
   const handleHelpSupport = useCallback(() => {
     navigation.navigate("HelpSupport");
   }, [navigation]);
@@ -192,6 +196,17 @@ export default function ProfileScreen() {
           title="Driving License"
           subtitle="Verify your license"
           onPress={handleDrivingLicense}
+        />
+
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Host
+        </ThemedText>
+
+        <SettingsItem
+          icon="home"
+          title="Become a Host"
+          subtitle="List your vehicle and earn money"
+          onPress={handleOwnerDashboard}
         />
 
         <ThemedText type="h4" style={styles.sectionTitle}>

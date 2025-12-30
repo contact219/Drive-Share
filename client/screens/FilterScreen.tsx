@@ -20,14 +20,22 @@ export default function FilterScreen() {
 
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([5, 50]);
-  const [maxDistance, setMaxDistance] = useState(10);
+  const [maxDistance, setMaxDistance] = useState(50);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [selectedFuelTypes, setSelectedFuelTypes] = useState<string[]>([]);
+  const [selectedTransmission, setSelectedTransmission] = useState<string | null>(null);
+  const [minSeats, setMinSeats] = useState(2);
 
   const fuelTypes = [
-    { label: "Gas", value: "gas" },
+    { label: "Gasoline", value: "gasoline" },
+    { label: "Diesel", value: "diesel" },
     { label: "Electric", value: "electric" },
     { label: "Hybrid", value: "hybrid" },
+  ];
+
+  const transmissionTypes = [
+    { label: "Automatic", value: "automatic" },
+    { label: "Manual", value: "manual" },
   ];
 
   const handleTypeToggle = useCallback((type: string) => {
@@ -54,12 +62,18 @@ export default function FilterScreen() {
     );
   }, []);
 
+  const handleTransmissionToggle = useCallback((transmission: string) => {
+    setSelectedTransmission((prev) => (prev === transmission ? null : transmission));
+  }, []);
+
   const handleClearAll = useCallback(() => {
     setSelectedTypes([]);
     setPriceRange([5, 50]);
-    setMaxDistance(10);
+    setMaxDistance(50);
     setSelectedFeatures([]);
     setSelectedFuelTypes([]);
+    setSelectedTransmission(null);
+    setMinSeats(2);
   }, []);
 
   const handleApply = useCallback(() => {
@@ -69,9 +83,11 @@ export default function FilterScreen() {
   const activeFiltersCount =
     selectedTypes.length +
     (priceRange[0] > 5 || priceRange[1] < 50 ? 1 : 0) +
-    (maxDistance < 10 ? 1 : 0) +
+    (maxDistance < 50 ? 1 : 0) +
     selectedFeatures.length +
-    selectedFuelTypes.length;
+    selectedFuelTypes.length +
+    (selectedTransmission ? 1 : 0) +
+    (minSeats > 2 ? 1 : 0);
 
   return (
     <ThemedView style={styles.container}>
@@ -165,6 +181,40 @@ export default function FilterScreen() {
               onPress={() => handleFuelToggle(fuel.value)}
             />
           ))}
+        </View>
+
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Transmission
+        </ThemedText>
+        <View style={styles.chipGrid}>
+          {transmissionTypes.map((trans) => (
+            <CategoryChip
+              key={trans.value}
+              label={trans.label}
+              isSelected={selectedTransmission === trans.value}
+              onPress={() => handleTransmissionToggle(trans.value)}
+            />
+          ))}
+        </View>
+
+        <ThemedText type="h4" style={styles.sectionTitle}>
+          Minimum Seats
+        </ThemedText>
+        <View style={[styles.sliderCard, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={styles.sliderHeader}>
+            <ThemedText type="body">{minSeats}+ seats</ThemedText>
+          </View>
+          <Slider
+            style={styles.slider}
+            minimumValue={2}
+            maximumValue={8}
+            step={1}
+            value={minSeats}
+            onValueChange={(value) => setMinSeats(Math.round(value))}
+            minimumTrackTintColor={Colors.light.primary}
+            maximumTrackTintColor={theme.backgroundSecondary}
+            thumbTintColor={Colors.light.primary}
+          />
         </View>
 
         <ThemedText type="h4" style={styles.sectionTitle}>

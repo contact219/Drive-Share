@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, FlatList, ScrollView, ActivityIndicator } from "react-native";
+import { StyleSheet, View, FlatList, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -77,6 +78,10 @@ export default function BrowseScreen() {
     navigation.navigate("Filter");
   }, [navigation]);
 
+  const handleMapPress = useCallback(() => {
+    navigation.navigate("VehicleMap");
+  }, [navigation]);
+
   const renderVehicle = useCallback(
     ({ item }: { item: Vehicle }) => (
       <VehicleCard
@@ -96,6 +101,12 @@ export default function BrowseScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <ThemedText type="h1">Find Your Ride</ThemedText>
+          <Pressable
+            style={[styles.mapButton, { backgroundColor: theme.backgroundDefault }]}
+            onPress={handleMapPress}
+          >
+            <Feather name="map" size={20} color={theme.text} />
+          </Pressable>
         </View>
         <View style={styles.locationRow}>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -135,8 +146,11 @@ export default function BrowseScreen() {
       selectedTypes,
       filteredVehicles.length,
       theme.textSecondary,
+      theme.backgroundDefault,
+      theme.text,
       handleFilterPress,
       handleTypeToggle,
+      handleMapPress,
     ]
   );
 
@@ -204,6 +218,16 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     marginBottom: Spacing.xs,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  mapButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   locationRow: {
     flexDirection: "row",

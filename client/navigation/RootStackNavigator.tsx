@@ -21,6 +21,8 @@ import LocationScreen from "@/screens/LocationScreen";
 import RateAppScreen from "@/screens/RateAppScreen";
 import ShareAppScreen from "@/screens/ShareAppScreen";
 import DataDownloadScreen from "@/screens/DataDownloadScreen";
+import VehicleMapScreen from "@/screens/VehicleMapScreen";
+import OwnerDashboardScreen from "@/screens/OwnerDashboardScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -45,6 +47,8 @@ export type RootStackParamList = {
   RateApp: undefined;
   ShareApp: undefined;
   DataDownload: undefined;
+  VehicleMap: undefined;
+  OwnerDashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -183,6 +187,16 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="DataDownload"
         component={DataDownloadScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VehicleMap"
+        component={VehicleMapScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OwnerDashboard"
+        component={OwnerDashboardScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
