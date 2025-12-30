@@ -341,6 +341,36 @@ export const payoutsRelations = relations(payouts, ({ one }) => ({
   }),
 }));
 
+export const userDocuments = pgTable("user_documents", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  documentType: text("document_type").notNull(),
+  documentData: text("document_data"),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  verificationStatus: text("verification_status").default("pending"),
+  reviewerId: varchar("reviewer_id").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  expiryDate: timestamp("expiry_date"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userDocumentsRelations = relations(userDocuments, ({ one }) => ({
+  user: one(users, {
+    fields: [userDocuments.userId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [userDocuments.reviewerId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   name: true,
@@ -419,6 +449,12 @@ export const insertPayoutSchema = createInsertSchema(payouts).omit({
   updatedAt: true,
 });
 
+export const insertUserDocumentSchema = createInsertSchema(userDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
@@ -445,3 +481,5 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 export type Payout = typeof payouts.$inferSelect;
+export type InsertUserDocument = z.infer<typeof insertUserDocumentSchema>;
+export type UserDocument = typeof userDocuments.$inferSelect;

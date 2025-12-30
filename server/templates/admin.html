@@ -93,6 +93,7 @@
           <button onclick="showTab('trips')" id="tab-trips" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Trips</button>
           <button onclick="showTab('insurance')" id="tab-insurance" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Insurance</button>
           <button onclick="showTab('payments')" id="tab-payments" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Payments</button>
+          <button onclick="showTab('user-documents')" id="tab-user-documents" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">User Documents</button>
         </div>
 
         <div id="content-analytics" class="space-y-6">
@@ -170,6 +171,48 @@
           <div id="no-payments" class="p-8 text-center text-gray-500 hidden">
             No payments recorded yet
           </div>
+        </div>
+
+        <div id="content-user-documents" class="bg-white rounded-xl shadow-sm hidden">
+          <div class="p-6 border-b flex justify-between items-center">
+            <h2 class="text-xl font-semibold">User Documents</h2>
+            <div class="flex gap-2">
+              <select id="doc-filter" onchange="loadUserDocuments()" class="px-3 py-2 border rounded-lg text-sm">
+                <option value="">All Documents</option>
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div class="p-4 bg-blue-50">
+            <p class="text-sm text-blue-700">Review and verify user-uploaded driver's licenses and insurance cards. Documents must be verified before users can rent vehicles.</p>
+          </div>
+          <div id="user-documents-list" class="divide-y"></div>
+          <div id="no-user-documents" class="p-8 text-center text-gray-500 hidden">
+            No documents to review
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="document-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold mb-4">Review Document</h3>
+        <div id="document-details" class="space-y-4 mb-6"></div>
+        <div id="document-image-container" class="mb-6 bg-gray-100 rounded-lg p-4">
+          <img id="document-image" class="max-w-full mx-auto rounded-lg shadow" alt="Document" style="max-height: 400px;">
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Review Notes (optional)</label>
+            <textarea id="document-notes" class="w-full px-3 py-2 border rounded-lg" rows="3" placeholder="Add any notes about this document..."></textarea>
+          </div>
+        </div>
+        <div class="flex gap-4 pt-4">
+          <button type="button" onclick="closeDocumentModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
+          <button type="button" onclick="rejectDocument()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Reject</button>
+          <button type="button" onclick="approveDocument()" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Approve</button>
         </div>
       </div>
     </div>
@@ -694,7 +737,7 @@
     }
 
     function showTab(tab) {
-      const tabs = ['analytics', 'verifications', 'vehicles', 'users', 'trips', 'insurance', 'payments'];
+      const tabs = ['analytics', 'verifications', 'vehicles', 'users', 'trips', 'insurance', 'payments', 'user-documents'];
       tabs.forEach(t => {
         document.getElementById(`content-${t}`).classList.add('hidden');
         document.getElementById(`tab-${t}`).classList.remove('bg-primary', 'text-white');
@@ -703,6 +746,10 @@
       document.getElementById(`content-${tab}`).classList.remove('hidden');
       document.getElementById(`tab-${tab}`).classList.add('bg-primary', 'text-white');
       document.getElementById(`tab-${tab}`).classList.remove('bg-gray-200', 'text-gray-700');
+      
+      if (tab === 'user-documents') {
+        loadUserDocuments();
+      }
     }
 
     async function loadVehicles() {
@@ -1012,6 +1059,195 @@
       loadVehicles();
       loadStats();
     });
+
+    let currentDocumentId = null;
+    let userDocumentsCache = [];
+
+    async function loadUserDocuments() {
+      try {
+        const filter = document.getElementById('doc-filter').value;
+        let url = `${API_BASE}/admin/user-documents`;
+        if (filter === 'pending') {
+          url += '?status=pending';
+        }
+        
+        const res = await fetch(url);
+        let docs = await res.json();
+        userDocumentsCache = docs;
+        
+        if (filter && filter !== 'pending') {
+          docs = docs.filter(d => d.verificationStatus === filter);
+        }
+        
+        const container = document.getElementById('user-documents-list');
+        const noDocsEl = document.getElementById('no-user-documents');
+        
+        if (docs.length === 0) {
+          container.innerHTML = '';
+          noDocsEl.classList.remove('hidden');
+        } else {
+          noDocsEl.classList.add('hidden');
+          container.innerHTML = docs.map(doc => {
+            const docTypeLabel = formatDocumentType(doc.documentType);
+            const statusColor = doc.verificationStatus === 'approved' ? 'green' : 
+                               doc.verificationStatus === 'rejected' ? 'red' : 'amber';
+            return `
+              <div class="p-4 flex items-center gap-4 hover:bg-gray-50">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold">${docTypeLabel}</p>
+                  <p class="text-sm text-gray-600">${doc.userName}</p>
+                  <p class="text-xs text-gray-400">${doc.userEmail}</p>
+                </div>
+                <div class="text-right mr-4">
+                  <p class="text-xs text-gray-500">${new Date(doc.submittedAt).toLocaleDateString()}</p>
+                  ${doc.fileName ? `<p class="text-xs text-gray-400">${doc.fileName}</p>` : ''}
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-${statusColor}-100 text-${statusColor}-700">
+                  ${doc.verificationStatus}
+                </span>
+                <button onclick="openDocumentModal('${doc.id}')" class="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-opacity-90">
+                  Review
+                </button>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error loading user documents:', error);
+      }
+    }
+
+    function formatDocumentType(type) {
+      const types = {
+        'drivers_license': "Driver's License",
+        'insurance_card': 'Insurance Card',
+        'proof_of_identity': 'Proof of Identity'
+      };
+      return types[type] || type;
+    }
+
+    function openDocumentModal(docId) {
+      currentDocumentId = docId;
+      const doc = userDocumentsCache.find(d => d.id === docId);
+      if (!doc) return;
+      
+      const modal = document.getElementById('document-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      
+      document.getElementById('document-details').innerHTML = `
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-gray-500">Document Type</p>
+            <p class="font-medium">${formatDocumentType(doc.documentType)}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">User</p>
+            <p class="font-medium">${doc.userName}</p>
+            <p class="text-xs text-gray-400">${doc.userEmail}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">Submitted</p>
+            <p class="font-medium">${new Date(doc.submittedAt).toLocaleDateString()}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">Status</p>
+            <p class="font-medium capitalize">${doc.verificationStatus}</p>
+          </div>
+          ${doc.expiryDate ? `
+          <div>
+            <p class="text-gray-500">Expiry Date</p>
+            <p class="font-medium">${new Date(doc.expiryDate).toLocaleDateString()}</p>
+          </div>
+          ` : ''}
+        </div>
+      `;
+      
+      const imgContainer = document.getElementById('document-image-container');
+      const imgEl = document.getElementById('document-image');
+      
+      if (doc.documentData) {
+        imgContainer.classList.remove('hidden');
+        imgEl.src = doc.documentData;
+      } else {
+        imgContainer.classList.add('hidden');
+        imgEl.src = '';
+      }
+      
+      document.getElementById('document-notes').value = doc.reviewNotes || '';
+    }
+
+    function closeDocumentModal() {
+      document.getElementById('document-modal').classList.add('hidden');
+      document.getElementById('document-modal').classList.remove('flex');
+      currentDocumentId = null;
+    }
+
+    async function approveDocument() {
+      if (!currentDocumentId) return;
+      
+      try {
+        const notes = document.getElementById('document-notes').value;
+        const res = await fetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            verificationStatus: 'approved',
+            reviewNotes: notes,
+            reviewerId: adminUser?.id
+          })
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to approve document');
+        }
+        
+        closeDocumentModal();
+        loadUserDocuments();
+        alert('Document approved successfully');
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    async function rejectDocument() {
+      if (!currentDocumentId) return;
+      
+      const notes = document.getElementById('document-notes').value;
+      if (!notes) {
+        alert('Please add notes explaining why this document is being rejected.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            verificationStatus: 'rejected',
+            reviewNotes: notes,
+            reviewerId: adminUser?.id
+          })
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to reject document');
+        }
+        
+        closeDocumentModal();
+        loadUserDocuments();
+        alert('Document rejected');
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
   </script>
 </body>
 </html>

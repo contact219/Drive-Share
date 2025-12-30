@@ -1,56 +1,251 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, ScrollView, Alert, Pressable } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, Pressable, Platform, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserDocuments, useUploadDocument, useDeleteDocument, getDocumentTypeLabel, getStatusColor } from "@/hooks/useDocuments";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+
+type DocumentType = 'drivers_license' | 'insurance_card';
 
 export default function DrivingLicenseScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const [isVerified, setIsVerified] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState<DocumentType>('drivers_license');
 
-  const handleUploadLicense = useCallback(() => {
+  const { data: documents, isLoading, refetch } = useUserDocuments(user?.id || null);
+  const uploadDocument = useUploadDocument();
+  const deleteDocument = useDeleteDocument();
+
+  const licenseDoc = documents?.find(d => d.documentType === 'drivers_license');
+  const insuranceDoc = documents?.find(d => d.documentType === 'insurance_card');
+
+  const handlePickImage = useCallback(async (docType: DocumentType) => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Supported', 'Document upload is available in the Expo Go app on your mobile device.');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to upload documents.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 10],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Error', 'Could not process image. Please try again.');
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const documentData = `data:${mimeType};base64,${asset.base64}`;
+        const fileName = asset.fileName || `${docType}_${Date.now()}.jpg`;
+
+        await uploadDocument.mutateAsync({
+          userId: user!.id,
+          documentType: docType,
+          documentData,
+          fileName,
+          mimeType,
+        });
+
+        Alert.alert('Success', `Your ${getDocumentTypeLabel(docType)} has been submitted for verification.`);
+        refetch();
+      } catch (error: any) {
+        Alert.alert('Upload Failed', error.message || 'Could not upload document. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  }, [user, uploadDocument, refetch]);
+
+  const handleTakePhoto = useCallback(async (docType: DocumentType) => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Supported', 'Camera is available in the Expo Go app on your mobile device.');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Please allow camera access to take photos of your documents.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [16, 10],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Error', 'Could not process image. Please try again.');
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const documentData = `data:${mimeType};base64,${asset.base64}`;
+        const fileName = `${docType}_${Date.now()}.jpg`;
+
+        await uploadDocument.mutateAsync({
+          userId: user!.id,
+          documentType: docType,
+          documentData,
+          fileName,
+          mimeType,
+        });
+
+        Alert.alert('Success', `Your ${getDocumentTypeLabel(docType)} has been submitted for verification.`);
+        refetch();
+      } catch (error: any) {
+        Alert.alert('Upload Failed', error.message || 'Could not upload document. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  }, [user, uploadDocument, refetch]);
+
+  const handleUpload = useCallback((docType: DocumentType) => {
+    setSelectedDocType(docType);
     Alert.alert(
-      "Upload License",
-      "In a production app, this would open the camera or photo library to capture your driving license for verification.",
+      `Upload ${getDocumentTypeLabel(docType)}`,
+      'Choose how to upload your document:',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: () => handleTakePhoto(docType) },
+        { text: 'Choose from Library', onPress: () => handlePickImage(docType) },
+      ]
+    );
+  }, [handlePickImage, handleTakePhoto]);
+
+  const handleRemoveDocument = useCallback((docId: string, docType: string) => {
+    Alert.alert(
+      'Remove Document',
+      `Are you sure you want to remove your ${getDocumentTypeLabel(docType)}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Simulate Upload",
-          onPress: () => {
-            setTimeout(() => {
-              setIsVerified(true);
-              Alert.alert("Success", "Your driving license has been verified!");
-            }, 1500);
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDocument.mutateAsync({ documentId: docId, userId: user!.id });
+              refetch();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Could not remove document.');
+            }
           },
         },
       ]
     );
-  }, []);
+  }, [deleteDocument, user, refetch]);
 
-  const handleRemoveLicense = useCallback(() => {
-    Alert.alert(
-      "Remove License",
-      "Are you sure you want to remove your driving license?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => setIsVerified(false),
-        },
-      ]
+  const renderDocumentCard = (doc: typeof licenseDoc, docType: DocumentType, title: string) => {
+    if (!doc) {
+      return (
+        <View style={[styles.documentCard, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={styles.documentHeader}>
+            <Feather name="file-text" size={24} color={theme.textSecondary} />
+            <ThemedText type="h4" style={styles.documentTitle}>{title}</ThemedText>
+          </View>
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+            Not uploaded yet
+          </ThemedText>
+          <Button onPress={() => handleUpload(docType)} disabled={isUploading}>
+            {isUploading ? 'Uploading...' : `Upload ${title}`}
+          </Button>
+        </View>
+      );
+    }
+
+    const statusColors = getStatusColor(doc.verificationStatus);
+
+    return (
+      <View style={[styles.documentCard, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.documentHeader}>
+          <Feather name="file-text" size={24} color={Colors.light.primary} />
+          <ThemedText type="h4" style={styles.documentTitle}>{title}</ThemedText>
+          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+            <ThemedText type="small" style={{ color: statusColors.text, textTransform: 'capitalize' }}>
+              {doc.verificationStatus}
+            </ThemedText>
+          </View>
+        </View>
+
+        {doc.documentData ? (
+          <Image
+            source={{ uri: doc.documentData }}
+            style={styles.documentPreview}
+            contentFit="cover"
+          />
+        ) : null}
+
+        <View style={styles.documentInfo}>
+          <View style={styles.infoRow}>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>Submitted</ThemedText>
+            <ThemedText type="body">{new Date(doc.submittedAt).toLocaleDateString()}</ThemedText>
+          </View>
+          {doc.reviewNotes ? (
+            <View style={styles.infoRow}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>Review Notes</ThemedText>
+              <ThemedText type="body">{doc.reviewNotes}</ThemedText>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.documentActions}>
+          <Button 
+            onPress={() => handleUpload(docType)} 
+            style={styles.actionButton}
+            disabled={isUploading}
+          >
+            Re-upload
+          </Button>
+          <Pressable 
+            onPress={() => handleRemoveDocument(doc.id, doc.documentType)}
+            style={[styles.removeBtn, { borderColor: Colors.light.error }]}
+          >
+            <ThemedText type="body" style={{ color: Colors.light.error }}>Remove</ThemedText>
+          </Pressable>
+        </View>
+      </View>
     );
-  }, []);
+  };
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={Colors.light.primary} />
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -58,7 +253,7 @@ export default function DrivingLicenseScreen() {
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
-        <ThemedText type="h3">Driving License</ThemedText>
+        <ThemedText type="h3">My Documents</ThemedText>
         <View style={styles.placeholder} />
       </View>
 
@@ -69,109 +264,55 @@ export default function DrivingLicenseScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.statusCard, { backgroundColor: theme.backgroundDefault }]}>
-          <View
-            style={[
-              styles.statusIcon,
-              { backgroundColor: isVerified ? Colors.light.success + "20" : Colors.light.accent + "20" },
-            ]}
-          >
-            <Feather
-              name={isVerified ? "check-circle" : "alert-circle"}
-              size={32}
-              color={isVerified ? Colors.light.success : Colors.light.accent}
-            />
+        <View style={[styles.infoBox, { backgroundColor: Colors.light.primary + "15" }]}>
+          <Feather name="info" size={20} color={Colors.light.primary} />
+          <View style={styles.infoContent}>
+            <ThemedText type="h4">Document Verification</ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
+              Upload your driver's license and insurance card. Our team will verify them within 24 hours.
+            </ThemedText>
           </View>
-          <ThemedText type="h4" style={styles.statusTitle}>
-            {isVerified ? "License Verified" : "License Not Verified"}
-          </ThemedText>
-          <ThemedText type="body" style={[styles.statusText, { color: theme.textSecondary }]}>
-            {isVerified
-              ? "Your driving license has been verified and you can book vehicles."
-              : "Please upload your driving license to book vehicles."}
-          </ThemedText>
         </View>
 
-        {isVerified ? (
-          <View style={[styles.licenseCard, { backgroundColor: theme.backgroundDefault }]}>
-            <View style={styles.licenseHeader}>
-              <ThemedText type="h4">License Details</ThemedText>
-              <View style={[styles.verifiedBadge, { backgroundColor: Colors.light.success }]}>
-                <Feather name="check" size={12} color="#fff" />
-                <ThemedText type="small" style={{ color: "#fff", marginLeft: 4 }}>Verified</ThemedText>
-              </View>
-            </View>
+        {renderDocumentCard(licenseDoc, 'drivers_license', "Driver's License")}
+        {renderDocumentCard(insuranceDoc, 'insurance_card', "Insurance Card")}
 
-            <View style={styles.licenseInfo}>
-              <View style={styles.licenseRow}>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>Name</ThemedText>
-                <ThemedText type="body">{user?.name || "John Doe"}</ThemedText>
-              </View>
-              <View style={styles.licenseRow}>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>License Number</ThemedText>
-                <ThemedText type="body">DL-1234567890</ThemedText>
-              </View>
-              <View style={styles.licenseRow}>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>Expiry Date</ThemedText>
-                <ThemedText type="body">Dec 2028</ThemedText>
-              </View>
-              <View style={styles.licenseRow}>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>State</ThemedText>
-                <ThemedText type="body">California</ThemedText>
-              </View>
-            </View>
+        <ThemedText type="h4" style={styles.sectionTitle}>Requirements</ThemedText>
 
-            <Button
-              onPress={handleRemoveLicense}
-              style={styles.removeButton}
-            >
-              Remove License
-            </Button>
-          </View>
-        ) : (
-          <>
-            <View style={[styles.infoBox, { backgroundColor: Colors.light.primary + "15" }]}>
-              <Feather name="info" size={20} color={Colors.light.primary} />
-              <View style={styles.infoContent}>
-                <ThemedText type="h4">Why verify your license?</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                  A verified license is required to book and drive vehicles. We verify your license to ensure the safety of our community.
-                </ThemedText>
-              </View>
-            </View>
-
-            <ThemedText type="h4" style={styles.sectionTitle}>
-              Requirements
-            </ThemedText>
-
-            <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
-              <Feather name="check-circle" size={20} color={Colors.light.success} />
-              <ThemedText type="body" style={styles.requirementText}>
-                Valid government-issued driver's license
-              </ThemedText>
-            </View>
-            <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
-              <Feather name="check-circle" size={20} color={Colors.light.success} />
-              <ThemedText type="body" style={styles.requirementText}>
-                License must not be expired
-              </ThemedText>
-            </View>
-            <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
-              <Feather name="check-circle" size={20} color={Colors.light.success} />
-              <ThemedText type="body" style={styles.requirementText}>
-                Clear photo of front and back
-              </ThemedText>
-            </View>
-
-            <Button
-              onPress={handleUploadLicense}
-              style={styles.uploadButton}
-            >
-              Upload License
-            </Button>
-          </>
-        )}
+        <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
+          <Feather name="check-circle" size={20} color={Colors.light.success} />
+          <ThemedText type="body" style={styles.requirementText}>
+            Valid government-issued driver's license
+          </ThemedText>
+        </View>
+        <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
+          <Feather name="check-circle" size={20} color={Colors.light.success} />
+          <ThemedText type="body" style={styles.requirementText}>
+            Current auto insurance card
+          </ThemedText>
+        </View>
+        <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
+          <Feather name="check-circle" size={20} color={Colors.light.success} />
+          <ThemedText type="body" style={styles.requirementText}>
+            Documents must not be expired
+          </ThemedText>
+        </View>
+        <View style={[styles.requirementItem, { backgroundColor: theme.backgroundDefault }]}>
+          <Feather name="check-circle" size={20} color={Colors.light.success} />
+          <ThemedText type="body" style={styles.requirementText}>
+            Clear, readable photos
+          </ThemedText>
+        </View>
       </ScrollView>
+
+      {isUploading ? (
+        <View style={styles.uploadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <ThemedText type="body" style={{ color: '#fff', marginTop: Spacing.md }}>
+            Uploading document...
+          </ThemedText>
+        </View>
+      ) : null}
     </ThemedView>
   );
 }
@@ -179,6 +320,10 @@ export default function DrivingLicenseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: "row",
@@ -197,52 +342,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
   },
-  statusCard: {
-    alignItems: "center",
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.xl,
-  },
-  statusIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.md,
-  },
-  statusTitle: {
-    marginBottom: Spacing.xs,
-  },
-  statusText: {
-    textAlign: "center",
-  },
-  licenseCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-  },
-  licenseHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Spacing.lg,
-  },
-  verifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-  },
-  licenseInfo: {
-    gap: Spacing.md,
-  },
-  licenseRow: {
-    gap: Spacing.xs,
-  },
-  removeButton: {
-    marginTop: Spacing.xl,
-  },
   infoBox: {
     flexDirection: "row",
     padding: Spacing.lg,
@@ -253,7 +352,55 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.md,
   },
+  documentCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+  },
+  documentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  documentTitle: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  statusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+  },
+  documentPreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  documentInfo: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  infoRow: {
+    gap: 2,
+  },
+  documentActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  removeBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
+    marginTop: Spacing.lg,
     marginBottom: Spacing.md,
   },
   requirementItem: {
@@ -267,7 +414,10 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
     flex: 1,
   },
-  uploadButton: {
-    marginTop: Spacing.xl,
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

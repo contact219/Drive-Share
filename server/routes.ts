@@ -886,6 +886,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/user/:userId/documents", async (req: Request, res: Response) => {
+    try {
+      const docs = await storage.getUserDocuments(req.params.userId);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user documents" });
+    }
+  });
+
+  app.post("/api/user/documents", async (req: Request, res: Response) => {
+    try {
+      const { userId, documentType, documentData, fileName, mimeType, expiryDate } = req.body;
+      
+      if (!userId || !documentType) {
+        return res.status(400).json({ error: "Missing required fields: userId, documentType" });
+      }
+      
+      if (!['drivers_license', 'insurance_card', 'proof_of_identity'].includes(documentType)) {
+        return res.status(400).json({ error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity" });
+      }
+
+      const doc = await storage.createUserDocument({
+        userId,
+        documentType,
+        documentData: documentData || null,
+        fileName: fileName || null,
+        mimeType: mimeType || null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        verificationStatus: "pending",
+        submittedAt: new Date(),
+      });
+      
+      res.status(201).json(doc);
+    } catch (error) {
+      console.error("Create user document error:", error);
+      res.status(500).json({ error: "Failed to upload document" });
+    }
+  });
+
+  app.get("/api/admin/user-documents", async (req: Request, res: Response) => {
+    try {
+      const status = req.query.status as string;
+      let docs;
+      if (status === "pending") {
+        docs = await storage.getPendingUserDocuments();
+      } else {
+        docs = await storage.getAllUserDocuments();
+      }
+      
+      const docsWithUsers = await Promise.all(docs.map(async (doc) => {
+        const user = await storage.getUser(doc.userId);
+        return {
+          ...doc,
+          userName: user?.name || "Unknown User",
+          userEmail: user?.email || "",
+        };
+      }));
+      
+      res.json(docsWithUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user documents" });
+    }
+  });
+
+  app.patch("/api/admin/user-documents/:id", async (req: Request, res: Response) => {
+    try {
+      const { verificationStatus, reviewNotes, reviewerId } = req.body;
+      
+      if (!verificationStatus || !['approved', 'rejected'].includes(verificationStatus)) {
+        return res.status(400).json({ error: "verificationStatus must be 'approved' or 'rejected'" });
+      }
+      
+      const doc = await storage.updateUserDocument(req.params.id, {
+        verificationStatus,
+        reviewNotes: reviewNotes || null,
+        reviewerId: reviewerId || null,
+        reviewedAt: new Date(),
+      });
+      
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update document" });
+    }
+  });
+
+  app.delete("/api/user/documents/:id", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteUserDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
