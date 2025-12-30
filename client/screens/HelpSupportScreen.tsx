@@ -44,7 +44,7 @@ const FAQ_ITEMS: FAQItem[] = [
 ];
 
 const CONTACT_OPTIONS = [
-  { id: "email", icon: "mail", title: "Email Support", subtitle: "support@rush.app" },
+  { id: "email", icon: "mail", title: "Email Support", subtitle: "support@rush-enterprise.com" },
   { id: "phone", icon: "phone", title: "Call Us", subtitle: "1-800-RUSH-CAR" },
   { id: "chat", icon: "message-circle", title: "Live Chat", subtitle: "Available 24/7" },
 ];
@@ -62,7 +62,7 @@ export default function HelpSupportScreen() {
   const handleContact = useCallback((type: string) => {
     switch (type) {
       case "email":
-        Linking.openURL("mailto:support@rush.app");
+        Linking.openURL("mailto:support@rush-enterprise.com");
         break;
       case "phone":
         Linking.openURL("tel:1-800-787-4227");

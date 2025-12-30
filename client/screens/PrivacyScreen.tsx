@@ -104,7 +104,7 @@ export default function PrivacyScreen() {
 
         <Section title="7. Contact Us">
           If you have any questions about this Privacy Policy, please contact us
-          at support@rush.app
+          at support@rush-enterprise.com
         </Section>
       </ScrollView>
     </ThemedView>

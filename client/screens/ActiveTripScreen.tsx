@@ -68,7 +68,7 @@ export default function ActiveTripScreen() {
   const handleSupport = useCallback(() => {
     Alert.alert(
       "Contact Support",
-      "Need help during your trip?\n\nCall: 1-800-RUSH-CAR\nEmail: support@rush.com",
+      "Need help during your trip?\n\nCall: 1-800-RUSH-CAR\nEmail: support@rush-enterprise.com",
       [{ text: "OK" }]
     );
   }, []);
