@@ -71,10 +71,25 @@ server/
 ## Admin Dashboard
 - **URL:** `/admin` (port 5000)
 - **Credentials:** admin@rush.com / admin123
-- **Features:** Vehicle CRUD, user management, trip overview, stats dashboard
+- **Features:** Vehicle CRUD, user management (add/edit/delete users, toggle admin, reset passwords), trip overview, stats dashboard
+
+## User Management
+- Admin can create new users and administrators via the admin dashboard
+- Admin can change any user's password (for forgot password cases)
+- Admin can toggle user admin status
+- Admin can delete users (with confirmation)
+- Logged-in users can change their own password in the mobile app (requires current password)
+
+## Security Notes
+- Passwords are hashed with bcrypt
+- Password change requires current password verification
+- Users who forget their password should contact an administrator for reset
+- For production: Add authentication middleware to admin endpoints
 
 ## Recent Changes
 - Initial MVP build with complete navigation structure
 - All screens implemented with full functionality
 - Custom theme with Rush branding
 - App icon generated and configured
+- Full user management in admin dashboard
+- Secure password change flow in mobile app
