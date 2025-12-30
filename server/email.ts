@@ -1,6 +1,14 @@
 // Email service using SendGrid integration
 import sgMail from '@sendgrid/mail';
 
+// Rush Enterprise configuration
+const RUSH_CONFIG = {
+  appName: 'Rush',
+  domain: 'rush-enterprise.com',
+  supportEmail: 'support@rush-enterprise.com',
+  contactEmail: 'contact@rush-enterprise.com',
+};
+
 let connectionSettings: any;
 
 async function getCredentials() {
@@ -105,12 +113,13 @@ export async function sendBookingConfirmationEmail(
         <p style="color: #666;">Open the Rush app to view your trip details and contact the vehicle owner.</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">Rush Vehicle Rental</p>
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
       </div>
     </div>
   `;
   
-  const text = `Hi ${renterName},\n\nYour booking for ${vehicleName} has been confirmed.\n\nPick-up: ${formattedStart}\nReturn: ${formattedEnd}\nTotal: $${totalCost.toFixed(2)}\n\nOpen the Rush app to view your trip details.\n\n- Rush Team`;
+  const text = `Hi ${renterName},\n\nYour booking for ${vehicleName} has been confirmed.\n\nPick-up: ${formattedStart}\nReturn: ${formattedEnd}\nTotal: $${totalCost.toFixed(2)}\n\nOpen the Rush app to view your trip details.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: renterEmail, subject, text, html });
 }
@@ -153,12 +162,13 @@ export async function sendNewBookingNotificationToOwner(
         <p style="color: #666;">Open the Rush app to view the booking details and message the renter.</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">Rush Vehicle Rental</p>
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
       </div>
     </div>
   `;
   
-  const text = `Hi ${ownerName},\n\n${renterName} has booked your vehicle ${vehicleName}.\n\nPick-up: ${formattedStart}\nReturn: ${formattedEnd}\nYour Earnings: $${(totalCost * 0.9).toFixed(2)}\n\nOpen the Rush app to view the booking details.\n\n- Rush Team`;
+  const text = `Hi ${ownerName},\n\n${renterName} has booked your vehicle ${vehicleName}.\n\nPick-up: ${formattedStart}\nReturn: ${formattedEnd}\nYour Earnings: $${(totalCost * 0.9).toFixed(2)}\n\nOpen the Rush app to view the booking details.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: ownerEmail, subject, text, html });
 }
@@ -189,12 +199,13 @@ export async function sendVehicleVerificationApprovedEmail(
         <p style="color: #666;">Your vehicle is now live on Rush and can be booked by renters. Make sure your availability calendar is up to date!</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">Rush Vehicle Rental</p>
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
       </div>
     </div>
   `;
   
-  const text = `Congratulations ${ownerName}!\n\nYour vehicle ${vehicleName} has been verified and approved. It's now live on Rush and available for bookings.\n\nMake sure your availability calendar is up to date!\n\n- Rush Team`;
+  const text = `Congratulations ${ownerName}!\n\nYour vehicle ${vehicleName} has been verified and approved. It's now live on Rush and available for bookings.\n\nMake sure your availability calendar is up to date!\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: ownerEmail, subject, text, html });
 }
@@ -223,15 +234,16 @@ export async function sendVehicleVerificationRejectedEmail(
         </div>
         
         <p style="color: #666;">Please review the feedback and update your vehicle listing. You can resubmit for verification through the Rush app.</p>
-        <p style="color: #666;">If you have questions, please contact our support team.</p>
+        <p style="color: #666;">If you have questions, please contact our support team at ${RUSH_CONFIG.supportEmail}.</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">Rush Vehicle Rental</p>
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
       </div>
     </div>
   `;
   
-  const text = `Hi ${ownerName},\n\nWe were unable to approve your vehicle ${vehicleName} at this time.\n\n${reason ? `Reason: ${reason}\n\n` : ''}Please review the feedback and update your vehicle listing. You can resubmit for verification through the Rush app.\n\n- Rush Team`;
+  const text = `Hi ${ownerName},\n\nWe were unable to approve your vehicle ${vehicleName} at this time.\n\n${reason ? `Reason: ${reason}\n\n` : ''}Please review the feedback and update your vehicle listing. You can resubmit for verification through the Rush app.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: ownerEmail, subject, text, html });
 }
@@ -262,12 +274,13 @@ export async function sendTripCompletedEmail(
         <p style="color: #666;">Your feedback helps other renters make informed decisions and helps vehicle owners improve their service.</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">Rush Vehicle Rental</p>
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
       </div>
     </div>
   `;
   
-  const text = `Hi ${renterName},\n\nYour trip with ${vehicleName} has been completed.\n\nWe'd love to hear about your experience! Leave a review in the Rush app to help ${ownerName} and other renters.\n\n- Rush Team`;
+  const text = `Hi ${renterName},\n\nYour trip with ${vehicleName} has been completed.\n\nWe'd love to hear about your experience! Leave a review in the Rush app to help ${ownerName} and other renters.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: renterEmail, subject, text, html });
 }
