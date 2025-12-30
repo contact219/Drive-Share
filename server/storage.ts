@@ -55,8 +55,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined> {
-    const [user] = await db.update(users).set({ ...updates, updatedAt: new Date() }).where(eq(users.id, id)).returning();
-    return user || undefined;
+    console.log(`[STORAGE] updateUser called with id: ${id}`);
+    console.log(`[STORAGE] Updates:`, JSON.stringify(updates, (key, value) => key === 'password' ? value?.substring(0, 20) + '...' : value));
+    
+    try {
+      const result = await db.update(users).set({ ...updates, updatedAt: new Date() }).where(eq(users.id, id)).returning();
+      console.log(`[STORAGE] Update result count: ${result.length}`);
+      
+      if (result.length > 0) {
+        console.log(`[STORAGE] Updated user email: ${result[0].email}`);
+        console.log(`[STORAGE] Updated password hash: ${result[0].password?.substring(0, 20)}...`);
+      } else {
+        console.log(`[STORAGE] No user found with id: ${id}`);
+      }
+      
+      return result[0] || undefined;
+    } catch (error) {
+      console.error(`[STORAGE] Update error:`, error);
+      throw error;
+    }
   }
 
   async deleteUser(id: string): Promise<boolean> {
