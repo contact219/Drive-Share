@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Privacy Policy - Rush</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      :root {
+        --primary: #FF6B35;
+        --primary-dark: #E55A28;
+        --secondary: #004E89;
+        --text-primary: #1A1A1A;
+        --text-secondary: #6C757D;
+        --background: #FFFFFF;
+        --surface: #F8F9FA;
+        --border: #E5E5E5;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--background);
+        color: var(--text-primary);
+        line-height: 1.7;
+      }
+      
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      
+      /* Navigation */
+      nav {
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      
+      .nav-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+      }
+      
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+      }
+      
+      .logo-text {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      
+      .nav-links a {
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 14px;
+        transition: color 0.2s;
+      }
+      
+      .nav-links a:hover {
+        color: var(--primary);
+      }
+      
+      /* Content */
+      .legal-content {
+        padding: 60px 0 80px;
+      }
+      
+      .legal-header {
+        margin-bottom: 48px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--border);
+      }
+      
+      .legal-header h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+      }
+      
+      .last-updated {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      
+      .legal-body h2 {
+        font-size: 22px;
+        font-weight: 600;
+        margin-top: 40px;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+      }
+      
+      .legal-body h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        color: var(--text-primary);
+      }
+      
+      .legal-body p {
+        margin-bottom: 16px;
+        color: var(--text-secondary);
+        font-size: 15px;
+      }
+      
+      .legal-body ul, .legal-body ol {
+        margin-bottom: 16px;
+        padding-left: 24px;
+        color: var(--text-secondary);
+      }
+      
+      .legal-body li {
+        margin-bottom: 8px;
+        font-size: 15px;
+      }
+      
+      .legal-body a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+      
+      .legal-body a:hover {
+        text-decoration: underline;
+      }
+      
+      .highlight-box {
+        background: var(--surface);
+        border-left: 4px solid var(--primary);
+        padding: 20px 24px;
+        margin: 24px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      
+      .highlight-box p {
+        margin-bottom: 0;
+        color: var(--text-primary);
+      }
+      
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+        font-size: 14px;
+      }
+      
+      .data-table th, .data-table td {
+        border: 1px solid var(--border);
+        padding: 12px 16px;
+        text-align: left;
+      }
+      
+      .data-table th {
+        background: var(--surface);
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      
+      .data-table td {
+        color: var(--text-secondary);
+      }
+      
+      /* Footer */
+      footer {
+        background: var(--surface);
+        padding: 32px 0;
+        border-top: 1px solid var(--border);
+      }
+      
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      
+      .footer-links {
+        display: flex;
+        gap: 24px;
+      }
+      
+      .footer-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      
+      .footer-links a:hover {
+        color: var(--primary);
+      }
+      
+      @media (max-width: 768px) {
+        .legal-header h1 {
+          font-size: 28px;
+        }
+        
+        .legal-body h2 {
+          font-size: 20px;
+        }
+        
+        .data-table {
+          font-size: 13px;
+        }
+        
+        .data-table th, .data-table td {
+          padding: 8px 12px;
+        }
+        
+        .footer-content {
+          flex-direction: column;
+          gap: 16px;
+          text-align: center;
+        }
+      }
+      
+      /* Dark mode */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #0D0D0D;
+          --surface: #1A1A1A;
+          --text-primary: #F5F5F5;
+          --text-secondary: #999999;
+          --border: #333333;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav>
+      <div class="container nav-content">
+        <a href="/" class="logo">
+          <img src="/assets/images/icon.png" alt="Rush" class="logo-icon" />
+          <span class="logo-text">Rush</span>
+        </a>
+        <div class="nav-links">
+          <a href="/">Back to Home</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="legal-content">
+      <div class="container">
+        <div class="legal-header">
+          <h1>Privacy Policy</h1>
+          <p class="last-updated">Last Updated: December 30, 2025</p>
+        </div>
+
+        <div class="legal-body">
+          <div class="highlight-box">
+            <p><strong>Your Privacy Matters:</strong> Rush Enterprise is committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data when you use our platform.</p>
+          </div>
+
+          <h2>1. Introduction</h2>
+          <p>Rush Enterprise ("we," "our," or "us") operates the Rush mobile application and website (the "Platform"). This Privacy Policy describes our practices regarding the collection, use, and disclosure of information we receive from users of our Platform.</p>
+          <p>By using Rush, you consent to the data practices described in this policy. If you do not agree with our policies, please do not use our Platform.</p>
+
+          <h2>2. Information We Collect</h2>
+          
+          <h3>2.1 Information You Provide</h3>
+          <p>We collect information you voluntarily provide when using our Platform:</p>
+          <ul>
+            <li><strong>Account Information:</strong> Name, email address, phone number, date of birth, profile photo</li>
+            <li><strong>Identity Verification:</strong> Driver's license, ID documents, selfie verification</li>
+            <li><strong>Payment Information:</strong> Credit/debit card details (processed securely through Stripe)</li>
+            <li><strong>Vehicle Information (Hosts):</strong> Vehicle make, model, year, photos, registration documents, insurance information</li>
+            <li><strong>Communications:</strong> Messages between users, support inquiries, reviews and ratings</li>
+          </ul>
+
+          <h3>2.2 Information Collected Automatically</h3>
+          <p>When you use our Platform, we automatically collect:</p>
+          <ul>
+            <li><strong>Device Information:</strong> Device type, operating system, unique device identifiers</li>
+            <li><strong>Location Data:</strong> GPS location when you use location-based features (with your permission)</li>
+            <li><strong>Usage Data:</strong> Pages viewed, features used, search queries, interaction patterns</li>
+            <li><strong>Log Data:</strong> IP address, browser type, access times, referring URLs</li>
+          </ul>
+
+          <h3>2.3 Information from Third Parties</h3>
+          <p>We may receive information about you from:</p>
+          <ul>
+            <li>Identity verification services</li>
+            <li>Payment processors (Stripe)</li>
+            <li>Background check providers (where applicable)</li>
+            <li>Social media platforms (if you choose to connect your account)</li>
+          </ul>
+
+          <h2>3. How We Use Your Information</h2>
+          <p>We use the information we collect to:</p>
+          
+          <table class="data-table">
+            <tr>
+              <th>Purpose</th>
+              <th>Data Used</th>
+            </tr>
+            <tr>
+              <td>Provide and improve our services</td>
+              <td>Account info, usage data, device info</td>
+            </tr>
+            <tr>
+              <td>Process bookings and payments</td>
+              <td>Payment info, booking details, user profiles</td>
+            </tr>
+            <tr>
+              <td>Verify user identity</td>
+              <td>ID documents, selfie, background checks</td>
+            </tr>
+            <tr>
+              <td>Enable location-based features</td>
+              <td>GPS location data</td>
+            </tr>
+            <tr>
+              <td>Send notifications and updates</td>
+              <td>Email, phone number, push notification tokens</td>
+            </tr>
+            <tr>
+              <td>Prevent fraud and ensure safety</td>
+              <td>Usage patterns, device info, verification data</td>
+            </tr>
+            <tr>
+              <td>Provide customer support</td>
+              <td>Account info, communications, booking history</td>
+            </tr>
+            <tr>
+              <td>Comply with legal obligations</td>
+              <td>Various data as required by law</td>
+            </tr>
+          </table>
+
+          <h2>4. Information Sharing</h2>
+          <p>We share your information in the following circumstances:</p>
+
+          <h3>4.1 With Other Users</h3>
+          <ul>
+            <li><strong>Hosts see:</strong> Renter's name, profile photo, rating, and booking details</li>
+            <li><strong>Renters see:</strong> Host's name, profile photo, rating, and vehicle information</li>
+            <li>We never share your full payment details with other users</li>
+          </ul>
+
+          <h3>4.2 With Service Providers</h3>
+          <p>We work with trusted third parties who assist us in operating our Platform:</p>
+          <ul>
+            <li><strong>Stripe:</strong> Payment processing and fraud prevention</li>
+            <li><strong>SendGrid:</strong> Email notifications and communications</li>
+            <li><strong>Cloud hosting providers:</strong> Data storage and infrastructure</li>
+            <li><strong>Analytics services:</strong> Usage analysis and improvement</li>
+          </ul>
+
+          <h3>4.3 For Legal Reasons</h3>
+          <p>We may disclose information when required to:</p>
+          <ul>
+            <li>Comply with applicable laws or legal processes</li>
+            <li>Respond to lawful requests from public authorities</li>
+            <li>Protect our rights, privacy, safety, or property</li>
+            <li>Enforce our Terms of Service</li>
+          </ul>
+
+          <h2>5. Data Retention</h2>
+          <p>We retain your personal information for as long as:</p>
+          <ul>
+            <li>Your account remains active</li>
+            <li>Needed to provide you services</li>
+            <li>Required by law or for legal purposes</li>
+            <li>Necessary for fraud prevention and safety</li>
+          </ul>
+          <p>After account deletion, we may retain certain data in anonymized form for analytics, or as required by law.</p>
+
+          <h2>6. Your Rights and Choices</h2>
+          <p>Depending on your location, you may have the following rights:</p>
+
+          <h3>6.1 Access and Portability</h3>
+          <p>Request a copy of your personal data in a portable format.</p>
+
+          <h3>6.2 Correction</h3>
+          <p>Update or correct inaccurate personal information through your account settings.</p>
+
+          <h3>6.3 Deletion</h3>
+          <p>Request deletion of your account and personal data. Some data may be retained for legal or safety purposes.</p>
+
+          <h3>6.4 Opt-Out</h3>
+          <ul>
+            <li><strong>Marketing emails:</strong> Unsubscribe link in emails</li>
+            <li><strong>Push notifications:</strong> Device settings or app settings</li>
+            <li><strong>Location tracking:</strong> Device location permissions</li>
+          </ul>
+
+          <h2>7. Data Security</h2>
+          <p>We implement industry-standard security measures to protect your data:</p>
+          <ul>
+            <li>Encryption of data in transit (TLS/SSL) and at rest</li>
+            <li>Secure payment processing through PCI-compliant providers</li>
+            <li>Regular security assessments and monitoring</li>
+            <li>Access controls and authentication measures</li>
+            <li>Employee training on data protection</li>
+          </ul>
+          <p>While we strive to protect your information, no method of transmission over the Internet is 100% secure. We cannot guarantee absolute security.</p>
+
+          <h2>8. Children's Privacy</h2>
+          <p>Rush is not intended for users under 21 years of age. We do not knowingly collect personal information from individuals under 21. If we become aware that we have collected such information, we will take steps to delete it promptly.</p>
+
+          <h2>9. International Data Transfers</h2>
+          <p>Your information may be transferred to and processed in countries other than your own. These countries may have different data protection laws. By using Rush, you consent to the transfer of your information to the United States and other countries where we operate.</p>
+
+          <h2>10. Third-Party Links</h2>
+          <p>Our Platform may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies before providing any personal information.</p>
+
+          <h2>11. Changes to This Policy</h2>
+          <p>We may update this Privacy Policy from time to time. We will notify you of material changes by:</p>
+          <ul>
+            <li>Posting the new policy on our Platform</li>
+            <li>Updating the "Last Updated" date</li>
+            <li>Sending you an email notification (for significant changes)</li>
+          </ul>
+          <p>Your continued use of Rush after changes constitutes acceptance of the updated policy.</p>
+
+          <h2>12. California Privacy Rights (CCPA)</h2>
+          <p>If you are a California resident, you have additional rights under the California Consumer Privacy Act:</p>
+          <ul>
+            <li>Right to know what personal information is collected</li>
+            <li>Right to know whether personal information is sold or disclosed</li>
+            <li>Right to opt-out of the sale of personal information</li>
+            <li>Right to non-discrimination for exercising your rights</li>
+          </ul>
+          <p>We do not sell your personal information to third parties.</p>
+
+          <h2>13. European Privacy Rights (GDPR)</h2>
+          <p>If you are in the European Economic Area, you have rights under the General Data Protection Regulation including:</p>
+          <ul>
+            <li>Right to access, rectification, and erasure</li>
+            <li>Right to restrict or object to processing</li>
+            <li>Right to data portability</li>
+            <li>Right to withdraw consent</li>
+            <li>Right to lodge a complaint with a supervisory authority</li>
+          </ul>
+
+          <h2>14. Contact Us</h2>
+          <p>If you have questions about this Privacy Policy or our data practices, please contact us:</p>
+          <ul>
+            <li><strong>Email:</strong> <a href="mailto:support@rush-enterprise.com">support@rush-enterprise.com</a></li>
+            <li><strong>General Inquiries:</strong> <a href="mailto:contact@rush-enterprise.com">contact@rush-enterprise.com</a></li>
+            <li><strong>Data Protection Officer:</strong> <a href="mailto:privacy@rush-enterprise.com">privacy@rush-enterprise.com</a></li>
+          </ul>
+          <p>We will respond to your inquiry within 30 days.</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container footer-content">
+        <p>&copy; 2025 Rush Enterprise. All rights reserved.</p>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="mailto:support@rush-enterprise.com">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

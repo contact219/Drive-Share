@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Terms of Service - Rush</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      :root {
+        --primary: #FF6B35;
+        --primary-dark: #E55A28;
+        --secondary: #004E89;
+        --text-primary: #1A1A1A;
+        --text-secondary: #6C757D;
+        --background: #FFFFFF;
+        --surface: #F8F9FA;
+        --border: #E5E5E5;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--background);
+        color: var(--text-primary);
+        line-height: 1.7;
+      }
+      
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      
+      /* Navigation */
+      nav {
+        background: var(--background);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      
+      .nav-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+      }
+      
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+      }
+      
+      .logo-text {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      
+      .nav-links a {
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 14px;
+        transition: color 0.2s;
+      }
+      
+      .nav-links a:hover {
+        color: var(--primary);
+      }
+      
+      /* Content */
+      .legal-content {
+        padding: 60px 0 80px;
+      }
+      
+      .legal-header {
+        margin-bottom: 48px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--border);
+      }
+      
+      .legal-header h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+      }
+      
+      .last-updated {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      
+      .legal-body h2 {
+        font-size: 22px;
+        font-weight: 600;
+        margin-top: 40px;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+      }
+      
+      .legal-body h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 28px;
+        margin-bottom: 12px;
+        color: var(--text-primary);
+      }
+      
+      .legal-body p {
+        margin-bottom: 16px;
+        color: var(--text-secondary);
+        font-size: 15px;
+      }
+      
+      .legal-body ul, .legal-body ol {
+        margin-bottom: 16px;
+        padding-left: 24px;
+        color: var(--text-secondary);
+      }
+      
+      .legal-body li {
+        margin-bottom: 8px;
+        font-size: 15px;
+      }
+      
+      .legal-body a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+      
+      .legal-body a:hover {
+        text-decoration: underline;
+      }
+      
+      .highlight-box {
+        background: var(--surface);
+        border-left: 4px solid var(--primary);
+        padding: 20px 24px;
+        margin: 24px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      
+      .highlight-box p {
+        margin-bottom: 0;
+        color: var(--text-primary);
+      }
+      
+      /* Footer */
+      footer {
+        background: var(--surface);
+        padding: 32px 0;
+        border-top: 1px solid var(--border);
+      }
+      
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      
+      .footer-links {
+        display: flex;
+        gap: 24px;
+      }
+      
+      .footer-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      
+      .footer-links a:hover {
+        color: var(--primary);
+      }
+      
+      @media (max-width: 768px) {
+        .legal-header h1 {
+          font-size: 28px;
+        }
+        
+        .legal-body h2 {
+          font-size: 20px;
+        }
+        
+        .footer-content {
+          flex-direction: column;
+          gap: 16px;
+          text-align: center;
+        }
+      }
+      
+      /* Dark mode */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #0D0D0D;
+          --surface: #1A1A1A;
+          --text-primary: #F5F5F5;
+          --text-secondary: #999999;
+          --border: #333333;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav>
+      <div class="container nav-content">
+        <a href="/" class="logo">
+          <img src="/assets/images/icon.png" alt="Rush" class="logo-icon" />
+          <span class="logo-text">Rush</span>
+        </a>
+        <div class="nav-links">
+          <a href="/">Back to Home</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="legal-content">
+      <div class="container">
+        <div class="legal-header">
+          <h1>Terms of Service</h1>
+          <p class="last-updated">Last Updated: December 30, 2025</p>
+        </div>
+
+        <div class="legal-body">
+          <div class="highlight-box">
+            <p><strong>Important:</strong> By using Rush, you agree to these Terms of Service. Please read them carefully before creating an account or using our services.</p>
+          </div>
+
+          <h2>1. Introduction and Acceptance</h2>
+          <p>Welcome to Rush ("we," "our," or "us"). Rush Enterprise operates a peer-to-peer vehicle rental platform that connects vehicle owners ("Hosts") with individuals seeking to rent vehicles ("Renters"). These Terms of Service ("Terms") govern your access to and use of the Rush mobile application and website (collectively, the "Platform").</p>
+          <p>By creating an account, accessing, or using the Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms and our <a href="/privacy">Privacy Policy</a>.</p>
+
+          <h2>2. Eligibility</h2>
+          <p>To use Rush, you must:</p>
+          <ul>
+            <li>Be at least 21 years old</li>
+            <li>Hold a valid driver's license issued in your country of residence</li>
+            <li>Have a clean driving record (no major violations in the past 3 years)</li>
+            <li>Provide accurate and complete information during registration</li>
+            <li>Have the legal capacity to enter into binding contracts</li>
+          </ul>
+          <p>If you are using Rush on behalf of a company or organization, you represent that you have the authority to bind that entity to these Terms.</p>
+
+          <h2>3. Account Registration</h2>
+          <p>To access certain features of the Platform, you must create an account. You agree to:</p>
+          <ul>
+            <li>Provide accurate, current, and complete information</li>
+            <li>Maintain the security of your account credentials</li>
+            <li>Promptly update your information if it changes</li>
+            <li>Accept responsibility for all activities under your account</li>
+            <li>Notify us immediately of any unauthorized access</li>
+          </ul>
+
+          <h2>4. Platform Services</h2>
+          
+          <h3>4.1 For Renters</h3>
+          <p>Rush enables you to search for, book, and rent vehicles from Hosts. As a Renter, you agree to:</p>
+          <ul>
+            <li>Use vehicles only for lawful purposes</li>
+            <li>Return vehicles on time and in the same condition as received</li>
+            <li>Not smoke or allow pets in vehicles unless explicitly permitted</li>
+            <li>Report any accidents or damage immediately</li>
+            <li>Follow all traffic laws and parking regulations</li>
+            <li>Not sublease or share access to rented vehicles</li>
+          </ul>
+
+          <h3>4.2 For Hosts</h3>
+          <p>Rush enables you to list your vehicle for rent. As a Host, you agree to:</p>
+          <ul>
+            <li>Only list vehicles you own or have legal authority to rent</li>
+            <li>Ensure vehicles are properly registered, insured, and roadworthy</li>
+            <li>Provide accurate descriptions and photos of your vehicle</li>
+            <li>Maintain vehicles in safe, clean condition</li>
+            <li>Respond to booking requests promptly</li>
+            <li>Honor confirmed bookings</li>
+          </ul>
+
+          <h2>5. Fees and Payments</h2>
+          
+          <h3>5.1 Rental Fees</h3>
+          <p>Hosts set their own rental rates. The total cost shown at booking includes the base rental fee, any applicable insurance, and service fees.</p>
+          
+          <h3>5.2 Platform Fees</h3>
+          <p>Rush charges a service fee of 10% on each completed booking. This fee is deducted from the Host's earnings. Renters see the total price inclusive of all fees at the time of booking.</p>
+          
+          <h3>5.3 Payment Processing</h3>
+          <p>All payments are processed securely through Stripe. By using our Platform, you agree to Stripe's terms of service. Rush does not store your full payment card details.</p>
+          
+          <h3>5.4 Host Payouts</h3>
+          <p>Hosts receive 90% of each rental transaction. Payouts are processed within 24-48 hours after a trip is completed successfully.</p>
+
+          <h2>6. Insurance and Liability</h2>
+          <p>Rush offers optional insurance coverage for rentals. Hosts may also provide their own insurance coverage. It is the responsibility of both Hosts and Renters to understand the insurance coverage applicable to each booking.</p>
+          <p>Rush is a platform that connects Hosts and Renters. We are not a party to the rental agreement between you and the other user. Rush is not liable for:</p>
+          <ul>
+            <li>Damage to vehicles</li>
+            <li>Personal injury during rentals</li>
+            <li>Theft or loss of personal property</li>
+            <li>Any disputes between users</li>
+          </ul>
+
+          <h2>7. Cancellation Policy</h2>
+          <p>Cancellation policies may vary by Host. Generally:</p>
+          <ul>
+            <li><strong>Free cancellation:</strong> More than 24 hours before the booking start time</li>
+            <li><strong>Partial refund:</strong> 12-24 hours before the booking start time (50% refund)</li>
+            <li><strong>No refund:</strong> Less than 12 hours before the booking start time</li>
+          </ul>
+          <p>Hosts who cancel confirmed bookings may be subject to penalties and fees.</p>
+
+          <h2>8. User Conduct</h2>
+          <p>You agree not to:</p>
+          <ul>
+            <li>Violate any applicable laws or regulations</li>
+            <li>Provide false or misleading information</li>
+            <li>Interfere with the Platform's operation</li>
+            <li>Harass, abuse, or harm other users</li>
+            <li>Use the Platform for any illegal activity</li>
+            <li>Attempt to circumvent our fee structure</li>
+            <li>Create multiple accounts for fraudulent purposes</li>
+          </ul>
+
+          <h2>9. Vehicle Verification</h2>
+          <p>All vehicles listed on Rush must undergo our verification process. We reserve the right to:</p>
+          <ul>
+            <li>Approve or reject vehicle listings at our discretion</li>
+            <li>Request additional documentation</li>
+            <li>Remove listings that violate our policies</li>
+            <li>Suspend or terminate Host accounts for violations</li>
+          </ul>
+
+          <h2>10. Reviews and Ratings</h2>
+          <p>Users may leave reviews and ratings after completed trips. Reviews must be honest, accurate, and comply with our community guidelines. Rush reserves the right to remove reviews that violate these guidelines.</p>
+
+          <h2>11. Intellectual Property</h2>
+          <p>The Rush Platform, including its content, features, and functionality, is owned by Rush Enterprise and protected by intellectual property laws. You may not copy, modify, distribute, or create derivative works without our written permission.</p>
+
+          <h2>12. Termination</h2>
+          <p>We may suspend or terminate your account at any time for violations of these Terms or for any other reason at our discretion. Upon termination:</p>
+          <ul>
+            <li>Your right to use the Platform ceases immediately</li>
+            <li>Pending bookings may be cancelled</li>
+            <li>Outstanding payments will be processed as applicable</li>
+          </ul>
+
+          <h2>13. Dispute Resolution</h2>
+          <p>Any disputes between users should first be addressed through our in-app support system. If a dispute cannot be resolved, it shall be settled through binding arbitration in accordance with the rules of the American Arbitration Association.</p>
+
+          <h2>14. Limitation of Liability</h2>
+          <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, RUSH ENTERPRISE SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM.</p>
+
+          <h2>15. Modifications to Terms</h2>
+          <p>We may update these Terms from time to time. We will notify you of material changes via email or through the Platform. Continued use of the Platform after changes constitutes acceptance of the modified Terms.</p>
+
+          <h2>16. Governing Law</h2>
+          <p>These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict of law provisions.</p>
+
+          <h2>17. Contact Information</h2>
+          <p>If you have any questions about these Terms, please contact us:</p>
+          <ul>
+            <li>Email: <a href="mailto:support@rush-enterprise.com">support@rush-enterprise.com</a></li>
+            <li>General Inquiries: <a href="mailto:contact@rush-enterprise.com">contact@rush-enterprise.com</a></li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container footer-content">
+        <p>&copy; 2025 Rush Enterprise. All rights reserved.</p>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="mailto:support@rush-enterprise.com">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

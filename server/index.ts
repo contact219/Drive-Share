@@ -127,33 +127,14 @@ function serveExpoManifest(platform: string, res: Response) {
 }
 
 function serveLandingPage({
-  req,
   res,
   landingPageTemplate,
-  appName,
 }: {
-  req: Request;
   res: Response;
   landingPageTemplate: string;
-  appName: string;
 }) {
-  const forwardedProto = req.header("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
-  const forwardedHost = req.header("x-forwarded-host");
-  const host = forwardedHost || req.get("host");
-  const baseUrl = `${protocol}://${host}`;
-  const expsUrl = `${host}`;
-
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
-
-  const html = landingPageTemplate
-    .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
-    .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
-
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(html);
+  res.status(200).send(landingPageTemplate);
 }
 
 function serveAdminDashboard(res: Response) {
@@ -166,6 +147,30 @@ function serveAdminDashboard(res: Response) {
   const adminHtml = fs.readFileSync(adminPath, "utf-8");
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.status(200).send(adminHtml);
+}
+
+function serveTermsPage(res: Response) {
+  const termsPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "terms.html",
+  );
+  const termsHtml = fs.readFileSync(termsPath, "utf-8");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(termsHtml);
+}
+
+function servePrivacyPage(res: Response) {
+  const privacyPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "privacy.html",
+  );
+  const privacyHtml = fs.readFileSync(privacyPath, "utf-8");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(privacyHtml);
 }
 
 function configureExpoAndLanding(app: express.Application) {
@@ -189,6 +194,14 @@ function configureExpoAndLanding(app: express.Application) {
       return serveAdminDashboard(res);
     }
 
+    if (req.path === "/terms") {
+      return serveTermsPage(res);
+    }
+
+    if (req.path === "/privacy") {
+      return servePrivacyPage(res);
+    }
+
     if (req.path !== "/" && req.path !== "/manifest") {
       return next();
     }
@@ -200,10 +213,8 @@ function configureExpoAndLanding(app: express.Application) {
 
     if (req.path === "/") {
       return serveLandingPage({
-        req,
         res,
         landingPageTemplate,
-        appName,
       });
     }
 

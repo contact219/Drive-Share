@@ -1,465 +1,1166 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>APP_NAME_PLACEHOLDER</title>
+    <title>Rush - Instant Drive | P2P Vehicle Rental</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Rush is a peer-to-peer vehicle rental app. Rent cars from local hosts or list your vehicle to earn money. Download now!" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       * {
         box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
+      
+      :root {
+        --primary: #FF6B35;
+        --primary-dark: #E55A28;
+        --secondary: #004E89;
+        --accent: #F7B801;
+        --success: #06D6A0;
+        --text-primary: #1A1A1A;
+        --text-secondary: #6C757D;
+        --background: #FFFFFF;
+        --surface: #F8F9FA;
+        --border: #E5E5E5;
+      }
+      
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        padding: 32px 20px;
-        text-align: center;
-        background: #fff;
-        color: #222;
-        line-height: 1.5;
-        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--background);
+        color: var(--text-primary);
+        line-height: 1.6;
       }
-      .wrapper {
-        max-width: 480px;
+      
+      .container {
+        max-width: 1200px;
         margin: 0 auto;
+        padding: 0 24px;
       }
-      h1 {
-        font-size: 26px;
-        font-weight: 600;
-        margin: 0;
-        color: #111;
+      
+      /* Navigation */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+        z-index: 1000;
+        padding: 16px 0;
       }
-      .subtitle {
+      
+      .nav-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+      }
+      
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+      }
+      
+      .logo-text {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+      }
+      
+      .nav-links a {
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
         font-size: 15px;
-        color: #666;
-        margin-top: 8px;
-        margin-bottom: 32px;
+        transition: color 0.2s;
       }
-      .loading {
-        display: none;
-        margin: 60px 0;
+      
+      .nav-links a:hover {
+        color: var(--primary);
       }
-      .spinner {
-        border: 2px solid #ddd;
-        border-top-color: #333;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        animation: spin 0.8s linear infinite;
-        margin: 20px auto;
+      
+      .nav-cta {
+        background: var(--primary);
+        color: white !important;
+        padding: 10px 20px;
+        border-radius: 8px;
+        transition: background 0.2s !important;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+      
+      .nav-cta:hover {
+        background: var(--primary-dark);
+        color: white !important;
       }
-      .loading-text {
-        font-size: 16px;
-        color: #444;
+      
+      /* Hero Section */
+      .hero {
+        padding: 140px 0 80px;
+        background: linear-gradient(135deg, #FFF5F0 0%, #F0F7FF 100%);
+        position: relative;
+        overflow: hidden;
       }
-      .content {
-        display: block;
+      
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 80%;
+        height: 150%;
+        background: radial-gradient(circle, rgba(255, 107, 53, 0.08) 0%, transparent 60%);
+        pointer-events: none;
       }
-
-      .steps-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-
-      .step {
-        padding: 24px;
-        border: 1px solid #ddd;
-        border-radius: 12px;
-        text-align: center;
-        background: #fafafa;
-      }
-      .step-header {
+      
+      .hero-content {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 12px;
+        gap: 60px;
       }
-      .step-number {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #999;
-        border-radius: 50%;
-        display: flex;
+      
+      .hero-text {
+        flex: 1;
+        max-width: 560px;
+      }
+      
+      .hero-badge {
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        font-weight: 600;
+        gap: 8px;
+        background: white;
+        padding: 8px 16px;
+        border-radius: 50px;
         font-size: 14px;
-        flex-shrink: 0;
-        color: #555;
+        font-weight: 500;
+        color: var(--secondary);
+        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
       }
-      .step-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0;
-        color: #222;
+      
+      .hero-badge svg {
+        width: 16px;
+        height: 16px;
+        color: var(--accent);
       }
-      .step-description {
-        font-size: 14px;
-        margin-bottom: 16px;
-        color: #666;
+      
+      .hero h1 {
+        font-size: 56px;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        color: var(--text-primary);
       }
-
-      .store-buttons {
+      
+      .hero h1 span {
+        color: var(--primary);
+      }
+      
+      .hero-subtitle {
+        font-size: 20px;
+        color: var(--text-secondary);
+        margin-bottom: 40px;
+        line-height: 1.7;
+      }
+      
+      .hero-buttons {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        justify-content: center;
+        gap: 16px;
         flex-wrap: wrap;
       }
+      
       .store-button {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 12px 20px;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid #ccc;
-        border-radius: 8px;
+        gap: 12px;
+        padding: 14px 28px;
+        background: var(--text-primary);
+        color: white;
         text-decoration: none;
-        color: #333;
-        background: #fff;
-        transition: all 0.15s;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: transform 0.2s, box-shadow 0.2s;
       }
+      
       .store-button:hover {
-        background: #f5f5f5;
-        border-color: #999;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       }
-      .store-link {
-        display: inline-flex;
-        align-items: center;
+      
+      .store-button svg {
+        width: 24px;
+        height: 24px;
+      }
+      
+      .store-button-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .store-button-text small {
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      
+      .store-button-text span {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      
+      .hero-image {
+        flex: 1;
+        display: flex;
         justify-content: center;
-        gap: 6px;
-        padding: 8px 0;
-        font-size: 13px;
-        font-weight: 400;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-        color: #666;
-        background: none;
-        border: none;
-        transition: color 0.15s;
+        align-items: center;
       }
-      .store-link:hover {
-        color: #333;
-      }
-      .store-link .store-icon {
-        width: 14px;
-        height: 14px;
-      }
-      .store-icon {
-        width: 18px;
-        height: 18px;
-      }
-
-      .qr-section {
-        background: #333;
-        color: #fff;
-        border-color: #333;
-      }
-      .qr-section .step-number {
-        border-color: rgba(255, 255, 255, 0.5);
-        color: #fff;
-      }
-      .qr-section .step-title {
-        color: #fff;
-      }
-      .qr-section .step-description {
-        color: rgba(255, 255, 255, 0.7);
-      }
-      .qr-code {
-        width: 180px;
-        height: 180px;
-        margin: 0 auto 16px;
-        background: #fff;
-        border-radius: 8px;
+      
+      .hero-phone {
+        position: relative;
+        width: 300px;
+        height: 600px;
+        background: linear-gradient(145deg, #1A1A1A 0%, #2D2D2D 100%);
+        border-radius: 40px;
         padding: 12px;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.2);
       }
-      .qr-code canvas {
+      
+      .phone-screen {
         width: 100%;
         height: 100%;
+        background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+        padding: 40px 20px;
       }
-      .open-button {
-        display: inline-block;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        text-decoration: none;
-        color: #333;
-        background: #fff;
-        transition: opacity 0.15s;
+      
+      .phone-logo {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      .open-button:hover {
+      
+      .phone-logo img {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+      }
+      
+      .phone-title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      
+      .phone-tagline {
+        font-size: 16px;
         opacity: 0.9;
       }
-
-      /* Desktop styles */
-      @media (min-width: 768px) {
-        body {
-          padding: 48px 32px;
-          display: flex;
-          align-items: center;
+      
+      /* Features Section */
+      .features {
+        padding: 100px 0;
+        background: var(--background);
+      }
+      
+      .section-header {
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto 60px;
+      }
+      
+      .section-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 16px;
+      }
+      
+      .section-title {
+        font-size: 40px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--text-primary);
+      }
+      
+      .section-subtitle {
+        font-size: 18px;
+        color: var(--text-secondary);
+      }
+      
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+      }
+      
+      .feature-card {
+        background: var(--surface);
+        padding: 32px;
+        border-radius: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      
+      .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+      }
+      
+      .feature-icon {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      
+      .feature-icon svg {
+        width: 28px;
+        height: 28px;
+        color: white;
+      }
+      
+      .feature-card h3 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--text-primary);
+      }
+      
+      .feature-card p {
+        font-size: 15px;
+        color: var(--text-secondary);
+        line-height: 1.7;
+      }
+      
+      /* How It Works */
+      .how-it-works {
+        padding: 100px 0;
+        background: var(--surface);
+      }
+      
+      .steps-container {
+        display: flex;
+        gap: 40px;
+        margin-top: 60px;
+      }
+      
+      .steps-column {
+        flex: 1;
+        background: white;
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+      }
+      
+      .steps-column h3 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .column-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .column-icon svg {
+        width: 20px;
+        height: 20px;
+        color: white;
+      }
+      
+      .step {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+      
+      .step:last-child {
+        margin-bottom: 0;
+      }
+      
+      .step-number {
+        width: 32px;
+        height: 32px;
+        background: var(--surface);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--primary);
+        flex-shrink: 0;
+      }
+      
+      .step-content h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--text-primary);
+      }
+      
+      .step-content p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+      
+      /* Earnings Section */
+      .earnings {
+        padding: 100px 0;
+        background: linear-gradient(135deg, var(--secondary) 0%, #003A66 100%);
+        color: white;
+      }
+      
+      .earnings-content {
+        display: flex;
+        align-items: center;
+        gap: 80px;
+      }
+      
+      .earnings-text {
+        flex: 1;
+      }
+      
+      .earnings-text h2 {
+        font-size: 40px;
+        font-weight: 700;
+        margin-bottom: 24px;
+      }
+      
+      .earnings-text p {
+        font-size: 18px;
+        opacity: 0.9;
+        margin-bottom: 32px;
+        line-height: 1.7;
+      }
+      
+      .earnings-stats {
+        display: flex;
+        gap: 40px;
+      }
+      
+      .stat {
+        text-align: center;
+      }
+      
+      .stat-value {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      
+      .stat-label {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      
+      .earnings-visual {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+      }
+      
+      .earnings-card {
+        background: white;
+        border-radius: 24px;
+        padding: 40px;
+        color: var(--text-primary);
+        max-width: 360px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+      }
+      
+      .earnings-card h4 {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      
+      .earnings-amount {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--success);
+        margin-bottom: 24px;
+      }
+      
+      .earnings-breakdown {
+        border-top: 1px solid var(--border);
+        padding-top: 24px;
+      }
+      
+      .breakdown-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 15px;
+      }
+      
+      .breakdown-row span:first-child {
+        color: var(--text-secondary);
+      }
+      
+      .breakdown-row span:last-child {
+        font-weight: 600;
+      }
+      
+      /* CTA Section */
+      .cta {
+        padding: 100px 0;
+        background: var(--background);
+        text-align: center;
+      }
+      
+      .cta h2 {
+        font-size: 40px;
+        font-weight: 700;
+        margin-bottom: 20px;
+      }
+      
+      .cta p {
+        font-size: 18px;
+        color: var(--text-secondary);
+        margin-bottom: 40px;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      
+      .cta-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      
+      /* Footer */
+      footer {
+        background: var(--text-primary);
+        color: white;
+        padding: 60px 0 30px;
+      }
+      
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        gap: 60px;
+        margin-bottom: 40px;
+      }
+      
+      .footer-brand {
+        max-width: 300px;
+      }
+      
+      .footer-logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      
+      .footer-logo-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+      }
+      
+      .footer-logo-text {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      
+      .footer-brand p {
+        font-size: 14px;
+        opacity: 0.7;
+        line-height: 1.7;
+      }
+      
+      .footer-links {
+        display: flex;
+        gap: 60px;
+      }
+      
+      .footer-column h4 {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+      }
+      
+      .footer-column ul {
+        list-style: none;
+      }
+      
+      .footer-column li {
+        margin-bottom: 12px;
+      }
+      
+      .footer-column a {
+        color: white;
+        text-decoration: none;
+        font-size: 15px;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+      }
+      
+      .footer-column a:hover {
+        opacity: 1;
+      }
+      
+      .footer-bottom {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        opacity: 0.6;
+      }
+      
+      .footer-legal {
+        display: flex;
+        gap: 24px;
+      }
+      
+      .footer-legal a {
+        color: white;
+        text-decoration: none;
+        transition: opacity 0.2s;
+      }
+      
+      .footer-legal a:hover {
+        opacity: 1;
+      }
+      
+      /* Mobile Menu */
+      .mobile-menu-btn {
+        display: none;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+      }
+      
+      .mobile-menu-btn svg {
+        width: 24px;
+        height: 24px;
+        color: var(--text-primary);
+      }
+      
+      /* Responsive */
+      @media (max-width: 1024px) {
+        .hero h1 {
+          font-size: 44px;
+        }
+        
+        .hero-content {
+          gap: 40px;
+        }
+        
+        .features-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .earnings-content {
+          flex-direction: column;
+          text-align: center;
+        }
+        
+        .earnings-stats {
           justify-content: center;
         }
-        .wrapper {
-          max-width: 720px;
-        }
-        h1 {
-          font-size: 32px;
-          margin-bottom: 10px;
-        }
-        .subtitle {
-          font-size: 16px;
-          margin-bottom: 40px;
-        }
-        .steps-container {
-          flex-direction: row;
-          gap: 20px;
-          align-items: stretch;
-        }
-        .step {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          padding: 28px;
-        }
-        .step-description {
-          flex-grow: 1;
-        }
-        .store-buttons {
-          flex-direction: column;
-          gap: 10px;
-        }
-        .qr-code {
-          width: 200px;
-          height: 200px;
-        }
       }
-
-      /* Large desktop */
-      @media (min-width: 1024px) {
-        .wrapper {
-          max-width: 800px;
+      
+      @media (max-width: 768px) {
+        .nav-links {
+          display: none;
         }
-        h1 {
+        
+        .mobile-menu-btn {
+          display: block;
+        }
+        
+        .hero {
+          padding: 120px 0 60px;
+        }
+        
+        .hero-content {
+          flex-direction: column;
+          text-align: center;
+        }
+        
+        .hero h1 {
           font-size: 36px;
         }
-        .steps-container {
-          gap: 28px;
+        
+        .hero-subtitle {
+          font-size: 17px;
         }
-        .step {
-          padding: 32px;
+        
+        .hero-buttons {
+          justify-content: center;
+        }
+        
+        .hero-image {
+          display: none;
+        }
+        
+        .section-title {
+          font-size: 32px;
+        }
+        
+        .features-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .steps-container {
+          flex-direction: column;
+        }
+        
+        .footer-content {
+          flex-direction: column;
+          gap: 40px;
+        }
+        
+        .footer-links {
+          flex-direction: column;
+          gap: 32px;
+        }
+        
+        .footer-bottom {
+          flex-direction: column;
+          gap: 16px;
+          text-align: center;
         }
       }
-
+      
       /* Dark mode */
       @media (prefers-color-scheme: dark) {
-        body {
-          background: #0d0d0d;
-          color: #e0e0e0;
+        :root {
+          --background: #0D0D0D;
+          --surface: #1A1A1A;
+          --text-primary: #F5F5F5;
+          --text-secondary: #999999;
+          --border: #333333;
         }
-        h1 {
-          color: #f5f5f5;
+        
+        nav {
+          background: rgba(13, 13, 13, 0.95);
         }
-        .subtitle {
-          color: #999;
+        
+        .hero {
+          background: linear-gradient(135deg, #1A1A1A 0%, #0D0D0D 100%);
         }
-        .spinner {
-          border-color: #444;
-          border-top-color: #ccc;
+        
+        .feature-card {
+          background: #1A1A1A;
         }
-        .loading-text {
-          color: #aaa;
+        
+        .steps-column {
+          background: #1A1A1A;
         }
-        .step {
-          border-color: #333;
-          background: #1a1a1a;
+        
+        .earnings-card {
+          background: #1A1A1A;
         }
-        .step-number {
-          border-color: #666;
-          color: #bbb;
-        }
-        .step-title {
-          color: #f0f0f0;
-        }
-        .step-description {
-          color: #888;
-        }
+        
         .store-button {
-          border-color: #444;
-          color: #e0e0e0;
-          background: #222;
-        }
-        .store-button:hover {
-          background: #2a2a2a;
-          border-color: #666;
-        }
-        .store-link {
-          color: #888;
-        }
-        .store-link:hover {
-          color: #ccc;
-        }
-        .qr-section {
-          background: #111;
-          border-color: #333;
-        }
-        .qr-section .step-number {
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-        .qr-section .step-description {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .open-button {
-          background: #f0f0f0;
-          color: #111;
-        }
-        .open-button:hover {
-          background: #e0e0e0;
+          background: #F5F5F5;
+          color: #1A1A1A;
         }
       }
     </style>
   </head>
   <body>
-    <div class="wrapper">
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <div class="loading-text">Opening in Expo Go...</div>
+    <!-- Navigation -->
+    <nav>
+      <div class="container nav-content">
+        <a href="/" class="logo">
+          <img src="/assets/images/icon.png" alt="Rush" class="logo-icon" />
+          <span class="logo-text">Rush</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How It Works</a>
+          <a href="#host">Become a Host</a>
+          <a href="#download" class="nav-cta">Download App</a>
+        </div>
+        <button class="mobile-menu-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
       </div>
+    </nav>
 
-      <div class="content" id="content">
-        <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="subtitle">Preview this app on your phone</p>
-
-        <div class="steps-container">
-          <div class="step">
-            <div class="step-header">
-              <div class="step-number">1</div>
-              <h2 class="step-title">Download Expo Go</h2>
-            </div>
-            <p class="step-description">
-              Expo Go is a free app to test mobile apps
-            </p>
-            <div class="store-buttons" id="store-buttons">
-              <a
-                id="app-store-btn"
-                href="https://apps.apple.com/app/id982107779"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"
-                  />
-                </svg>
-                App Store
-              </a>
-              <a
-                id="play-store-btn"
-                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
-                  />
-                </svg>
-                Google Play
-              </a>
-            </div>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container hero-content">
+        <div class="hero-text">
+          <div class="hero-badge">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            Trusted by thousands of drivers
           </div>
-
-          <div class="step qr-section">
-            <div class="step-header">
-              <div class="step-number">2</div>
-              <h2 class="step-title">Scan QR Code</h2>
+          <h1>Your Next Ride is <span>Instant</span></h1>
+          <p class="hero-subtitle">
+            Rush connects you with cars in your neighborhood. Rent from local hosts by the hour or day, or list your vehicle to earn extra income.
+          </p>
+          <div class="hero-buttons" id="download">
+            <a href="https://apps.apple.com/app/rush-instant-drive" class="store-button" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <div class="store-button-text">
+                <small>Download on the</small>
+                <span>App Store</span>
+              </div>
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.rushenterprise.rush" class="store-button" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+              </svg>
+              <div class="store-button-text">
+                <small>Get it on</small>
+                <span>Google Play</span>
+              </div>
+            </a>
+          </div>
+        </div>
+        <div class="hero-image">
+          <div class="hero-phone">
+            <div class="phone-screen">
+              <div class="phone-logo">
+                <img src="/assets/images/icon.png" alt="Rush App" />
+              </div>
+              <div class="phone-title">Rush</div>
+              <div class="phone-tagline">Instant Drive</div>
             </div>
-            <p class="step-description">Use your phone's camera or Expo Go</p>
-            <div class="qr-code" id="qr-code"></div>
-            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
-              >Open in Expo Go</a
-            >
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
-    <script>
-      (function () {
-        const ua = navigator.userAgent;
-        const loadingEl = document.getElementById("loading");
-        const contentEl = document.getElementById("content");
+    <!-- Features Section -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Features</div>
+          <h2 class="section-title">Everything You Need for the Perfect Ride</h2>
+          <p class="section-subtitle">From searching to driving, Rush makes every step seamless and secure.</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <h3>Smart Search</h3>
+            <p>Find the perfect vehicle near you with advanced filters for type, price, features, and availability.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <h3>Location Map</h3>
+            <p>View available vehicles on an interactive map and find the closest options to your location.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <h3>Real-Time Availability</h3>
+            <p>Check instant availability and book with confidence. No double-bookings, ever.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <h3>Transparent Pricing</h3>
+            <p>See the full cost breakdown before you book. Hourly rates, insurance, and fees all upfront.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <h3>Secure Payments</h3>
+            <p>All transactions are protected with Stripe. Your payment info is always safe.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <h3>In-App Messaging</h3>
+            <p>Communicate directly with hosts to coordinate pickups and ask questions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        const isAndroid = /Android/i.test(ua);
-        const isIOS =
-          /iPhone|iPad|iPod/i.test(ua) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">How It Works</div>
+          <h2 class="section-title">Simple Steps to Get Moving</h2>
+          <p class="section-subtitle">Whether you want to rent or earn, Rush makes it easy.</p>
+        </div>
+        <div class="steps-container">
+          <div class="steps-column">
+            <h3>
+              <div class="column-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              For Renters
+            </h3>
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Browse Vehicles</h4>
+                <p>Search for cars near you by type, price, or features. View photos and read reviews.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Book Instantly</h4>
+                <p>Select your dates and times, see the total cost, and confirm your booking in seconds.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Pick Up & Drive</h4>
+                <p>Meet the host, get the keys, and you're ready to go. It's that simple!</p>
+              </div>
+            </div>
+          </div>
+          <div class="steps-column" id="host">
+            <h3>
+              <div class="column-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="1" x2="12" y2="23"></line>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+              </div>
+              For Hosts
+            </h3>
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>List Your Vehicle</h4>
+                <p>Add your car details, photos, features, and set your hourly or daily rate.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Get Verified</h4>
+                <p>Our team reviews your listing to ensure it meets our safety and quality standards.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Earn Money</h4>
+                <p>Accept bookings and earn 90% of each rental. Payouts are fast and secure.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
+    <!-- Earnings Section -->
+    <section class="earnings">
+      <div class="container earnings-content">
+        <div class="earnings-text">
+          <h2>Turn Your Parked Car Into Passive Income</h2>
+          <p>
+            Your car sits idle most of the day. Why not let it earn for you? Rush hosts earn an average of $500+ per month by sharing their vehicles when they're not using them.
+          </p>
+          <div class="earnings-stats">
+            <div class="stat">
+              <div class="stat-value">90%</div>
+              <div class="stat-label">You Keep</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">$500+</div>
+              <div class="stat-label">Avg Monthly</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">24hr</div>
+              <div class="stat-label">Fast Payouts</div>
+            </div>
+          </div>
+        </div>
+        <div class="earnings-visual">
+          <div class="earnings-card">
+            <h4>Your Earnings This Month</h4>
+            <div class="earnings-amount">$847.50</div>
+            <div class="earnings-breakdown">
+              <div class="breakdown-row">
+                <span>Total Bookings</span>
+                <span>12</span>
+              </div>
+              <div class="breakdown-row">
+                <span>Gross Revenue</span>
+                <span>$941.67</span>
+              </div>
+              <div class="breakdown-row">
+                <span>Platform Fee (10%)</span>
+                <span>-$94.17</span>
+              </div>
+              <div class="breakdown-row" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+                <span>Your Payout</span>
+                <span style="color: var(--success);">$847.50</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        // Adjust store buttons based on platform
-        const appStoreBtn = document.getElementById("app-store-btn");
-        const playStoreBtn = document.getElementById("play-store-btn");
-        const storeButtonsContainer = document.getElementById("store-buttons");
+    <!-- CTA Section -->
+    <section class="cta">
+      <div class="container">
+        <h2>Ready to Rush?</h2>
+        <p>Download the app today and discover the easiest way to rent or earn with your vehicle.</p>
+        <div class="cta-buttons">
+          <a href="https://apps.apple.com/app/rush-instant-drive" class="store-button" target="_blank">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            <div class="store-button-text">
+              <small>Download on the</small>
+              <span>App Store</span>
+            </div>
+          </a>
+          <a href="https://play.google.com/store/apps/details?id=com.rushenterprise.rush" class="store-button" target="_blank">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+            </svg>
+            <div class="store-button-text">
+              <small>Get it on</small>
+              <span>Google Play</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
 
-        if (isIOS) {
-          playStoreBtn.className = "store-link";
-          storeButtonsContainer.appendChild(playStoreBtn);
-        } else if (isAndroid) {
-          appStoreBtn.className = "store-link";
-          storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
-        }
-
-        const qrCode = new QRCodeStyling({
-          width: 400,
-          height: 400,
-          data: deepLink,
-          image: "assets/images/icon.png",
-          dotsOptions: {
-            color: "#333333",
-            type: "rounded",
-          },
-          backgroundOptions: {
-            color: "#ffffff",
-          },
-          imageOptions: {
-            crossOrigin: "anonymous",
-            margin: 6,
-            imageSize: 0.35,
-          },
-          cornersSquareOptions: {
-            type: "extra-rounded",
-          },
-          cornersDotOptions: {
-            type: "dot",
-          },
-          qrOptions: {
-            errorCorrectionLevel: "H",
-          },
-        });
-
-        qrCode.append(document.getElementById("qr-code"));
-
-        if (isAndroid || isIOS) {
-          loadingEl.style.display = "block";
-          contentEl.style.display = "none";
-          window.location.href = deepLink;
-          setTimeout(function () {
-            loadingEl.style.display = "none";
-            contentEl.style.display = "block";
-          }, 500);
-        }
-      })();
-    </script>
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="footer-logo">
+              <img src="/assets/images/icon.png" alt="Rush" class="footer-logo-icon" />
+              <span class="footer-logo-text">Rush</span>
+            </div>
+            <p>Rush is a peer-to-peer vehicle rental platform that connects car owners with people who need a ride. Rent by the hour or day, or earn money by sharing your vehicle.</p>
+          </div>
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Company</h4>
+              <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#host">Become a Host</a></li>
+              </ul>
+            </div>
+            <div class="footer-column">
+              <h4>Support</h4>
+              <ul>
+                <li><a href="mailto:support@rush-enterprise.com">Help Center</a></li>
+                <li><a href="mailto:contact@rush-enterprise.com">Contact Us</a></li>
+                <li><a href="#">FAQs</a></li>
+              </ul>
+            </div>
+            <div class="footer-column">
+              <h4>Legal</h4>
+              <ul>
+                <li><a href="/terms">Terms of Service</a></li>
+                <li><a href="/privacy">Privacy Policy</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 Rush Enterprise. All rights reserved.</p>
+          <div class="footer-legal">
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="mailto:support@rush-enterprise.com">Contact</a>
+          </div>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

@@ -185,3 +185,10 @@ server/
   - New booking alerts to vehicle owners
   - Verification status updates to owners
   - Trip completion emails with review prompts
+- Marketing Landing Page (December 2025):
+  - Hero section with app description and download links
+  - Features section with 6 key platform features
+  - How It Works section for Renters and Hosts
+  - Earnings section explaining 90% host payout model
+  - Terms of Service page (/terms)
+  - Privacy Policy page (/privacy) with GDPR/CCPA compliance
