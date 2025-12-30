@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import Constants from "expo-constants";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -19,11 +20,19 @@ import { Image } from "expo-image";
 let MapView: any = null;
 let Marker: any = null;
 let Location: any = null;
+let mapsAvailable = false;
+
+const isExpoGo = Constants.appOwnership === "expo";
 
 if (Platform.OS !== "web") {
-  MapView = require("react-native-maps").default;
-  Marker = require("react-native-maps").Marker;
-  Location = require("expo-location");
+  try {
+    MapView = require("react-native-maps").default;
+    Marker = require("react-native-maps").Marker;
+    Location = require("expo-location");
+    mapsAvailable = true;
+  } catch (e) {
+    mapsAvailable = false;
+  }
 }
 
 interface Region {
@@ -121,16 +130,26 @@ export default function VehicleMapScreen() {
     setSelectedVehicle(null);
   }, []);
 
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || (Platform.OS === "android" && isExpoGo)) {
     return (
       <ThemedView style={[styles.container, styles.centered]}>
         <Feather name="map-pin" size={48} color={theme.textSecondary} />
         <ThemedText type="h3" style={{ marginTop: Spacing.lg, textAlign: "center" }}>
           Map View
         </ThemedText>
-        <ThemedText style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm }}>
-          Run in Expo Go on your device to use the map feature
+        <ThemedText style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm, paddingHorizontal: Spacing.xl }}>
+          {Platform.OS === "android" 
+            ? "Maps require a development build on Android. Browse vehicles from the main screen instead."
+            : "Run in Expo Go on your device to use the map feature"}
         </ThemedText>
+        <Pressable
+          style={[styles.backToListButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.goBack()}
+        >
+          <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+            Back to Vehicle List
+          </ThemedText>
+        </Pressable>
       </ThemedView>
     );
   }
@@ -277,6 +296,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: Spacing.xl,
+  },
+  backToListButton: {
+    marginTop: Spacing.xl,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
   },
   map: {
     flex: 1,
