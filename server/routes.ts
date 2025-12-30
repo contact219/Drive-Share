@@ -166,19 +166,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/users/:id/password", async (req: Request, res: Response) => {
     try {
+      const userId = req.params.id;
       const { password } = req.body;
+      
+      console.log(`[PASSWORD UPDATE] User ID: ${userId}, Password length: ${password?.length || 0}`);
+      
       if (!password || password.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
       
       // Verify user exists before updating
-      const existingUser = await storage.getUser(req.params.id);
+      const existingUser = await storage.getUser(userId);
+      console.log(`[PASSWORD UPDATE] User exists: ${existingUser ? existingUser.email : "NOT FOUND"}`);
+      
       if (!existingUser) {
         return res.status(404).json({ error: "User not found" });
       }
       
       const hashedPassword = await bcrypt.hash(password, 10);
-      const updatedUser = await storage.updateUser(req.params.id, { password: hashedPassword });
+      console.log(`[PASSWORD UPDATE] Hashed password: ${hashedPassword.substring(0, 20)}...`);
+      
+      const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
+      console.log(`[PASSWORD UPDATE] Update result: ${updatedUser ? updatedUser.email : "NULL"}`);
       
       if (!updatedUser) {
         return res.status(500).json({ error: "Failed to update user password" });
