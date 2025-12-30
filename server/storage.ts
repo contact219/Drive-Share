@@ -1,6 +1,6 @@
 import { 
   users, vehicles, trips, favorites, reviews, pushTokens, availabilitySlots, ownerProfiles, ownerVehicles,
-  vehicleVerifications, insurancePolicies, payments, payouts, userDocuments,
+  vehicleVerifications, insurancePolicies, payments, payouts, userDocuments, conversations, messages,
   type User, type InsertUser,
   type Vehicle, type InsertVehicle,
   type Trip, type InsertTrip,
@@ -15,6 +15,8 @@ import {
   type Payment, type InsertPayment,
   type Payout, type InsertPayout,
   type UserDocument, type InsertUserDocument,
+  type Conversation, type InsertConversation,
+  type Message, type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, sql } from "drizzle-orm";
@@ -591,6 +593,79 @@ export class DatabaseStorage implements IStorage {
   async deleteUserDocument(id: string): Promise<boolean> {
     const result = await db.delete(userDocuments).where(eq(userDocuments.id, id));
     return true;
+  }
+
+  // Messaging methods
+  async getConversationsByUser(userId: string): Promise<Conversation[]> {
+    return db.select().from(conversations)
+      .where(or(
+        eq(conversations.participant1Id, userId),
+        eq(conversations.participant2Id, userId)
+      ))
+      .orderBy(desc(conversations.lastMessageAt));
+  }
+
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conv || undefined;
+  }
+
+  async findExistingConversation(participant1Id: string, participant2Id: string, vehicleId?: string): Promise<Conversation | undefined> {
+    const [conv] = await db.select().from(conversations)
+      .where(and(
+        or(
+          and(eq(conversations.participant1Id, participant1Id), eq(conversations.participant2Id, participant2Id)),
+          and(eq(conversations.participant1Id, participant2Id), eq(conversations.participant2Id, participant1Id))
+        ),
+        vehicleId ? eq(conversations.vehicleId, vehicleId) : sql`true`
+      ));
+    return conv || undefined;
+  }
+
+  async createConversation(data: InsertConversation): Promise<Conversation> {
+    const [conv] = await db.insert(conversations).values(data).returning();
+    return conv;
+  }
+
+  async updateConversation(id: string, updates: Partial<InsertConversation>): Promise<Conversation | undefined> {
+    const [conv] = await db.update(conversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversations.id, id))
+      .returning();
+    return conv || undefined;
+  }
+
+  async getMessagesByConversation(conversationId: string): Promise<Message[]> {
+    return db.select().from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
+  }
+
+  async createMessage(data: InsertMessage): Promise<Message> {
+    const [msg] = await db.insert(messages).values(data).returning();
+    return msg;
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+    await db.update(messages)
+      .set({ isRead: true })
+      .where(and(
+        eq(messages.conversationId, conversationId),
+        sql`${messages.senderId} != ${userId}`
+      ));
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const convs = await this.getConversationsByUser(userId);
+    let count = 0;
+    for (const conv of convs) {
+      if (conv.participant1Id === userId) {
+        count += conv.participant1Unread || 0;
+      } else {
+        count += conv.participant2Unread || 0;
+      }
+    }
+    return count;
   }
 }
 

@@ -984,6 +984,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MESSAGING ROUTES ====================
+
+  // Get all conversations for a user
+  app.get("/api/conversations/:userId", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const convs = await storage.getConversationsByUser(userId);
+      
+      // Enrich with participant info and vehicle info
+      const enrichedConvs = await Promise.all(convs.map(async (conv) => {
+        const participant1 = await storage.getUser(conv.participant1Id);
+        const participant2 = await storage.getUser(conv.participant2Id);
+        const vehicle = conv.vehicleId ? await storage.getVehicle(conv.vehicleId) : null;
+        
+        // Determine the "other" participant from current user's perspective
+        const otherParticipant = conv.participant1Id === userId ? participant2 : participant1;
+        const unreadCount = conv.participant1Id === userId ? conv.participant1Unread : conv.participant2Unread;
+        
+        return {
+          ...conv,
+          participant1Name: participant1?.name || "Unknown",
+          participant2Name: participant2?.name || "Unknown",
+          otherParticipantName: otherParticipant?.name || "Unknown",
+          otherParticipantId: otherParticipant?.id,
+          otherParticipantAvatar: otherParticipant?.avatarIndex || 0,
+          vehicleName: vehicle?.name || null,
+          vehicleImage: vehicle?.imageUrl || null,
+          unreadCount: unreadCount || 0,
+        };
+      }));
+      
+      res.json(enrichedConvs);
+    } catch (error) {
+      console.error("Get conversations error:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get or create a conversation
+  app.post("/api/conversations", async (req: Request, res: Response) => {
+    try {
+      const { participant1Id, participant2Id, vehicleId, tripId } = req.body;
+      
+      if (!participant1Id || !participant2Id) {
+        return res.status(400).json({ error: "Both participant IDs are required" });
+      }
+      
+      if (participant1Id === participant2Id) {
+        return res.status(400).json({ error: "Cannot create a conversation with yourself" });
+      }
+      
+      // Check if conversation already exists
+      const existingConv = await storage.findExistingConversation(participant1Id, participant2Id, vehicleId);
+      if (existingConv) {
+        return res.json(existingConv);
+      }
+      
+      // Create new conversation
+      const conv = await storage.createConversation({
+        participant1Id,
+        participant2Id,
+        vehicleId: vehicleId || null,
+        tripId: tripId || null,
+        lastMessageAt: new Date(),
+      });
+      
+      res.status(201).json(conv);
+    } catch (error) {
+      console.error("Create conversation error:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  // Get messages for a conversation
+  app.get("/api/conversations/:conversationId/messages", async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { userId } = req.query;
+      
+      const messages = await storage.getMessagesByConversation(conversationId);
+      
+      // Enrich with sender info
+      const enrichedMessages = await Promise.all(messages.map(async (msg) => {
+        const sender = await storage.getUser(msg.senderId);
+        return {
+          ...msg,
+          senderName: sender?.name || "Unknown",
+          senderAvatar: sender?.avatarIndex || 0,
+        };
+      }));
+      
+      // Mark messages as read if userId provided
+      if (userId && typeof userId === 'string') {
+        await storage.markMessagesAsRead(conversationId, userId);
+        
+        // Update unread count in conversation
+        const conv = await storage.getConversation(conversationId);
+        if (conv) {
+          const updates: any = {};
+          if (conv.participant1Id === userId) {
+            updates.participant1Unread = 0;
+          } else if (conv.participant2Id === userId) {
+            updates.participant2Unread = 0;
+          }
+          await storage.updateConversation(conversationId, updates);
+        }
+      }
+      
+      res.json(enrichedMessages);
+    } catch (error) {
+      console.error("Get messages error:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Send a message
+  app.post("/api/conversations/:conversationId/messages", async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { senderId, content, messageType } = req.body;
+      
+      if (!senderId || !content) {
+        return res.status(400).json({ error: "senderId and content are required" });
+      }
+      
+      // Create the message
+      const msg = await storage.createMessage({
+        conversationId,
+        senderId,
+        content,
+        messageType: messageType || "text",
+      });
+      
+      // Update conversation with last message info and increment unread count
+      const conv = await storage.getConversation(conversationId);
+      if (conv) {
+        const preview = content.length > 50 ? content.substring(0, 50) + "..." : content;
+        const updates: any = {
+          lastMessageAt: new Date(),
+          lastMessagePreview: preview,
+        };
+        
+        // Increment unread for the other participant
+        if (conv.participant1Id === senderId) {
+          updates.participant2Unread = (conv.participant2Unread || 0) + 1;
+        } else {
+          updates.participant1Unread = (conv.participant1Unread || 0) + 1;
+        }
+        
+        await storage.updateConversation(conversationId, updates);
+      }
+      
+      // Get sender info for response
+      const sender = await storage.getUser(senderId);
+      
+      res.status(201).json({
+        ...msg,
+        senderName: sender?.name || "Unknown",
+        senderAvatar: sender?.avatarIndex || 0,
+      });
+    } catch (error) {
+      console.error("Send message error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Get unread message count for a user
+  app.get("/api/messages/unread/:userId", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const count = await storage.getUnreadMessageCount(userId);
+      res.json({ unreadCount: count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
