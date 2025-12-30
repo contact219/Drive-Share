@@ -101,6 +101,16 @@ server/
 - **Earnings Tracking:** Total earnings and response rate display
 - **Database Tables:** `owner_profiles` and `owner_vehicles`
 
+### Email Notifications (SendGrid Integration)
+- **Service:** `server/email.ts` with SendGrid SDK integration
+- **Templates:** Professional HTML email templates for all notifications
+- **Notifications Sent:**
+  - Booking confirmation to renters
+  - New booking notification to vehicle owners
+  - Vehicle verification approved/rejected to owners
+  - Trip completed with review prompt to renters
+- **Non-blocking:** All email operations run asynchronously to avoid affecting main flows
+
 ## Running the App
 - Start workflow: `npm run server:dev && npm run expo:dev`
 - The Expo app runs on port 8081
@@ -169,3 +179,8 @@ server/
   - Vehicle verification queue with approve/reject workflow
   - Insurance policy management
   - Payment history with fee breakdown
+- SendGrid email notifications integrated:
+  - Booking confirmation emails to renters
+  - New booking alerts to vehicle owners
+  - Verification status updates to owners
+  - Trip completion emails with review prompts
