@@ -9,6 +9,8 @@ import AuthScreen from "@/screens/AuthScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import ActiveTripScreen from "@/screens/ActiveTripScreen";
 import ForgotPasswordScreen from "@/screens/ForgotPasswordScreen";
+import TermsScreen from "@/screens/TermsScreen";
+import PrivacyScreen from "@/screens/PrivacyScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -20,6 +22,8 @@ export type RootStackParamList = {
   Auth: undefined;
   ForgotPassword: undefined;
   Settings: undefined;
+  Terms: undefined;
+  Privacy: undefined;
   ActiveTrip: { tripId: string };
 };
 
@@ -87,6 +91,20 @@ export default function RootStackNavigator() {
         options={{
           ...opaqueScreenOptions,
           headerTitle: "Settings",
+        }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen

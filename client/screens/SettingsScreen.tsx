@@ -132,6 +132,18 @@ export default function SettingsScreen() {
         </ThemedText>
 
         <SettingsItem
+          icon="file-text"
+          title="Terms of Service"
+          subtitle="Read our terms"
+          onPress={() => navigation.navigate("Terms")}
+        />
+        <SettingsItem
+          icon="shield"
+          title="Privacy Policy"
+          subtitle="How we protect your data"
+          onPress={() => navigation.navigate("Privacy")}
+        />
+        <SettingsItem
           icon="download"
           title="Download My Data"
           subtitle="Get a copy of your data"
