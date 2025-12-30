@@ -25,6 +25,7 @@ import VehicleMapScreen from "@/screens/VehicleMapScreen";
 import OwnerDashboardScreen from "@/screens/OwnerDashboardScreen";
 import ConversationsScreen from "@/screens/ConversationsScreen";
 import ChatScreen from "@/screens/ChatScreen";
+import AddVehicleScreen from "@/screens/AddVehicleScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -64,6 +65,7 @@ export type RootStackParamList = {
   OwnerDashboard: undefined;
   Conversations: undefined;
   Chat: { conversationId: string };
+  AddVehicle: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -226,6 +228,11 @@ export default function RootStackNavigator() {
           ...opaqueScreenOptions,
           headerTitle: "Chat",
         }}
+      />
+      <Stack.Screen
+        name="AddVehicle"
+        component={AddVehicleScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

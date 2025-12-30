@@ -86,11 +86,8 @@ export default function OwnerDashboardScreen() {
   }, [user?.id, queryClient]);
 
   const handleAddVehicle = useCallback(() => {
-    Alert.alert(
-      "Coming Soon",
-      "Vehicle listing form will be available in a future update. Contact support to list your vehicle now."
-    );
-  }, []);
+    navigation.navigate("AddVehicle");
+  }, [navigation]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

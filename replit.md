@@ -97,6 +97,7 @@ server/
 - **Become a Host:** Onboarding flow with benefits overview
 - **Owner Profile:** `/api/owner/profile` endpoints for profile management
 - **Vehicle Listings:** `/api/owner/vehicles` for listing management
+- **AddVehicleScreen:** Full vehicle listing form with brand, model, year, type, fuel, transmission, features, pricing, and location
 - **Verification Status:** Pending, verified, or unverified status badges
 - **Earnings Tracking:** Total earnings and response rate display
 - **Database Tables:** `owner_profiles` and `owner_vehicles`
