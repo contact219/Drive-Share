@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { StyleSheet, View, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 
@@ -12,11 +13,17 @@ import { CategoryChip } from "@/components/CategoryChip";
 import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { VEHICLE_TYPES, VEHICLE_FEATURES } from "@/types";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
+
+type FilterScreenRouteProp = RouteProp<RootStackParamList, "Filter">;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function FilterScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<FilterScreenRouteProp>();
   const { theme } = useTheme();
+  const onApply = route.params?.onApply;
 
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([5, 50]);
@@ -77,8 +84,20 @@ export default function FilterScreen() {
   }, []);
 
   const handleApply = useCallback(() => {
+    if (onApply) {
+      onApply({
+        types: selectedTypes.length > 0 ? selectedTypes : undefined,
+        fuelTypes: selectedFuelTypes.length > 0 ? selectedFuelTypes : undefined,
+        transmission: selectedTransmission || undefined,
+        minPrice: priceRange[0] > 5 ? priceRange[0] : undefined,
+        maxPrice: priceRange[1] < 100 ? priceRange[1] : undefined,
+        minSeats: minSeats > 2 ? minSeats : undefined,
+        maxDistance: maxDistance < 50 ? maxDistance : undefined,
+        features: selectedFeatures.length > 0 ? selectedFeatures : undefined,
+      });
+    }
     navigation.goBack();
-  }, [navigation]);
+  }, [navigation, onApply, selectedTypes, selectedFuelTypes, selectedTransmission, priceRange, minSeats, maxDistance, selectedFeatures]);
 
   const activeFiltersCount =
     selectedTypes.length +

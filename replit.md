@@ -56,6 +56,51 @@ server/
 - User authentication (mock)
 - Profile and settings
 
+## New Features (P2P Rental Platform)
+
+### Enhanced Search & Filters
+- **FilterScreen:** Advanced filtering by fuel type, transmission, price range, minimum seats, search radius, and vehicle features
+- **Geographic Search:** Haversine formula for radius-based vehicle filtering (default 50km)
+- **API Endpoint:** `/api/vehicles` with query params for all filter options
+
+### Vehicle Location Map
+- **VehicleMapScreen:** Interactive map using react-native-maps
+- **Location Permissions:** Uses expo-location for user location access
+- **Vehicle Markers:** Price markers on map with vehicle selection cards
+- **Platform Support:** Maps work on iOS/Android via Expo Go, web shows fallback message
+
+### Real-Time Availability System
+- **Availability Checking:** `/api/vehicles/:id/availability/check` endpoint
+- **Conflict Prevention:** Checks existing trips and blocked slots for double-booking prevention
+- **Database Table:** `availability_slots` for owner-defined blocked times
+
+### Trip Cost Estimator
+- **Quote API:** `/api/trips/quote` returns detailed cost breakdown
+- **Pricing Logic:** Hourly rate for <24hrs, daily rate (20x hourly) for longer trips
+- **Breakdown:** Base cost, optional insurance ($15/day), 10% service fee
+- **BookingScreen Integration:** Real-time quote display with insurance toggle
+
+### Push Notifications
+- **useNotifications Hook:** Uses expo-notifications for token registration
+- **Platform Support:** iOS/Android via Expo Go (web shows unsupported message)
+- **API Endpoints:** `/api/notifications/register` and `/api/notifications/deactivate`
+- **Database Table:** `push_tokens` stores user device tokens
+
+### Vehicle Reviews & Ratings
+- **useReviews Hook:** For creating and fetching vehicle reviews
+- **API Endpoints:** `/api/vehicles/:id/reviews`, `/api/reviews`, `/api/users/:id/reviews`
+- **Auto-Updates:** Creating a review auto-updates vehicle rating and review count
+- **Database Table:** `reviews` with user, vehicle, trip references
+
+### Vehicle Owner Mode (Turo-style P2P)
+- **OwnerDashboardScreen:** Host dashboard for vehicle owners
+- **Become a Host:** Onboarding flow with benefits overview
+- **Owner Profile:** `/api/owner/profile` endpoints for profile management
+- **Vehicle Listings:** `/api/owner/vehicles` for listing management
+- **Verification Status:** Pending, verified, or unverified status badges
+- **Earnings Tracking:** Total earnings and response rate display
+- **Database Tables:** `owner_profiles` and `owner_vehicles`
+
 ## Running the App
 - Start workflow: `npm run server:dev && npm run expo:dev`
 - The Expo app runs on port 8081
@@ -93,3 +138,11 @@ server/
 - App icon generated and configured
 - Full user management in admin dashboard
 - Secure password change flow in mobile app
+- Added P2P rental platform features (Phase 2 & 3):
+  - Enhanced search filters with advanced filter UI
+  - Vehicle location map with react-native-maps
+  - Real-time availability checking system
+  - Trip cost estimator with dynamic pricing
+  - Push notification infrastructure
+  - Vehicle reviews & ratings system
+  - Vehicle owner mode (Turo-style P2P hosting)

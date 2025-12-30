@@ -21,9 +21,20 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface FilterParams {
+  search?: string;
+  types?: string[];
+  fuelTypes?: string[];
+  transmission?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minSeats?: number;
+  features?: string[];
+}
+
 function filterVehicles(
   vehicles: Vehicle[],
-  filters: { search?: string; types?: string[] }
+  filters: FilterParams
 ): Vehicle[] {
   return vehicles.filter((v) => {
     if (filters.search) {
@@ -36,6 +47,25 @@ function filterVehicles(
     }
     if (filters.types && filters.types.length > 0) {
       if (!filters.types.includes(v.type)) return false;
+    }
+    if (filters.fuelTypes && filters.fuelTypes.length > 0) {
+      if (!filters.fuelTypes.includes(v.fuelType)) return false;
+    }
+    if (filters.transmission) {
+      if (v.transmission !== filters.transmission) return false;
+    }
+    if (filters.minPrice) {
+      if (parseFloat(v.pricePerHour) < filters.minPrice) return false;
+    }
+    if (filters.maxPrice) {
+      if (parseFloat(v.pricePerHour) > filters.maxPrice) return false;
+    }
+    if (filters.minSeats) {
+      if (v.seats < filters.minSeats) return false;
+    }
+    if (filters.features && filters.features.length > 0) {
+      const vehicleFeatures = v.features || [];
+      if (!filters.features.every(f => vehicleFeatures.includes(f))) return false;
     }
     return true;
   });
@@ -51,13 +81,30 @@ export default function BrowseScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [advancedFilters, setAdvancedFilters] = useState<{
+    types?: string[];
+    fuelTypes?: string[];
+    transmission?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minSeats?: number;
+    maxDistance?: number;
+    features?: string[];
+  }>({});
 
   const filteredVehicles = useMemo(() => {
+    const allTypes = advancedFilters.types || selectedTypes;
     return filterVehicles(vehicles, {
       search: searchQuery,
-      types: selectedTypes.length > 0 ? selectedTypes : undefined,
+      types: allTypes.length > 0 ? allTypes : undefined,
+      fuelTypes: advancedFilters.fuelTypes,
+      transmission: advancedFilters.transmission,
+      minPrice: advancedFilters.minPrice,
+      maxPrice: advancedFilters.maxPrice,
+      minSeats: advancedFilters.minSeats,
+      features: advancedFilters.features,
     });
-  }, [vehicles, searchQuery, selectedTypes]);
+  }, [vehicles, searchQuery, selectedTypes, advancedFilters]);
 
   const handleTypeToggle = useCallback((type: string) => {
     setSelectedTypes((prev) =>
@@ -75,7 +122,14 @@ export default function BrowseScreen() {
   );
 
   const handleFilterPress = useCallback(() => {
-    navigation.navigate("Filter");
+    navigation.navigate("Filter", {
+      onApply: (filters) => {
+        setAdvancedFilters(filters);
+        if (filters.types) {
+          setSelectedTypes(filters.types);
+        }
+      },
+    });
   }, [navigation]);
 
   const handleMapPress = useCallback(() => {

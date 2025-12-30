@@ -30,7 +30,18 @@ export type RootStackParamList = {
   VehicleDetail: { vehicleId: string };
   Booking: { vehicleId: string };
   BookingConfirmation: { vehicleId: string; startDate: string; endDate: string };
-  Filter: undefined;
+  Filter: {
+    onApply?: (filters: {
+      types?: string[];
+      fuelTypes?: string[];
+      transmission?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      minSeats?: number;
+      maxDistance?: number;
+      features?: string[];
+    }) => void;
+  } | undefined;
   Auth: undefined;
   ForgotPassword: undefined;
   Settings: undefined;
