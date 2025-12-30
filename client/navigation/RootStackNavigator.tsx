@@ -11,6 +11,16 @@ import ActiveTripScreen from "@/screens/ActiveTripScreen";
 import ForgotPasswordScreen from "@/screens/ForgotPasswordScreen";
 import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
+import PaymentMethodsScreen from "@/screens/PaymentMethodsScreen";
+import NotificationsScreen from "@/screens/NotificationsScreen";
+import DrivingLicenseScreen from "@/screens/DrivingLicenseScreen";
+import HelpSupportScreen from "@/screens/HelpSupportScreen";
+import AppearanceScreen from "@/screens/AppearanceScreen";
+import LanguageScreen from "@/screens/LanguageScreen";
+import LocationScreen from "@/screens/LocationScreen";
+import RateAppScreen from "@/screens/RateAppScreen";
+import ShareAppScreen from "@/screens/ShareAppScreen";
+import DataDownloadScreen from "@/screens/DataDownloadScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type RootStackParamList = {
@@ -25,6 +35,16 @@ export type RootStackParamList = {
   Terms: undefined;
   Privacy: undefined;
   ActiveTrip: { tripId: string };
+  PaymentMethods: undefined;
+  Notifications: undefined;
+  DrivingLicense: undefined;
+  HelpSupport: undefined;
+  Appearance: undefined;
+  Language: undefined;
+  Location: undefined;
+  RateApp: undefined;
+  ShareApp: undefined;
+  DataDownload: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -114,6 +134,56 @@ export default function RootStackNavigator() {
           headerShown: false,
           presentation: "fullScreenModal",
         }}
+      />
+      <Stack.Screen
+        name="PaymentMethods"
+        component={PaymentMethodsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DrivingLicense"
+        component={DrivingLicenseScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="HelpSupport"
+        component={HelpSupportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Appearance"
+        component={AppearanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Language"
+        component={LanguageScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Location"
+        component={LocationScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RateApp"
+        component={RateAppScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ShareApp"
+        component={ShareAppScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DataDownload"
+        component={DataDownloadScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

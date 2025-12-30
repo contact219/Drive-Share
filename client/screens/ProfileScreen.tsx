@@ -41,6 +41,22 @@ export default function ProfileScreen() {
     navigation.navigate("Privacy");
   }, [navigation]);
 
+  const handlePaymentMethods = useCallback(() => {
+    navigation.navigate("PaymentMethods");
+  }, [navigation]);
+
+  const handleNotifications = useCallback(() => {
+    navigation.navigate("Notifications");
+  }, [navigation]);
+
+  const handleDrivingLicense = useCallback(() => {
+    navigation.navigate("DrivingLicense");
+  }, [navigation]);
+
+  const handleHelpSupport = useCallback(() => {
+    navigation.navigate("HelpSupport");
+  }, [navigation]);
+
   const handleLogout = useCallback(() => {
     Alert.alert(
       "Log Out",
@@ -163,19 +179,19 @@ export default function ProfileScreen() {
           icon="credit-card"
           title="Payment Methods"
           subtitle="Manage your payment options"
-          onPress={() => handleComingSoon("Payment Methods")}
+          onPress={handlePaymentMethods}
         />
         <SettingsItem
           icon="bell"
           title="Notifications"
           subtitle="Configure alert preferences"
-          onPress={() => handleComingSoon("Notifications")}
+          onPress={handleNotifications}
         />
         <SettingsItem
           icon="file-text"
           title="Driving License"
           subtitle="Verify your license"
-          onPress={() => handleComingSoon("Driving License")}
+          onPress={handleDrivingLicense}
         />
 
         <ThemedText type="h4" style={styles.sectionTitle}>
@@ -186,7 +202,7 @@ export default function ProfileScreen() {
           icon="help-circle"
           title="Help & Support"
           subtitle="Get help with your account"
-          onPress={() => handleComingSoon("Help & Support")}
+          onPress={handleHelpSupport}
         />
         <SettingsItem
           icon="shield"

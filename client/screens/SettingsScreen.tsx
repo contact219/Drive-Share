@@ -21,9 +21,29 @@ export default function SettingsScreen() {
   const { theme } = useTheme();
   const { logout, user } = useAuth();
 
-  const handleComingSoon = useCallback((feature: string) => {
-    Alert.alert("Coming Soon", `${feature} will be available in a future update.`);
-  }, []);
+  const handleAppearance = useCallback(() => {
+    navigation.navigate("Appearance");
+  }, [navigation]);
+
+  const handleLanguage = useCallback(() => {
+    navigation.navigate("Language");
+  }, [navigation]);
+
+  const handleLocation = useCallback(() => {
+    navigation.navigate("Location");
+  }, [navigation]);
+
+  const handleRateApp = useCallback(() => {
+    navigation.navigate("RateApp");
+  }, [navigation]);
+
+  const handleShareApp = useCallback(() => {
+    navigation.navigate("ShareApp");
+  }, [navigation]);
+
+  const handleDataDownload = useCallback(() => {
+    navigation.navigate("DataDownload");
+  }, [navigation]);
 
   const handleClearData = useCallback(() => {
     Alert.alert(
@@ -92,19 +112,19 @@ export default function SettingsScreen() {
           icon="moon"
           title="Appearance"
           subtitle="System default"
-          onPress={() => handleComingSoon("Appearance settings")}
+          onPress={handleAppearance}
         />
         <SettingsItem
           icon="globe"
           title="Language"
           value="English"
-          onPress={() => handleComingSoon("Language settings")}
+          onPress={handleLanguage}
         />
         <SettingsItem
           icon="map-pin"
           title="Default Location"
           subtitle="San Francisco, CA"
-          onPress={() => handleComingSoon("Location settings")}
+          onPress={handleLocation}
         />
 
         <ThemedText type="h4" style={styles.sectionTitle}>
@@ -122,13 +142,13 @@ export default function SettingsScreen() {
           icon="star"
           title="Rate Rush"
           subtitle="Love the app? Leave a review!"
-          onPress={() => handleComingSoon("App Store rating")}
+          onPress={handleRateApp}
         />
         <SettingsItem
           icon="share-2"
           title="Share Rush"
           subtitle="Invite friends to join"
-          onPress={() => handleComingSoon("Share feature")}
+          onPress={handleShareApp}
         />
 
         <ThemedText type="h4" style={styles.sectionTitle}>
@@ -151,7 +171,7 @@ export default function SettingsScreen() {
           icon="download"
           title="Download My Data"
           subtitle="Get a copy of your data"
-          onPress={() => handleComingSoon("Data download")}
+          onPress={handleDataDownload}
         />
         <SettingsItem
           icon="trash-2"
