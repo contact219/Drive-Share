@@ -171,16 +171,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
       
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await storage.updateUser(req.params.id, { password: hashedPassword });
-      
-      if (!user) {
+      // Verify user exists before updating
+      const existingUser = await storage.getUser(req.params.id);
+      if (!existingUser) {
         return res.status(404).json({ error: "User not found" });
       }
       
-      const { password: _, ...userWithoutPassword } = user;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const updatedUser = await storage.updateUser(req.params.id, { password: hashedPassword });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Failed to update user password" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = updatedUser;
       res.json(userWithoutPassword);
     } catch (error) {
+      console.error("Password update error:", error);
       res.status(500).json({ error: "Failed to update password" });
     }
   });

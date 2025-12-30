@@ -2,6 +2,8 @@ import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -11,9 +13,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearAllData } from "@/lib/storage";
 import { Spacing } from "@/constants/theme";
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { logout, user } = useAuth();
 
