@@ -511,6 +511,7 @@
           throw new Error(err.error || 'Failed to change password');
         }
         closePasswordModal();
+        loadUsers();
         alert('Password changed successfully');
       } catch (err) {
         errorEl.textContent = err.message;
