@@ -33,6 +33,14 @@ export default function ProfileScreen() {
     navigation.navigate("Settings");
   }, [navigation]);
 
+  const handleTerms = useCallback(() => {
+    navigation.navigate("Terms");
+  }, [navigation]);
+
+  const handlePrivacy = useCallback(() => {
+    navigation.navigate("Privacy");
+  }, [navigation]);
+
   const handleLogout = useCallback(() => {
     Alert.alert(
       "Log Out",
@@ -184,7 +192,17 @@ export default function ProfileScreen() {
           icon="shield"
           title="Terms & Privacy"
           subtitle="Read our policies"
-          onPress={() => handleComingSoon("Terms & Privacy")}
+          onPress={() => {
+            Alert.alert(
+              "Terms & Privacy",
+              "Choose which policy to view",
+              [
+                { text: "Terms of Service", onPress: handleTerms },
+                { text: "Privacy Policy", onPress: handlePrivacy },
+                { text: "Cancel", style: "cancel" },
+              ]
+            );
+          }}
         />
         <SettingsItem
           icon="settings"
