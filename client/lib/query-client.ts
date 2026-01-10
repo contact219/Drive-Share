@@ -2,7 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
  * Gets the base URL for the Express API server
- * In development (Expo Go): Uses port 5000 subdomain proxy
+ * In development: Uses domain with port (works on web/Android, not iOS)
  * In production: Uses the main domain (static build served by Express)
  * @returns {string} The API base URL
  */
@@ -13,23 +13,8 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  // Check if host contains a port specification (development mode)
-  if (host.includes(':5000')) {
-    // Development: Use Replit's port-specific subdomain for iOS compatibility
-    // Replit provides port-specific URLs like: https://5000-uuid.janeway.replit.dev
-    const baseHost = host.split(':')[0];
-    // Extract UUID portion and build port-specific subdomain
-    const hostParts = baseHost.split('-00-');
-    if (hostParts.length === 2) {
-      // Transform: uuid-00-hash.janeway.replit.dev:5000 -> 5000-uuid-00-hash.janeway.replit.dev
-      const url = new URL(`https://5000-${hostParts[0]}-00-${hostParts[1]}`);
-      return url.href;
-    }
-    // Fallback: just use base host (may not work on iOS)
-    return `https://${baseHost}/`;
-  }
-
-  // Production: host is already correct (no port)
+  // If host includes a port, use it directly
+  // Note: iOS Expo Go cannot reach non-standard HTTPS ports - use published app instead
   let url = new URL(`https://${host}`);
   return url.href;
 }
