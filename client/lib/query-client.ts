@@ -1,7 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Gets the base URL for the Express API server
+ * On Replit, the proxy routes HTTPS traffic to the backend automatically
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
@@ -11,7 +12,11 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  let url = new URL(`https://${host}`);
+  // Remove port if present (iOS Expo Go can't reach non-standard HTTPS ports)
+  // Replit's proxy handles routing to the correct internal port
+  const hostWithoutPort = host.split(':')[0];
+  
+  let url = new URL(`https://${hostWithoutPort}`);
 
   return url.href;
 }
