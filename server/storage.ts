@@ -1,6 +1,7 @@
 import { 
   users, vehicles, trips, favorites, reviews, pushTokens, availabilitySlots, ownerProfiles, ownerVehicles,
   vehicleVerifications, insurancePolicies, payments, payouts, userDocuments, conversations, messages,
+  passwordResetTokens,
   type User, type InsertUser,
   type Vehicle, type InsertVehicle,
   type Trip, type InsertTrip,
@@ -17,6 +18,7 @@ import {
   type UserDocument, type InsertUserDocument,
   type Conversation, type InsertConversation,
   type Message, type InsertMessage,
+  type PasswordResetToken, type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, or, sql } from "drizzle-orm";
@@ -81,6 +83,10 @@ export interface IStorage {
     lng?: number;
     radius?: number;
   }): Promise<Vehicle[]>;
+
+  createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<any>;
+  getPasswordResetToken(token: string): Promise<any>;
+  markTokenUsed(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -666,6 +672,27 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return count;
+  }
+
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<any> {
+    const [result] = await db.insert(passwordResetTokens).values({ userId, token, expiresAt }).returning();
+    return result;
+  }
+
+  async getPasswordResetToken(token: string): Promise<any> {
+    const [result] = await db.select().from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.used, false),
+        gte(passwordResetTokens.expiresAt, new Date())
+      ));
+    return result || undefined;
+  }
+
+  async markTokenUsed(token: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.token, token));
   }
 }
 

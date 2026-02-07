@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
+import * as crypto from "node:crypto";
 import { storage } from "./storage";
 import { insertUserSchema, insertVehicleSchema, insertTripSchema, insertReviewSchema, insertPushTokenSchema } from "@shared/schema";
 import * as bcrypt from "bcryptjs";
@@ -9,7 +10,8 @@ import {
   sendNewBookingNotificationToOwner,
   sendVehicleVerificationApprovedEmail,
   sendVehicleVerificationRejectedEmail,
-  sendTripCompletedEmail
+  sendTripCompletedEmail,
+  sendPasswordResetEmail
 } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1297,6 +1299,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ unreadCount: count });
     } catch (error) {
       res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        await storage.createPasswordResetToken(user.id, token, expiresAt);
+        const resetLink = `https://${req.get('host')}/reset-password?token=${token}`;
+        await sendPasswordResetEmail(user.email, user.name, resetLink);
+      }
+      res.json({ message: "If an account exists with that email, a password reset link has been sent." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(resetToken.userId, { password: hashedPassword });
+      await storage.markTokenUsed(token);
+      res.json({ message: "Password has been reset successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 

@@ -284,3 +284,39 @@ export async function sendTripCompletedEmail(
   
   return sendEmail({ to: renterEmail, subject, text, html });
 }
+
+export async function sendPasswordResetEmail(
+  email: string,
+  name: string,
+  resetLink: string
+): Promise<boolean> {
+  const subject = `Reset Your Password - ${RUSH_CONFIG.appName}`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7B801 100%); padding: 30px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Rush</h1>
+        <p style="color: white; margin: 10px 0 0 0;">Password Reset Request</p>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <h2 style="color: #333; margin-top: 0;">Hi ${name},</h2>
+        <p style="color: #666;">We received a request to reset your password. Click the button below to create a new password.</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background: #FF6B35; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Reset Your Password</a>
+        </div>
+        
+        <p style="color: #666; font-size: 14px;">This link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.</p>
+        <p style="color: #999; font-size: 12px; margin-top: 20px;">If the button doesn't work, copy and paste this link into your browser:<br>${resetLink}</p>
+      </div>
+      <div style="background: #333; padding: 20px; text-align: center;">
+        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
+        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
+      </div>
+    </div>
+  `;
+  
+  const text = `Hi ${name},\n\nWe received a request to reset your password. Visit the following link to create a new password:\n\n${resetLink}\n\nThis link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
+  
+  return sendEmail({ to: email, subject, text, html });
+}

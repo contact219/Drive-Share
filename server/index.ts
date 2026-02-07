@@ -173,6 +173,30 @@ function servePrivacyPage(res: Response) {
   res.status(200).send(privacyHtml);
 }
 
+function serveForgotPasswordPage(res: Response) {
+  const forgotPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "forgot-password.html",
+  );
+  const forgotHtml = fs.readFileSync(forgotPath, "utf-8");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(forgotHtml);
+}
+
+function serveResetPasswordPage(res: Response) {
+  const resetPath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "reset-password.html",
+  );
+  const resetHtml = fs.readFileSync(resetPath, "utf-8");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(resetHtml);
+}
+
 function configureExpoAndLanding(app: express.Application) {
   const templatePath = path.resolve(
     process.cwd(),
@@ -200,6 +224,14 @@ function configureExpoAndLanding(app: express.Application) {
 
     if (req.path === "/privacy") {
       return servePrivacyPage(res);
+    }
+
+    if (req.path === "/forgot-password") {
+      return serveForgotPasswordPage(res);
+    }
+
+    if (req.path === "/reset-password") {
+      return serveResetPasswordPage(res);
     }
 
     if (req.path !== "/" && req.path !== "/manifest") {
