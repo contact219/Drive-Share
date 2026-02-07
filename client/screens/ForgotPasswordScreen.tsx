@@ -55,10 +55,10 @@ export default function ForgotPasswordScreen() {
       }
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setStep("reset");
       Alert.alert(
         "Check Your Email",
-        "If an account exists with that email, we've sent a password reset code. Check your inbox and enter the code below.",
-        [{ text: "OK", onPress: () => setStep("reset") }]
+        "If an account exists with that email, we've sent a password reset code. Check your inbox and enter the code below."
       );
     } catch {
       Alert.alert("Error", "Something went wrong. Please try again.");
