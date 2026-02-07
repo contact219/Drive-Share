@@ -329,32 +329,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
-    try {
-      const { email, newPassword, securityAnswer } = req.body;
-      
-      if (!email || !newPassword) {
-        return res.status(400).json({ error: "Email and new password are required" });
-      }
-      
-      if (newPassword.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
-      }
-      
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(200).json({ message: "If an account exists, the password has been reset" });
-      }
-      
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(user.id, { password: hashedPassword });
-      
-      res.json({ message: "Password reset successfully" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to reset password" });
-    }
-  });
-
   app.get("/api/admin/vehicles", async (_req: Request, res: Response) => {
     try {
       const vehicles = await storage.getAllVehicles();
