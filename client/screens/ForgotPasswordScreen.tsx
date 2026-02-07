@@ -16,66 +16,104 @@ import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/query-client";
+import { getApiUrl } from "@/lib/query-client";
+
+type Step = "email" | "reset";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const { user } = useAuth();
 
-  const [email, setEmail] = useState(user?.email || "");
-  const [currentPassword, setCurrentPassword] = useState("");
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const isFormValid = email.length > 0 && 
-    currentPassword.length >= 6 && 
-    newPassword.length >= 6 && 
-    newPassword === confirmPassword;
+  const handleSendResetEmail = useCallback(async () => {
+    if (!email.trim()) {
+      Alert.alert("Missing Email", "Please enter your email address.");
+      return;
+    }
 
-  const handleChangePassword = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const baseUrl = getApiUrl();
+      const url = new URL("/api/auth/forgot-password", baseUrl);
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Request failed");
+      }
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Check Your Email",
+        "If an account exists with that email, we've sent a password reset code. Check your inbox and enter the code below.",
+        [{ text: "OK", onPress: () => setStep("reset") }]
+      );
+    } catch {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email]);
+
+  const handleResetPassword = useCallback(async () => {
+    if (!token.trim()) {
+      Alert.alert("Missing Code", "Please enter the reset code from your email.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       Alert.alert("Passwords Don't Match", "Please make sure your passwords match.");
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert("Invalid Password", "Password must be at least 6 characters.");
-      return;
-    }
-
     setIsLoading(true);
-
     try {
-      await apiRequest("POST", "/api/auth/change-password", { 
-        email, 
-        currentPassword, 
-        newPassword 
+      const baseUrl = getApiUrl();
+      const url = new URL("/api/auth/reset-password", baseUrl);
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token.trim(), newPassword }),
       });
-      
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Reset failed");
+      }
+
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        "Password Changed",
-        "Your password has been changed successfully.",
+        "Password Reset",
+        "Your password has been reset successfully. You can now sign in with your new password.",
         [{ text: "OK", onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to change password";
-      if (message.includes("401") || message.includes("incorrect")) {
-        Alert.alert("Error", "Current password is incorrect.");
+      const message = error instanceof Error ? error.message : "Failed to reset password";
+      if (message.includes("Invalid") || message.includes("expired")) {
+        Alert.alert("Invalid Code", "The reset code is invalid or has expired. Please request a new one.");
       } else {
-        Alert.alert("Error", "Failed to change password. Please try again.");
+        Alert.alert("Error", message);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [email, currentPassword, newPassword, confirmPassword, navigation]);
+  }, [token, newPassword, confirmPassword, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -86,148 +124,188 @@ export default function ForgotPasswordScreen() {
           { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
         ]}
       >
-        <Pressable onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.closeButton} hitSlop={8}>
           <Feather name="x" size={24} color={theme.text} />
         </Pressable>
 
-        <View style={styles.header}>
-          <ThemedText type="h1" style={styles.title}>
-            Change Password
-          </ThemedText>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Enter your current password and choose a new one
-          </ThemedText>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <ThemedText type="body" style={styles.label}>
-              Email
-            </ThemedText>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-              ]}
-            >
-              <Feather name="mail" size={20} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Enter your email"
-                placeholderTextColor={theme.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+        {step === "email" ? (
+          <>
+            <View style={styles.iconContainer}>
+              <View style={[styles.iconCircle, { backgroundColor: Colors.light.primary + "15" }]}>
+                <Feather name="mail" size={32} color={Colors.light.primary} />
+              </View>
             </View>
-          </View>
 
-          <View style={styles.inputContainer}>
-            <ThemedText type="body" style={styles.label}>
-              Current Password
-            </ThemedText>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-              ]}
-            >
-              <Feather name="lock" size={20} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Enter current password"
-                placeholderTextColor={theme.textSecondary}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry={!showCurrentPassword}
-                autoCapitalize="none"
-              />
-              <Pressable onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                <Feather
-                  name={showCurrentPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color={theme.textSecondary}
-                />
+            <View style={styles.header}>
+              <ThemedText type="h1" style={styles.title}>
+                Forgot Password?
+              </ThemedText>
+              <ThemedText type="body" style={{ color: theme.textSecondary, lineHeight: 22 }}>
+                Enter the email address associated with your account and we'll send you a code to reset your password.
+              </ThemedText>
+            </View>
+
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <ThemedText type="body" style={styles.label}>
+                  Email Address
+                </ThemedText>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                  ]}
+                >
+                  <Feather name="mail" size={20} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    placeholder="Enter your email"
+                    placeholderTextColor={theme.textSecondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                  />
+                </View>
+              </View>
+
+              <Button
+                onPress={handleSendResetEmail}
+                style={styles.submitButton}
+                disabled={!email.trim() || isLoading}
+              >
+                {isLoading ? "Sending..." : "Send Reset Code"}
+              </Button>
+
+              <Pressable onPress={() => navigation.goBack()} style={styles.backLink}>
+                <Feather name="arrow-left" size={16} color={Colors.light.primary} />
+                <ThemedText type="body" style={{ color: Colors.light.primary, marginLeft: Spacing.xs }}>
+                  Back to Sign In
+                </ThemedText>
               </Pressable>
             </View>
-          </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.iconContainer}>
+              <View style={[styles.iconCircle, { backgroundColor: Colors.light.primary + "15" }]}>
+                <Feather name="key" size={32} color={Colors.light.primary} />
+              </View>
+            </View>
 
-          <View style={styles.inputContainer}>
-            <ThemedText type="body" style={styles.label}>
-              New Password
-            </ThemedText>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-              ]}
-            >
-              <Feather name="lock" size={20} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Enter new password"
-                placeholderTextColor={theme.textSecondary}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry={!showNewPassword}
-                autoCapitalize="none"
-              />
-              <Pressable onPress={() => setShowNewPassword(!showNewPassword)}>
-                <Feather
-                  name={showNewPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color={theme.textSecondary}
-                />
+            <View style={styles.header}>
+              <ThemedText type="h1" style={styles.title}>
+                Reset Password
+              </ThemedText>
+              <ThemedText type="body" style={{ color: theme.textSecondary, lineHeight: 22 }}>
+                Enter the reset code from your email and choose a new password.
+              </ThemedText>
+            </View>
+
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <ThemedText type="body" style={styles.label}>
+                  Reset Code
+                </ThemedText>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                  ]}
+                >
+                  <Feather name="hash" size={20} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    placeholder="Paste the code from your email"
+                    placeholderTextColor={theme.textSecondary}
+                    value={token}
+                    onChangeText={setToken}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <ThemedText type="body" style={styles.label}>
+                  New Password
+                </ThemedText>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                  ]}
+                >
+                  <Feather name="lock" size={20} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    placeholder="At least 6 characters"
+                    placeholderTextColor={theme.textSecondary}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showNewPassword}
+                    autoCapitalize="none"
+                  />
+                  <Pressable onPress={() => setShowNewPassword(!showNewPassword)} hitSlop={8}>
+                    <Feather
+                      name={showNewPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <ThemedText type="body" style={styles.label}>
+                  Confirm Password
+                </ThemedText>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                  ]}
+                >
+                  <Feather name="lock" size={20} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={theme.textSecondary}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                  />
+                  <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} hitSlop={8}>
+                    <Feather
+                      name={showConfirmPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+
+              <Button
+                onPress={handleResetPassword}
+                style={styles.submitButton}
+                disabled={!token.trim() || newPassword.length < 6 || newPassword !== confirmPassword || isLoading}
+              >
+                {isLoading ? "Resetting..." : "Reset Password"}
+              </Button>
+
+              <Pressable onPress={() => setStep("email")} style={styles.backLink}>
+                <Feather name="arrow-left" size={16} color={Colors.light.primary} />
+                <ThemedText type="body" style={{ color: Colors.light.primary, marginLeft: Spacing.xs }}>
+                  Resend Code
+                </ThemedText>
               </Pressable>
             </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <ThemedText type="body" style={styles.label}>
-              Confirm New Password
-            </ThemedText>
-            <View
-              style={[
-                styles.inputWrapper,
-                { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-              ]}
-            >
-              <Feather name="lock" size={20} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder="Confirm new password"
-                placeholderTextColor={theme.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-              />
-              <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                <Feather
-                  name={showConfirmPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color={theme.textSecondary}
-                />
-              </Pressable>
-            </View>
-          </View>
-
-          <Button
-            onPress={handleChangePassword}
-            style={styles.submitButton}
-            disabled={!isFormValid || isLoading}
-          >
-            {isLoading ? "Please wait..." : "Change Password"}
-          </Button>
-
-          <View style={styles.helpSection}>
-            <ThemedText type="body" style={[styles.helpText, { color: theme.textSecondary }]}>
-              Forgot your password? Contact support to reset it.
-            </ThemedText>
-          </View>
-        </View>
+          </>
+        )}
       </KeyboardAwareScrollViewCompat>
     </View>
   );
@@ -245,7 +323,18 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: "flex-start",
+    marginBottom: Spacing.lg,
+  },
+  iconContainer: {
+    alignItems: "center",
     marginBottom: Spacing.xl,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: {
     marginBottom: Spacing["2xl"],
@@ -276,14 +365,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   submitButton: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
-  helpSection: {
-    marginTop: Spacing.lg,
+  backLink: {
+    flexDirection: "row",
     alignItems: "center",
-  },
-  helpText: {
-    textAlign: "center",
-    fontSize: 14,
+    justifyContent: "center",
+    marginTop: Spacing.md,
   },
 });

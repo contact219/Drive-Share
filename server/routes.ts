@@ -1285,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
         await storage.createPasswordResetToken(user.id, token, expiresAt);
         const resetLink = `https://${req.get('host')}/reset-password?token=${token}`;
-        await sendPasswordResetEmail(user.email, user.name, resetLink);
+        await sendPasswordResetEmail(user.email, user.name, resetLink, token);
       }
       res.json({ message: "If an account exists with that email, a password reset link has been sent." });
     } catch (error) {

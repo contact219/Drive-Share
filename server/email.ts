@@ -288,10 +288,20 @@ export async function sendTripCompletedEmail(
 export async function sendPasswordResetEmail(
   email: string,
   name: string,
-  resetLink: string
+  resetLink: string,
+  resetCode?: string
 ): Promise<boolean> {
   const subject = `Reset Your Password - ${RUSH_CONFIG.appName}`;
   
+  const codeSection = resetCode ? `
+        <p style="color: #666; margin-top: 20px;">Or enter this code in the ${RUSH_CONFIG.appName} app:</p>
+        <div style="text-align: center; margin: 15px 0;">
+          <div style="background: #fff; border: 2px dashed #FF6B35; padding: 16px 24px; border-radius: 8px; display: inline-block;">
+            <code style="font-size: 14px; font-weight: 700; color: #333; letter-spacing: 1px; word-break: break-all;">${resetCode}</code>
+          </div>
+        </div>
+  ` : '';
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7B801 100%); padding: 30px; text-align: center;">
@@ -305,8 +315,8 @@ export async function sendPasswordResetEmail(
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetLink}" style="background: #FF6B35; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Reset Your Password</a>
         </div>
-        
-        <p style="color: #666; font-size: 14px;">This link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.</p>
+        ${codeSection}
+        <p style="color: #666; font-size: 14px;">This code and link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.</p>
         <p style="color: #999; font-size: 12px; margin-top: 20px;">If the button doesn't work, copy and paste this link into your browser:<br>${resetLink}</p>
       </div>
       <div style="background: #333; padding: 20px; text-align: center;">
@@ -316,7 +326,8 @@ export async function sendPasswordResetEmail(
     </div>
   `;
   
-  const text = `Hi ${name},\n\nWe received a request to reset your password. Visit the following link to create a new password:\n\n${resetLink}\n\nThis link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
+  const codeText = resetCode ? `\n\nOr enter this code in the app: ${resetCode}` : '';
+  const text = `Hi ${name},\n\nWe received a request to reset your password. Visit the following link to create a new password:\n\n${resetLink}${codeText}\n\nThis code and link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.\n\nSupport: ${RUSH_CONFIG.supportEmail}\n\n- ${RUSH_CONFIG.appName} Team`;
   
   return sendEmail({ to: email, subject, text, html });
 }

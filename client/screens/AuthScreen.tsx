@@ -219,7 +219,7 @@ export default function AuthScreen() {
               style={styles.forgotPassword}
             >
               <ThemedText type="body" style={{ color: Colors.light.primary }}>
-                Change Password
+                Forgot Password?
               </ThemedText>
             </Pressable>
           ) : null}
