@@ -25,6 +25,7 @@
     <div id="login-screen" class="min-h-screen flex items-center justify-center">
       <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
         <div class="text-center mb-8">
+          <img src="/assets/images/icon.png?v=3" alt="Rush Enterprise" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 12px auto; display: block;" />
           <h1 class="text-3xl font-bold text-primary">Rush Admin</h1>
           <p class="text-gray-600 mt-2">Sign in to manage your fleet</p>
           <p class="text-xs text-gray-400 mt-1">Version 3.0 - Enhanced</p>
@@ -49,7 +50,10 @@
     <div id="dashboard-screen" class="hidden">
       <nav class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 class="text-2xl font-bold text-primary">Rush Admin</h1>
+          <div class="flex items-center gap-3">
+            <img src="/assets/images/icon.png?v=3" alt="Rush Enterprise" style="width: 40px; height: 40px; object-fit: contain;" />
+            <h1 class="text-2xl font-bold text-primary">Rush Admin</h1>
+          </div>
           <div class="flex items-center gap-4">
             <span id="admin-name" class="text-gray-600"></span>
             <button onclick="logout()" class="text-gray-500 hover:text-primary">Logout</button>
