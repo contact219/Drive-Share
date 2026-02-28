@@ -102,6 +102,16 @@ server/
 - **Earnings Tracking:** Total earnings and response rate display
 - **Database Tables:** `owner_profiles` and `owner_vehicles`
 
+### Social Sign-In (Apple & Google)
+- **Apple Sign-In:** Uses `expo-apple-authentication` — available on iOS devices only
+- **Google Sign-In:** Uses `expo-auth-session` with Google OAuth — requires `EXPO_PUBLIC_GOOGLE_CLIENT_ID` env var
+- **Backend Verification:** Server-side token verification via `/api/auth/social` endpoint
+  - Google: Validates access token against Google userinfo API
+  - Apple: Decodes and validates Apple identity token JWT
+- **Security:** Tokens are verified server-side; email is extracted from provider, not trusted from client
+- **Account Creation:** Social auth users get auto-created accounts with random secure passwords
+- **Platform Behavior:** Apple button only shows on iOS; Google shows inline setup message if client ID not configured
+
 ### Email Notifications (SendGrid Integration)
 - **Service:** `server/email.ts` with SendGrid SDK integration
 - **Templates:** Professional HTML email templates for all notifications

@@ -37,6 +37,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, name: string, password: string) => Promise<void>;
+  socialLogin: (provider: string, token: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   refresh: () => Promise<void>;
@@ -114,6 +115,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(true);
   }, []);
 
+  const socialLogin = useCallback(async (provider: string, token: string, name?: string): Promise<void> => {
+    const url = new URL("/api/auth/social", getApiUrl());
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, token, name }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Social authentication failed");
+    }
+
+    const apiUser: ApiUser = await response.json();
+    const transformedUser = transformApiUser(apiUser);
+
+    await storage.setUser(transformedUser);
+    await storage.setIsAuthenticated(true);
+    setUser(transformedUser);
+    setIsAuthenticated(true);
+  }, []);
+
   const logout = useCallback(async () => {
     await storage.clearUser();
     await storage.setIsAuthenticated(false);
@@ -137,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         login,
         register,
+        socialLogin,
         logout,
         updateUser,
         refresh: checkAuth,

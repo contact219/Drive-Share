@@ -1,5 +1,11 @@
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
@@ -1482,6 +1488,64 @@ async function registerRoutes(app2) {
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ error: "Failed to login" });
+    }
+  });
+  app2.post("/api/auth/social", async (req, res) => {
+    try {
+      const { provider, token, name: clientName } = req.body;
+      if (!provider || !token) {
+        return res.status(400).json({ error: "Provider and token are required" });
+      }
+      if (!["apple", "google"].includes(provider)) {
+        return res.status(400).json({ error: "Invalid provider" });
+      }
+      let verifiedEmail = null;
+      let verifiedName = clientName || null;
+      if (provider === "google") {
+        const googleRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!googleRes.ok) {
+          return res.status(401).json({ error: "Invalid Google token" });
+        }
+        const googleUser = await googleRes.json();
+        verifiedEmail = googleUser.email || null;
+        verifiedName = verifiedName || googleUser.name || null;
+      } else if (provider === "apple") {
+        try {
+          const parts = token.split(".");
+          if (parts.length !== 3) {
+            return res.status(401).json({ error: "Invalid Apple token format" });
+          }
+          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+          if (!payload.email || payload.iss !== "https://appleid.apple.com") {
+            return res.status(401).json({ error: "Invalid Apple token" });
+          }
+          verifiedEmail = payload.email;
+        } catch {
+          return res.status(401).json({ error: "Failed to verify Apple token" });
+        }
+      }
+      if (!verifiedEmail) {
+        return res.status(400).json({ error: "Could not verify email from provider" });
+      }
+      let user = await storage.getUserByEmail(verifiedEmail);
+      if (!user) {
+        const randomPassword = await bcrypt.hash(
+          __require("crypto").randomBytes(32).toString("hex"),
+          10
+        );
+        user = await storage.createUser({
+          email: verifiedEmail,
+          name: verifiedName || verifiedEmail.split("@")[0],
+          password: randomPassword
+        });
+      }
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Social auth error:", error);
+      res.status(500).json({ error: "Social authentication failed" });
     }
   });
   app2.get("/api/users/:id/trips", async (req, res) => {
