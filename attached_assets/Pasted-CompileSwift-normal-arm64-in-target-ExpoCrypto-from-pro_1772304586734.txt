@@ -1,0 +1,73 @@
+CompileSwift normal arm64 (in target 'ExpoCrypto' from project 'Pods')
+› Executing expo-font Pods/ExpoFont » Copy generated compatibility header
+
+❌  (node_modules/expo-crypto/ios/AES/AesCryptoModule.swift:66:7)
+
+  64 | 
+  65 |     Class("EncryptionKey", EncryptionKey.self) {
+> 66 |       StaticAsyncFunction("generate", self.generateKey)
+     |       ^ cannot find 'StaticAsyncFunction' in scope
+  67 |       StaticAsyncFunction("import", self.importKey)
+  68 | 
+  69 |       AsyncFunction("bytes") { (key: EncryptionKey) in key.bytes }
+
+❌  (node_modules/expo-crypto/ios/AES/AesCryptoModule.swift:67:7)
+
+  65 |     Class("EncryptionKey", EncryptionKey.self) {
+  66 |       StaticAsyncFunction("generate", self.generateKey)
+> 67 |       StaticAsyncFunction("import", self.importKey)
+     |       ^ cannot find 'StaticAsyncFunction' in scope
+  68 | 
+  69 |       AsyncFunction("bytes") { (key: EncryptionKey) in key.bytes }
+  70 |       AsyncFunction("encoded") { (key: EncryptionKey, encoding: DataEncoding) in
+
+❌  (node_modules/expo-crypto/ios/AES/AesCryptoModule.swift:78:7)
+
+  76 | 
+  77 |     Class("SealedData", SealedData.self) {
+> 78 |       StaticFunction("fromCombined") { (combined: BinaryInput, config: SealedDataConfig?) in
+     |       ^ cannot find 'StaticFunction' in scope
+  79 |         let config = config ?? SealedDataConfig()
+  80 | 
+  81 |         return try SealedData(
+
+❌  (node_modules/expo-crypto/ios/AES/AesCryptoModule.swift:87:7)
+
+  85 |         )
+  86 |       }
+> 87 |       StaticFunction("fromParts") { (iv: BinaryInput, ciphertext: BinaryInput, tag: Either<Data, Int>?) in
+     |       ^ cannot find 'StaticFunction' in scope
+  88 |         if let tagData: Data = tag?.get() {
+  89 |           return try SealedData(
+  90 |             iv: iv.intoData(),
+› Compiling expo-image-picker Pods/ExpoImagePicker » ExpoImagePicker-dummy.m
+› Packaging expo-image-picker Pods/ExpoImagePicker » libExpoImagePicker.a
+› Executing expo-image-picker Pods/ExpoImagePicker » Copy generated compatibility header
+› Compiling expo-device Pods/ExpoDevice » ExpoDevice-dummy.m
+› Packaging expo-device Pods/ExpoDevice » libExpoDevice.a
+› Executing expo-device Pods/ExpoDevice » Copy generated compatibility header
+› Compiling expo-blur Pods/ExpoBlur » ExpoBlur-dummy.m
+› Packaging expo-blur Pods/ExpoBlur » libExpoBlur.a
+› Executing expo-blur Pods/ExpoBlur » Copy generated compatibility header
+    Run script build phase '[CP-User] [Hermes] Replace Hermes for the right configuration, if needed' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'hermes-engine' from project 'Pods')
+    Run script build phase '[CP-User] react-native-maps patches' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'react-native-maps' from project 'Pods')
+▸ 	Archiving workspace RushEnterprise with scheme RushEnterprise
+▸ (3 failures)
+Exit status: 65
++---------------------------------------+
+|           Build environment           |
++-------------+-------------------------+
+| xcode_path  | /Applications/Xcode.app |
+| gym_version | 2.228.0                 |
+| sdk         | iPhoneOS26.0.sdk        |
++-------------+-------------------------+
+Looks like fastlane ran into a build/archive error with your project
+It's hard to tell what's causing the error, so we wrote some guides on how
+to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/
+Before submitting an issue on GitHub, please follow the guide above and make
+sure your project is set up correctly.
+fastlane uses `xcodebuild` commands to generate your binary, you can see the
+the full commands printed out in yellow in the above log.
+Make sure to inspect the output above, as usually you'll find more error information there
+[!] Error building the application - see the log above
+fastlane gym exited with non-zero code: 1

@@ -8,7 +8,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
+import "react-native-get-random-values";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -94,10 +94,9 @@ export default function AuthScreen() {
 
     setSocialLoading("Apple");
     try {
-      const nonce = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        Crypto.getRandomBytes(32).toString()
-      );
+      const randomBytes = new Uint8Array(32);
+      crypto.getRandomValues(randomBytes);
+      const nonce = Array.from(randomBytes).map(b => b.toString(16).padStart(2, "0")).join("");
 
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
