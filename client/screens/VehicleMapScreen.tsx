@@ -64,6 +64,10 @@ export default function VehicleMapScreen() {
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (!Location || Platform.OS === "web") {
+      setLocationPermission(false);
+      return;
+    }
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationPermission(status === "granted");

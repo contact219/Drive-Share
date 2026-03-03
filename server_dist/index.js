@@ -2861,67 +2861,42 @@ function serveExpoManifest(platform, res) {
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
+function serveHtmlFile(res, content) {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.status(200).send(content);
+}
+function readTemplate(filename) {
+  const filePath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    filename
+  );
+  return fs.readFileSync(filePath, "utf-8");
+}
 function serveLandingPage({
   res,
   landingPageTemplate
 }) {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(landingPageTemplate);
+  serveHtmlFile(res, landingPageTemplate);
 }
 function serveAdminDashboard(res) {
-  const adminPath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "admin.html"
-  );
-  const adminHtml = fs.readFileSync(adminPath, "utf-8");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(adminHtml);
+  serveHtmlFile(res, readTemplate("admin.html"));
 }
 function serveTermsPage(res) {
-  const termsPath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "terms.html"
-  );
-  const termsHtml = fs.readFileSync(termsPath, "utf-8");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(termsHtml);
+  serveHtmlFile(res, readTemplate("terms.html"));
 }
 function servePrivacyPage(res) {
-  const privacyPath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "privacy.html"
-  );
-  const privacyHtml = fs.readFileSync(privacyPath, "utf-8");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(privacyHtml);
+  serveHtmlFile(res, readTemplate("privacy.html"));
 }
 function serveForgotPasswordPage(res) {
-  const forgotPath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "forgot-password.html"
-  );
-  const forgotHtml = fs.readFileSync(forgotPath, "utf-8");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(forgotHtml);
+  serveHtmlFile(res, readTemplate("forgot-password.html"));
 }
 function serveResetPasswordPage(res) {
-  const resetPath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "reset-password.html"
-  );
-  const resetHtml = fs.readFileSync(resetPath, "utf-8");
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(resetHtml);
+  serveHtmlFile(res, readTemplate("reset-password.html"));
 }
 function configureExpoAndLanding(app2) {
   const templatePath = path.resolve(

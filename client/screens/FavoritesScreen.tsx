@@ -41,7 +41,7 @@ export default function FavoritesScreen() {
   );
 
   const handleBrowse = useCallback(() => {
-    navigation.getParent()?.navigate("Browse");
+    (navigation as any).navigate("Browse");
   }, [navigation]);
 
   const renderVehicle = useCallback(

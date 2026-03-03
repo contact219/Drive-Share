@@ -24,7 +24,7 @@ export interface Vehicle {
   ownerId?: string;
 }
 
-export type VehicleType = "sedan" | "suv" | "electric" | "luxury" | "compact" | "truck" | "van";
+export type VehicleType = "sedan" | "suv" | "electric" | "luxury" | "compact" | "truck" | "van" | "sports";
 
 export interface Trip {
   id: string;
@@ -80,4 +80,5 @@ export const VEHICLE_TYPES: { label: string; value: VehicleType }[] = [
   { label: "Compact", value: "compact" },
   { label: "Truck", value: "truck" },
   { label: "Van", value: "van" },
+  { label: "Sports", value: "sports" },
 ];
