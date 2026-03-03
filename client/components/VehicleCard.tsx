@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -78,11 +78,10 @@ export function VehicleCard({
           style={styles.compactFavoriteButton}
           hitSlop={8}
         >
-          <Feather
-            name={isFavorite ? "heart" : "heart"}
-            size={18}
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            size={20}
             color={isFavorite ? Colors.light.error : theme.textSecondary}
-            style={{ opacity: isFavorite ? 1 : 0.6 }}
           />
         </Pressable>
         <View style={styles.compactContent}>
@@ -124,11 +123,10 @@ export function VehicleCard({
           style={[styles.favoriteButton, { backgroundColor: theme.backgroundRoot }]}
           hitSlop={8}
         >
-          <Feather
-            name="heart"
-            size={20}
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            size={22}
             color={isFavorite ? Colors.light.error : theme.textSecondary}
-            style={{ opacity: isFavorite ? 1 : 0.6 }}
           />
         </Pressable>
         <View style={[styles.typeBadge, { backgroundColor: Colors.light.primary }]}>

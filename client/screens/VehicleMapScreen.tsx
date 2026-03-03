@@ -3,7 +3,7 @@ import { StyleSheet, View, Pressable, Platform, ActivityIndicator, ViewStyle, Sc
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -311,9 +311,9 @@ export default function VehicleMapScreen() {
               style={styles.favoriteButton}
               onPress={() => toggleFavorite(selectedVehicle.id)}
             >
-              <Feather
-                name={isFavorite(selectedVehicle.id) ? "heart" : "heart"}
-                size={20}
+              <Ionicons
+                name={isFavorite(selectedVehicle.id) ? "heart" : "heart-outline"}
+                size={22}
                 color={isFavorite(selectedVehicle.id) ? Colors.light.error : theme.textSecondary}
               />
             </Pressable>

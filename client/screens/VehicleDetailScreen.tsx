@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Image } from "expo-image";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -123,8 +123,8 @@ export default function VehicleDetailScreen() {
               { backgroundColor: theme.backgroundRoot, top: insets.top + Spacing.md },
             ]}
           >
-            <Feather
-              name="heart"
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
               size={24}
               color={isFav ? Colors.light.error : theme.textSecondary}
             />
