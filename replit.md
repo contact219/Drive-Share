@@ -217,3 +217,7 @@ server/
   - Notification preferences: 6 toggles (push, booking, reminders, promotions, email, sms) persist
   - Default Location: Saved locations with GPS via expo-location, proper permission handling with Open Settings fallback
   - Settings screen shows current values dynamically from context
+  - i18n system (`client/lib/i18n.ts`) with translations for 9 languages (en, es, fr, de, it, pt, zh, ja, ko)
+  - Browse screen, Favorites screen, and VehicleCard text dynamically translated based on language setting
+  - Browse screen location text reads from saved default location instead of hardcoded "San Francisco, CA"
+  - Map screen shows scrollable vehicle list fallback on web (instead of blank/broken page)

@@ -13,6 +13,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { Vehicle } from "@/types";
+import { useSettings } from "@/contexts/SettingsContext";
+import { t } from "@/lib/i18n";
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -39,6 +41,7 @@ export function VehicleCard({
   compact = false,
 }: VehicleCardProps) {
   const { theme, isDark } = useTheme();
+  const { settings } = useSettings();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -158,7 +161,7 @@ export function VehicleCard({
           <View style={styles.infoItem}>
             <Feather name="users" size={14} color={theme.textSecondary} />
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              {vehicle.seats} seats
+              {vehicle.seats} {t("vehicle_seats", settings.language)}
             </ThemedText>
           </View>
           <View style={styles.infoItem}>
@@ -179,7 +182,7 @@ export function VehicleCard({
               ${vehicle.pricePerHour}
             </ThemedText>
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              /hour
+              {t("vehicle_per_hour", settings.language)}
             </ThemedText>
           </View>
           <View
@@ -189,7 +192,7 @@ export function VehicleCard({
             ]}
           >
             <ThemedText type="small" style={styles.bookButtonText}>
-              View Details
+              {t("vehicle_view_details", settings.language)}
             </ThemedText>
           </View>
         </View>

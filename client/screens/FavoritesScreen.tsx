@@ -15,6 +15,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 import { Vehicle } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useSettings } from "@/contexts/SettingsContext";
+import { t } from "@/lib/i18n";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,6 +27,7 @@ export default function FavoritesScreen() {
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const { data: vehicles = [], isLoading } = useVehicles();
   const { theme } = useTheme();
+  const { settings } = useSettings();
 
   const favoriteVehicles = useMemo(() => {
     return vehicles.filter((v) => favorites.includes(v.id));
@@ -61,9 +64,9 @@ export default function FavoritesScreen() {
   const ListEmpty = (
     <EmptyState
       icon="heart"
-      title="No Favorites Yet"
-      message="Save vehicles you like by tapping the heart icon while browsing."
-      actionLabel="Browse Vehicles"
+      title={t("favorites_empty_title", settings.language)}
+      message={t("favorites_empty_message", settings.language)}
+      actionLabel={t("favorites_browse", settings.language)}
       onAction={handleBrowse}
     />
   );
@@ -85,10 +88,10 @@ export default function FavoritesScreen() {
           { paddingTop: insets.top + Spacing.xl },
         ]}
       >
-        <ThemedText type="h1">Favorites</ThemedText>
+        <ThemedText type="h1">{t("favorites_title", settings.language)}</ThemedText>
         {favoriteVehicles.length > 0 ? (
           <ThemedText type="small" style={styles.count}>
-            {favoriteVehicles.length} saved vehicle{favoriteVehicles.length !== 1 ? "s" : ""}
+            {favoriteVehicles.length} {t("favorites_saved", settings.language)}{favoriteVehicles.length !== 1 ? "s" : ""}
           </ThemedText>
         ) : null}
       </View>

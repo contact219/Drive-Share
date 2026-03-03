@@ -18,6 +18,8 @@ import { useVehicles } from "@/hooks/useVehicles";
 import { Colors, Spacing } from "@/constants/theme";
 import { VEHICLE_TYPES, Vehicle } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useSettings } from "@/contexts/SettingsContext";
+import { t } from "@/lib/i18n";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -78,6 +80,7 @@ export default function BrowseScreen() {
   const { theme } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { data: vehicles = [], isLoading } = useVehicles();
+  const { settings } = useSettings();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -154,7 +157,7 @@ export default function BrowseScreen() {
     () => (
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <ThemedText type="h1">Find Your Ride</ThemedText>
+          <ThemedText type="h1">{t("browse_title", settings.language)}</ThemedText>
           <Pressable
             style={[styles.mapButton, { backgroundColor: theme.backgroundDefault }]}
             onPress={handleMapPress}
@@ -163,15 +166,16 @@ export default function BrowseScreen() {
           </Pressable>
         </View>
         <View style={styles.locationRow}>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            San Francisco, CA
+          <Feather name="map-pin" size={14} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+            {settings.savedLocations.find(l => l.isDefault)?.address || t("browse_set_location", settings.language)}
           </ThemedText>
         </View>
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
           onFilterPress={handleFilterPress}
-          placeholder="Search by make, model..."
+          placeholder={t("browse_search", settings.language)}
         />
         <ScrollView
           horizontal

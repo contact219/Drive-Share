@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { StyleSheet, View, Pressable, Platform, ActivityIndicator, ViewStyle } from "react-native";
+import { StyleSheet, View, Pressable, Platform, ActivityIndicator, ViewStyle, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -132,24 +132,53 @@ export default function VehicleMapScreen() {
 
   if (Platform.OS === "web" || (Platform.OS === "android" && isExpoGo)) {
     return (
-      <ThemedView style={[styles.container, styles.centered]}>
-        <Feather name="map-pin" size={48} color={theme.textSecondary} />
-        <ThemedText type="h3" style={{ marginTop: Spacing.lg, textAlign: "center" }}>
-          Map View
-        </ThemedText>
-        <ThemedText style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm, paddingHorizontal: Spacing.xl }}>
-          {Platform.OS === "android" 
-            ? "Maps require a development build on Android. Browse vehicles from the main screen instead."
-            : "Run in Expo Go on your device to use the map feature"}
-        </ThemedText>
-        <Pressable
-          style={[styles.backToListButton, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.goBack()}
-        >
-          <ThemedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
-            Back to Vehicle List
+      <ThemedView style={styles.container}>
+        <View style={[styles.webFallbackHeader, { paddingTop: insets.top + Spacing.md }]}>
+          <Pressable onPress={() => navigation.goBack()} style={{ padding: Spacing.xs }}>
+            <Feather name="arrow-left" size={24} color={theme.text} />
+          </Pressable>
+          <ThemedText type="h3">Nearby Vehicles</ThemedText>
+          <View style={{ width: 32 }} />
+        </View>
+        <View style={[styles.webFallbackBanner, { backgroundColor: Colors.light.primary + "15" }]}>
+          <Feather name="map" size={20} color={Colors.light.primary} />
+          <ThemedText type="small" style={{ color: Colors.light.primary, marginLeft: Spacing.sm, flex: 1 }}>
+            {Platform.OS === "android"
+              ? "Map view requires a development build on Android."
+              : "Map view is available in Expo Go on your mobile device."}
           </ThemedText>
-        </Pressable>
+        </View>
+        {isLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + Spacing.xl }}>
+            {vehicles.filter(v => v.available).map((vehicle) => (
+              <Pressable
+                key={vehicle.id}
+                style={[styles.webVehicleItem, { backgroundColor: theme.backgroundDefault }]}
+                onPress={() => navigation.navigate("VehicleDetail", { vehicleId: vehicle.id })}
+              >
+                <Image
+                  source={{ uri: vehicle.imageUrl }}
+                  style={styles.webVehicleImage}
+                  contentFit="cover"
+                />
+                <View style={styles.webVehicleInfo}>
+                  <ThemedText type="h4" numberOfLines={1}>{vehicle.name}</ThemedText>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    {vehicle.location?.address || "Location available"}
+                  </ThemedText>
+                  <ThemedText type="h4" style={{ color: Colors.light.primary, marginTop: 4 }}>
+                    ${vehicle.pricePerHour}/hr
+                  </ThemedText>
+                </View>
+                <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </ThemedView>
     );
   }
@@ -399,5 +428,36 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     padding: Spacing.sm,
+  },
+  webFallbackHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.md,
+  },
+  webFallbackBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+  },
+  webVehicleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+  },
+  webVehicleImage: {
+    width: 80,
+    height: 60,
+    borderRadius: BorderRadius.md,
+  },
+  webVehicleInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
   },
 });
