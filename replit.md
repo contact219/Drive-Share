@@ -210,3 +210,10 @@ server/
   - Earnings section explaining 90% host payout model
   - Terms of Service page (/terms)
   - Privacy Policy page (/privacy) with GDPR/CCPA compliance
+- Persisted Settings (March 2026):
+  - SettingsContext with AsyncStorage persistence (`client/contexts/SettingsContext.tsx`)
+  - Theme/Appearance: System Default, Light Mode, Dark Mode — persists and applies globally via useColorScheme hook
+  - Language: Selection persists across restarts (9 languages available)
+  - Notification preferences: 6 toggles (push, booking, reminders, promotions, email, sms) persist
+  - Default Location: Saved locations with GPS via expo-location, proper permission handling with Open Settings fallback
+  - Settings screen shows current values dynamically from context

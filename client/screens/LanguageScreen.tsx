@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 
 interface LanguageOption {
@@ -31,11 +32,11 @@ export default function LanguageScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const { settings, setLanguage } = useSettings();
 
   const handleSelectLanguage = useCallback((langId: string) => {
-    setSelectedLanguage(langId);
-  }, []);
+    setLanguage(langId);
+  }, [setLanguage]);
 
   return (
     <ThemedView style={styles.container}>
@@ -64,7 +65,7 @@ export default function LanguageScreen() {
             style={[
               styles.languageItem,
               { backgroundColor: theme.backgroundDefault },
-              selectedLanguage === lang.id && { borderColor: Colors.light.primary, borderWidth: 2 },
+              settings.language === lang.id && { borderColor: Colors.light.primary, borderWidth: 2 },
             ]}
             onPress={() => handleSelectLanguage(lang.id)}
           >
@@ -74,13 +75,20 @@ export default function LanguageScreen() {
                 {lang.nativeName}
               </ThemedText>
             </View>
-            {selectedLanguage === lang.id ? (
+            {settings.language === lang.id ? (
               <Feather name="check-circle" size={24} color={Colors.light.primary} />
             ) : (
               <Feather name="circle" size={24} color={theme.textSecondary} />
             )}
           </Pressable>
         ))}
+
+        <View style={[styles.infoBox, { backgroundColor: Colors.light.primary + "15" }]}>
+          <Feather name="info" size={20} color={Colors.light.primary} />
+          <ThemedText type="small" style={[styles.infoText, { color: theme.textSecondary }]}>
+            Language preference is saved automatically. App content will use your selected language where available.
+          </ThemedText>
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -119,5 +127,16 @@ const styles = StyleSheet.create({
   },
   languageInfo: {
     flex: 1,
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+  },
+  infoText: {
+    flex: 1,
+    marginLeft: Spacing.sm,
   },
 });

@@ -10,8 +10,27 @@ import { ThemedView } from "@/components/ThemedView";
 import { SettingsItem } from "@/components/SettingsItem";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { useSettings } from "@/contexts/SettingsContext";
 import { clearAllData } from "@/lib/storage";
 import { Spacing } from "@/constants/theme";
+
+const THEME_LABELS: Record<string, string> = {
+  system: "System default",
+  light: "Light mode",
+  dark: "Dark mode",
+};
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -20,6 +39,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { logout, user } = useAuth();
+  const { settings } = useSettings();
 
   const handleAppearance = useCallback(() => {
     navigation.navigate("Appearance");
@@ -111,19 +131,19 @@ export default function SettingsScreen() {
         <SettingsItem
           icon="moon"
           title="Appearance"
-          subtitle="System default"
+          subtitle={THEME_LABELS[settings.theme] || "System default"}
           onPress={handleAppearance}
         />
         <SettingsItem
           icon="globe"
           title="Language"
-          value="English"
+          value={LANGUAGE_LABELS[settings.language] || "English"}
           onPress={handleLanguage}
         />
         <SettingsItem
           icon="map-pin"
           title="Default Location"
-          subtitle="San Francisco, CA"
+          subtitle={settings.savedLocations.find(l => l.isDefault)?.address || "Not set"}
           onPress={handleLocation}
         />
 

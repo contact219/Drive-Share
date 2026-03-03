@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -7,12 +7,11 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
+import { useSettings, ThemePreference } from "@/contexts/SettingsContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 
-type ThemeOption = "system" | "light" | "dark";
-
 interface ThemeOptionItem {
-  id: ThemeOption;
+  id: ThemePreference;
   title: string;
   icon: string;
 }
@@ -27,11 +26,11 @@ export default function AppearanceScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const [selectedTheme, setSelectedTheme] = useState<ThemeOption>("system");
+  const { settings, setTheme } = useSettings();
 
-  const handleSelectTheme = useCallback((themeId: ThemeOption) => {
-    setSelectedTheme(themeId);
-  }, []);
+  const handleSelectTheme = useCallback((themeId: ThemePreference) => {
+    setTheme(themeId);
+  }, [setTheme]);
 
   return (
     <ThemedView style={styles.container}>
@@ -60,7 +59,7 @@ export default function AppearanceScreen() {
             style={[
               styles.optionItem,
               { backgroundColor: theme.backgroundDefault },
-              selectedTheme === option.id && { borderColor: Colors.light.primary, borderWidth: 2 },
+              settings.theme === option.id && { borderColor: Colors.light.primary, borderWidth: 2 },
             ]}
             onPress={() => handleSelectTheme(option.id)}
           >
@@ -70,7 +69,7 @@ export default function AppearanceScreen() {
             <ThemedText type="body" style={styles.optionText}>
               {option.title}
             </ThemedText>
-            {selectedTheme === option.id ? (
+            {settings.theme === option.id ? (
               <Feather name="check-circle" size={24} color={Colors.light.primary} />
             ) : (
               <Feather name="circle" size={24} color={theme.textSecondary} />

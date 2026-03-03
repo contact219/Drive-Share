@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, Switch, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -7,64 +7,33 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
+import { useSettings, NotificationPrefs } from "@/contexts/SettingsContext";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 
-interface NotificationSetting {
-  id: string;
+interface NotificationSettingItem {
+  id: keyof NotificationPrefs;
   title: string;
   description: string;
-  enabled: boolean;
 }
+
+const NOTIFICATION_SETTINGS: NotificationSettingItem[] = [
+  { id: "push", title: "Push Notifications", description: "Receive alerts on your device" },
+  { id: "booking", title: "Booking Updates", description: "Get notified about your trip status" },
+  { id: "reminders", title: "Trip Reminders", description: "Reminders before your trip starts" },
+  { id: "promotions", title: "Promotions & Offers", description: "Special deals and discounts" },
+  { id: "email", title: "Email Notifications", description: "Receive updates via email" },
+  { id: "sms", title: "SMS Alerts", description: "Important alerts via text message" },
+];
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { settings, setNotificationPref } = useSettings();
 
-  const [settings, setSettings] = useState<NotificationSetting[]>([
-    {
-      id: "push",
-      title: "Push Notifications",
-      description: "Receive alerts on your device",
-      enabled: true,
-    },
-    {
-      id: "booking",
-      title: "Booking Updates",
-      description: "Get notified about your trip status",
-      enabled: true,
-    },
-    {
-      id: "reminders",
-      title: "Trip Reminders",
-      description: "Reminders before your trip starts",
-      enabled: true,
-    },
-    {
-      id: "promotions",
-      title: "Promotions & Offers",
-      description: "Special deals and discounts",
-      enabled: false,
-    },
-    {
-      id: "email",
-      title: "Email Notifications",
-      description: "Receive updates via email",
-      enabled: true,
-    },
-    {
-      id: "sms",
-      title: "SMS Alerts",
-      description: "Important alerts via text message",
-      enabled: false,
-    },
-  ]);
-
-  const toggleSetting = useCallback((id: string) => {
-    setSettings(prev =>
-      prev.map(s => (s.id === id ? { ...s, enabled: !s.enabled } : s))
-    );
-  }, []);
+  const toggleSetting = useCallback((id: keyof NotificationPrefs) => {
+    setNotificationPref(id, !settings.notificationPrefs[id]);
+  }, [settings.notificationPrefs, setNotificationPref]);
 
   return (
     <ThemedView style={styles.container}>
@@ -87,7 +56,7 @@ export default function NotificationsScreen() {
           Alert Preferences
         </ThemedText>
 
-        {settings.map((setting) => (
+        {NOTIFICATION_SETTINGS.map((setting) => (
           <View
             key={setting.id}
             style={[styles.settingItem, { backgroundColor: theme.backgroundDefault }]}
@@ -99,7 +68,7 @@ export default function NotificationsScreen() {
               </ThemedText>
             </View>
             <Switch
-              value={setting.enabled}
+              value={settings.notificationPrefs[setting.id]}
               onValueChange={() => toggleSetting(setting.id)}
               trackColor={{ false: theme.textSecondary, true: Colors.light.primary }}
               thumbColor="#fff"
@@ -110,7 +79,7 @@ export default function NotificationsScreen() {
         <View style={[styles.infoBox, { backgroundColor: Colors.light.primary + "15" }]}>
           <Feather name="info" size={20} color={Colors.light.primary} />
           <ThemedText type="small" style={[styles.infoText, { color: theme.textSecondary }]}>
-            You can also manage notification permissions in your device settings.
+            Your notification preferences are saved automatically. You can also manage notification permissions in your device settings.
           </ThemedText>
         </View>
       </ScrollView>
