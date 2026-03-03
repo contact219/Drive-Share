@@ -26,10 +26,11 @@ const isExpoGo = Constants.appOwnership === "expo";
 
 if (Platform.OS !== "web") {
   try {
-    MapView = require("react-native-maps").default;
-    Marker = require("react-native-maps").Marker;
+    const maps = require("react-native-maps");
+    MapView = maps.default || maps.MapView || maps;
+    Marker = maps.Marker;
     Location = require("expo-location");
-    mapsAvailable = true;
+    mapsAvailable = !!(MapView && Marker);
   } catch (e) {
     mapsAvailable = false;
   }
@@ -134,7 +135,7 @@ export default function VehicleMapScreen() {
     setSelectedVehicle(null);
   }, []);
 
-  if (Platform.OS === "web" || (Platform.OS === "android" && isExpoGo)) {
+  if (Platform.OS === "web" || (Platform.OS === "android" && isExpoGo) || !mapsAvailable) {
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.webFallbackHeader, { paddingTop: insets.top + Spacing.md }]}>
@@ -149,6 +150,8 @@ export default function VehicleMapScreen() {
           <ThemedText type="small" style={{ color: Colors.light.primary, marginLeft: Spacing.sm, flex: 1 }}>
             {Platform.OS === "android"
               ? "Map view requires a development build on Android."
+              : !mapsAvailable && Platform.OS === "ios"
+              ? "Map view could not load. Please restart the app or check your connection."
               : "Map view is available in Expo Go on your mobile device."}
           </ThemedText>
         </View>
