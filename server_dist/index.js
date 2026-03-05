@@ -2031,6 +2031,11 @@ async function registerRoutes(app2) {
         vehicleId: vehicle.id,
         listingStatus: "pending"
       });
+      await storage.createVerification({
+        vehicleId: vehicle.id,
+        ownerId,
+        status: "pending"
+      });
       res.status(201).json({ vehicle, ownerVehicle });
     } catch (error) {
       console.error("Create owner vehicle error:", error);

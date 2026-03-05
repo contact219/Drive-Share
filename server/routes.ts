@@ -733,6 +733,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vehicleId: vehicle.id,
         listingStatus: "pending",
       });
+
+      await storage.createVerification({
+        vehicleId: vehicle.id,
+        ownerId: ownerId,
+        status: "pending",
+      });
       
       res.status(201).json({ vehicle, ownerVehicle });
     } catch (error) {
