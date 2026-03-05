@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { StyleSheet, View, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
@@ -52,6 +52,7 @@ export default function OwnerDashboardScreen() {
       return response.json();
     },
     enabled: !!user?.id,
+    staleTime: 0,
   });
 
   const { data: ownerVehicles = [], isLoading: isLoadingVehicles } = useQuery<OwnerVehicle[]>({
@@ -65,7 +66,17 @@ export default function OwnerDashboardScreen() {
       return response.json();
     },
     enabled: !!ownerProfile?.id,
+    staleTime: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/profile"] });
+      if (ownerProfile?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/owner", ownerProfile.id, "vehicles"] });
+      }
+    }, [queryClient, ownerProfile?.id])
+  );
 
   const handleBecomeHost = useCallback(async () => {
     if (!user?.id) return;
