@@ -2013,8 +2013,21 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/owner/:ownerId/vehicles", async (req, res) => {
     try {
-      const ownerVehicles2 = await storage.getOwnerVehicles(req.params.ownerId);
-      res.json(ownerVehicles2);
+      const ownerVehicleList = await storage.getOwnerVehicles(req.params.ownerId);
+      const enriched = await Promise.all(
+        ownerVehicleList.map(async (ov) => {
+          const vehicle = await storage.getVehicle(ov.vehicleId);
+          const verifications = await storage.getAllVerifications();
+          const verification = verifications.find((v) => v.vehicleId === ov.vehicleId);
+          return {
+            ...ov,
+            vehicle: vehicle || null,
+            verificationStatus: verification?.status || null,
+            verificationNotes: verification?.reviewerNotes || null
+          };
+        })
+      );
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch owner vehicles" });
     }

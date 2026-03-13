@@ -712,8 +712,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/owner/:ownerId/vehicles", async (req: Request, res: Response) => {
     try {
-      const ownerVehicles = await storage.getOwnerVehicles(req.params.ownerId);
-      res.json(ownerVehicles);
+      const ownerVehicleList = await storage.getOwnerVehicles(req.params.ownerId);
+      const enriched = await Promise.all(
+        ownerVehicleList.map(async (ov) => {
+          const vehicle = await storage.getVehicle(ov.vehicleId);
+          const verifications = await storage.getAllVerifications();
+          const verification = verifications.find((v) => v.vehicleId === ov.vehicleId);
+          return {
+            ...ov,
+            vehicle: vehicle || null,
+            verificationStatus: verification?.status || null,
+            verificationNotes: verification?.reviewerNotes || null,
+          };
+        })
+      );
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch owner vehicles" });
     }
