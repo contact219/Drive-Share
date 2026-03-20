@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -53,11 +53,11 @@ export default function BookingScreen() {
 
   useEffect(() => {
     if (!vehicle) return;
-    
+
     const fetchQuote = async () => {
       setIsCheckingAvailability(true);
       setAvailabilityStatus("checking");
-      
+
       try {
         const response = await fetch(new URL("/api/trips/quote", getApiUrl()).toString(), {
           method: "POST",
@@ -69,7 +69,7 @@ export default function BookingScreen() {
             includeInsurance,
           }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setQuote(data);
@@ -103,6 +103,63 @@ export default function BookingScreen() {
       hour12: true,
     });
   };
+
+  const openStartPicker = useCallback(() => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: startDate,
+        mode: "date",
+        minimumDate: now,
+        onChange: (_event, selectedDate) => {
+          if (!selectedDate) return;
+          DateTimePickerAndroid.open({
+            value: selectedDate,
+            mode: "time",
+            onChange: (_e, selectedTime) => {
+              if (!selectedTime) return;
+              const combined = new Date(selectedDate);
+              combined.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+              setStartDate(combined);
+              if (combined >= endDate) {
+                setEndDate(new Date(combined.getTime() + 60 * 60 * 1000));
+              }
+            },
+          });
+        },
+      });
+    } else {
+      setShowStartPicker(true);
+    }
+  }, [startDate, endDate, now]);
+
+  const openEndPicker = useCallback(() => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: endDate,
+        mode: "date",
+        minimumDate: new Date(startDate.getTime() + 60 * 60 * 1000),
+        onChange: (_event, selectedDate) => {
+          if (!selectedDate) return;
+          DateTimePickerAndroid.open({
+            value: selectedDate,
+            mode: "time",
+            onChange: (_e, selectedTime) => {
+              if (!selectedTime) return;
+              const combined = new Date(selectedDate);
+              combined.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+              if (combined > startDate) {
+                setEndDate(combined);
+              } else {
+                Alert.alert("Invalid Time", "End time must be after start time.");
+              }
+            },
+          });
+        },
+      });
+    } else {
+      setShowEndPicker(true);
+    }
+  }, [startDate, endDate]);
 
   const handleStartDateChange = useCallback(
     (_event: any, selectedDate?: Date) => {
@@ -208,7 +265,7 @@ export default function BookingScreen() {
         </ThemedText>
 
         <Pressable
-          onPress={() => setShowStartPicker(true)}
+          onPress={openStartPicker}
           style={[styles.dateTimeCard, { backgroundColor: theme.backgroundDefault }]}
         >
           <View style={styles.dateTimeRow}>
@@ -225,18 +282,18 @@ export default function BookingScreen() {
           </View>
         </Pressable>
 
-        {showStartPicker ? (
+        {Platform.OS === "ios" && showStartPicker ? (
           <DateTimePicker
             value={startDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="spinner"
             onChange={handleStartDateChange}
             minimumDate={now}
           />
         ) : null}
 
         <Pressable
-          onPress={() => setShowEndPicker(true)}
+          onPress={openEndPicker}
           style={[styles.dateTimeCard, { backgroundColor: theme.backgroundDefault }]}
         >
           <View style={styles.dateTimeRow}>
@@ -253,11 +310,11 @@ export default function BookingScreen() {
           </View>
         </Pressable>
 
-        {showEndPicker ? (
+        {Platform.OS === "ios" && showEndPicker ? (
           <DateTimePicker
             value={endDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="spinner"
             onChange={handleEndDateChange}
             minimumDate={new Date(startDate.getTime() + 60 * 60 * 1000)}
           />
@@ -281,7 +338,7 @@ export default function BookingScreen() {
             </ThemedText>
             <ThemedText type="body">${quote?.baseCost || (duration * vehicle.pricePerHour).toFixed(2)}</ThemedText>
           </View>
-          
+
           <View style={styles.insuranceRow}>
             <View style={styles.insuranceLabel}>
               <ThemedText type="body" style={{ color: theme.textSecondary }}>
@@ -298,7 +355,7 @@ export default function BookingScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-          
+
           {includeInsurance && quote ? (
             <View style={styles.summaryRow}>
               <ThemedText type="body" style={{ color: theme.textSecondary }}>
@@ -307,14 +364,14 @@ export default function BookingScreen() {
               <ThemedText type="body">${quote.insuranceCost}</ThemedText>
             </View>
           ) : null}
-          
+
           <View style={styles.summaryRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Service Fee (10%)
             </ThemedText>
             <ThemedText type="body">${quote?.serviceFee || "0.00"}</ThemedText>
           </View>
-          
+
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <ThemedText type="h4">Estimated Total</ThemedText>
