@@ -344,6 +344,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.post("/api/admin/migrate-from-dev", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(401).json({ error: "Admin credentials required" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const passwordValid = await bcrypt.compare(password, user.password);
+      if (!passwordValid) {
+        return res.status(403).json({ error: "Invalid credentials" });
+      }
+      const result = await migrateToDevState();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Migration failed" });
+    }
+  });
+
   app.get("/api/admin/users", async (_req: Request, res: Response) => {
     try {
       const users = await storage.getAllUsers();

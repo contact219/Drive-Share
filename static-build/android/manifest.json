@@ -1,11 +1,11 @@
 {
-  "id": "ce0ec2f3-9982-488a-908c-275d215b03b0",
-  "createdAt": "2026-03-03T15:39:02.377Z",
+  "id": "95464d55-51bf-40d6-be79-b86a253870b6",
+  "createdAt": "2026-03-18T19:38:36.848Z",
   "runtimeVersion": "exposdk:54.0.0",
   "launchAsset": {
-    "key": "bundle-1772552342377-19089",
+    "key": "bundle-1773862716848-1924",
     "contentType": "application/javascript",
-    "url": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/1772552342377-19089/_expo/static/js/android/bundle.js"
+    "url": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/1773862716848-1924/_expo/static/js/android/bundle.js"
   },
   "assets": [],
   "metadata": {},
@@ -30,9 +30,9 @@
           "foregroundImage": "./assets/images/android-icon-foreground.png",
           "backgroundImage": "./assets/images/android-icon-background.png",
           "monochromeImage": "./assets/images/android-icon-monochrome.png",
-          "foregroundImageUrl": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/assets/./assets/images/android-icon-foreground.png",
-          "monochromeImageUrl": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/assets/./assets/images/android-icon-monochrome.png",
-          "backgroundImageUrl": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/assets/./assets/images/android-icon-background.png"
+          "foregroundImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-foreground.png",
+          "monochromeImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-monochrome.png",
+          "backgroundImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-background.png"
         },
         "edgeToEdgeEnabled": true,
         "predictiveBackGestureEnabled": false,
@@ -86,7 +86,7 @@
       "androidStatusBar": {
         "backgroundColor": "#004E89"
       },
-      "iconUrl": "https://b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/assets/./assets/images/icon.png",
+      "iconUrl": "http://127.0.0.1:8081/assets/./assets/images/icon.png",
       "hostUri": "b78a18b3-7cbf-4672-9d05-9cff3105ddbf-00-32irxw5h2hmib.janeway.replit.dev/android"
     },
     "expoGo": {
@@ -100,6 +100,6 @@
       },
       "mainModuleName": "client/index"
     },
-    "scopeKey": "@anonymous/rush-5aa24f39-f0b0-4e0d-a493-b50095068139"
+    "scopeKey": "@anonymous/rush-84d64ce6-94b0-4b29-861d-160ce76f68ae"
   }
 }
