@@ -1,5 +1,14 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Pressable, TextInput, Alert, Platform, ActivityIndicator, Linking } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  TextInput,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  Linking,
+} from "react-native";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -17,29 +26,42 @@ export default function LocationScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const { settings, addLocation, removeLocation, setDefaultLocation } = useSettings();
+  const { settings, addLocation, removeLocation, setDefaultLocation } =
+    useSettings();
   const [searchText, setSearchText] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationAddress, setNewLocationAddress] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const handleSetDefault = useCallback((id: string) => {
-    setDefaultLocation(id);
-  }, [setDefaultLocation]);
+  const handleSetDefault = useCallback(
+    (id: string) => {
+      setDefaultLocation(id);
+    },
+    [setDefaultLocation],
+  );
 
-  const handleRemoveLocation = useCallback((id: string) => {
-    const location = settings.savedLocations.find(l => l.id === id);
-    if (location?.isDefault) {
-      Alert.alert("Cannot Remove", "You cannot remove the default location. Set another location as default first.");
-      return;
-    }
-    removeLocation(id);
-  }, [removeLocation, settings.savedLocations]);
+  const handleRemoveLocation = useCallback(
+    (id: string) => {
+      const location = settings.savedLocations.find((l) => l.id === id);
+      if (location?.isDefault) {
+        Alert.alert(
+          "Cannot Remove",
+          "You cannot remove the default location. Set another location as default first.",
+        );
+        return;
+      }
+      removeLocation(id);
+    },
+    [removeLocation, settings.savedLocations],
+  );
 
   const handleUseCurrentLocation = useCallback(async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Limited on Web", "Location features work best in Expo Go on your mobile device.");
+      Alert.alert(
+        "Limited on Web",
+        "Location features work best in Expo Go on your mobile device.",
+      );
       return;
     }
 
@@ -47,7 +69,7 @@ export default function LocationScreen() {
     try {
       const permResult = await Location.requestForegroundPermissionsAsync();
       if (!permResult.granted) {
-        if (permResult.status === "denied" && !permResult.canAskAgain && Platform.OS !== "web") {
+        if (permResult.status === "denied" && !permResult.canAskAgain) {
           Alert.alert(
             "Permission Required",
             "Location permission was denied. Please enable it in your device settings.",
@@ -61,10 +83,13 @@ export default function LocationScreen() {
                   } catch {}
                 },
               },
-            ]
+            ],
           );
         } else {
-          Alert.alert("Permission Denied", "Location permission is required to use this feature.");
+          Alert.alert(
+            "Permission Denied",
+            "Location permission is required to use this feature.",
+          );
         }
         return;
       }
@@ -93,7 +118,10 @@ export default function LocationScreen() {
         isDefault: true,
       });
     } catch (error) {
-      Alert.alert("Error", "Could not get your current location. Please try again.");
+      Alert.alert(
+        "Error",
+        "Could not get your current location. Please try again.",
+      );
     } finally {
       setIsLocating(false);
     }
@@ -101,7 +129,10 @@ export default function LocationScreen() {
 
   const handleAddLocation = useCallback(() => {
     if (!newLocationName.trim() || !newLocationAddress.trim()) {
-      Alert.alert("Missing Info", "Please enter both a name and address for the location.");
+      Alert.alert(
+        "Missing Info",
+        "Please enter both a name and address for the location.",
+      );
       return;
     }
 
@@ -114,12 +145,20 @@ export default function LocationScreen() {
     setNewLocationName("");
     setNewLocationAddress("");
     setShowAddForm(false);
-  }, [newLocationName, newLocationAddress, addLocation, settings.savedLocations.length]);
+  }, [
+    newLocationName,
+    newLocationAddress,
+    addLocation,
+    settings.savedLocations.length,
+  ]);
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <ThemedText type="h3">Default Location</ThemedText>
@@ -134,7 +173,10 @@ export default function LocationScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Pressable
-          style={[styles.currentLocationBtn, { backgroundColor: Colors.light.primary + "15" }]}
+          style={[
+            styles.currentLocationBtn,
+            { backgroundColor: Colors.light.primary + "15" },
+          ]}
           onPress={handleUseCurrentLocation}
           disabled={isLocating}
         >
@@ -143,7 +185,10 @@ export default function LocationScreen() {
           ) : (
             <Feather name="navigation" size={20} color={Colors.light.primary} />
           )}
-          <ThemedText type="h4" style={{ color: Colors.light.primary, marginLeft: Spacing.sm }}>
+          <ThemedText
+            type="h4"
+            style={{ color: Colors.light.primary, marginLeft: Spacing.sm }}
+          >
             {isLocating ? "Getting Location..." : "Use Current Location"}
           </ThemedText>
         </Pressable>
@@ -153,10 +198,23 @@ export default function LocationScreen() {
         </ThemedText>
 
         {settings.savedLocations.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: theme.backgroundDefault }]}>
+          <View
+            style={[
+              styles.emptyState,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
             <Feather name="map-pin" size={32} color={theme.textSecondary} />
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
-              No saved locations yet. Use your current location or add one manually.
+            <ThemedText
+              type="body"
+              style={{
+                color: theme.textSecondary,
+                marginTop: Spacing.sm,
+                textAlign: "center",
+              }}
+            >
+              No saved locations yet. Use your current location or add one
+              manually.
             </ThemedText>
           </View>
         ) : null}
@@ -167,13 +225,29 @@ export default function LocationScreen() {
             style={[
               styles.locationItem,
               { backgroundColor: theme.backgroundDefault },
-              location.isDefault && { borderColor: Colors.light.primary, borderWidth: 2 },
+              location.isDefault && {
+                borderColor: Colors.light.primary,
+                borderWidth: 2,
+              },
             ]}
             onPress={() => handleSetDefault(location.id)}
           >
-            <View style={[styles.locationIcon, { backgroundColor: Colors.light.primary + "20" }]}>
+            <View
+              style={[
+                styles.locationIcon,
+                { backgroundColor: Colors.light.primary + "20" },
+              ]}
+            >
               <Feather
-                name={location.name === "Home" ? "home" : location.name === "Work" ? "briefcase" : location.name === "Current Location" ? "navigation" : "map-pin"}
+                name={
+                  location.name === "Home"
+                    ? "home"
+                    : location.name === "Work"
+                      ? "briefcase"
+                      : location.name === "Current Location"
+                        ? "navigation"
+                        : "map-pin"
+                }
                 size={20}
                 color={Colors.light.primary}
               />
@@ -182,8 +256,15 @@ export default function LocationScreen() {
               <View style={styles.locationHeader}>
                 <ThemedText type="h4">{location.name}</ThemedText>
                 {location.isDefault ? (
-                  <View style={[styles.defaultBadge, { backgroundColor: Colors.light.primary }]}>
-                    <ThemedText type="small" style={{ color: "#fff" }}>Default</ThemedText>
+                  <View
+                    style={[
+                      styles.defaultBadge,
+                      { backgroundColor: Colors.light.primary },
+                    ]}
+                  >
+                    <ThemedText type="small" style={{ color: "#fff" }}>
+                      Default
+                    </ThemedText>
                   </View>
                 ) : null}
               </View>
@@ -192,7 +273,10 @@ export default function LocationScreen() {
               </ThemedText>
             </View>
             {!location.isDefault ? (
-              <Pressable onPress={() => handleRemoveLocation(location.id)} hitSlop={8}>
+              <Pressable
+                onPress={() => handleRemoveLocation(location.id)}
+                hitSlop={8}
+              >
                 <Feather name="x" size={20} color={theme.textSecondary} />
               </Pressable>
             ) : null}
@@ -200,9 +284,21 @@ export default function LocationScreen() {
         ))}
 
         {showAddForm ? (
-          <View style={[styles.addForm, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Add New Location</ThemedText>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.backgroundRoot }]}>
+          <View
+            style={[
+              styles.addForm,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+              Add New Location
+            </ThemedText>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: theme.backgroundRoot },
+              ]}
+            >
               <Feather name="tag" size={18} color={theme.textSecondary} />
               <TextInput
                 style={[styles.formInput, { color: theme.text }]}
@@ -212,7 +308,12 @@ export default function LocationScreen() {
                 onChangeText={setNewLocationName}
               />
             </View>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.backgroundRoot }]}>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: theme.backgroundRoot },
+              ]}
+            >
               <Feather name="map-pin" size={18} color={theme.textSecondary} />
               <TextInput
                 style={[styles.formInput, { color: theme.text }]}
@@ -223,8 +324,13 @@ export default function LocationScreen() {
               />
             </View>
             <View style={styles.formButtons}>
-              <Pressable onPress={() => setShowAddForm(false)} style={styles.cancelBtn}>
-                <ThemedText type="body" style={{ color: theme.textSecondary }}>Cancel</ThemedText>
+              <Pressable
+                onPress={() => setShowAddForm(false)}
+                style={styles.cancelBtn}
+              >
+                <ThemedText type="body" style={{ color: theme.textSecondary }}>
+                  Cancel
+                </ThemedText>
               </Pressable>
               <Button onPress={handleAddLocation} style={styles.saveBtn}>
                 Save Location
@@ -232,10 +338,7 @@ export default function LocationScreen() {
             </View>
           </View>
         ) : (
-          <Button
-            onPress={() => setShowAddForm(true)}
-            style={styles.addButton}
-          >
+          <Button onPress={() => setShowAddForm(true)} style={styles.addButton}>
             Add New Location
           </Button>
         )}

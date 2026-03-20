@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { StyleSheet, View, FlatList, ScrollView, ActivityIndicator, Pressable } from "react-native";
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  ScrollView,
+  ActivityIndicator,
+  Pressable,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -34,10 +41,7 @@ interface FilterParams {
   features?: string[];
 }
 
-function filterVehicles(
-  vehicles: Vehicle[],
-  filters: FilterParams
-): Vehicle[] {
+function filterVehicles(vehicles: Vehicle[], filters: FilterParams): Vehicle[] {
   return vehicles.filter((v) => {
     if (filters.search) {
       const q = filters.search.toLowerCase();
@@ -57,17 +61,18 @@ function filterVehicles(
       if (v.transmission !== filters.transmission) return false;
     }
     if (filters.minPrice) {
-      if (parseFloat(v.pricePerHour) < filters.minPrice) return false;
+      if (v.pricePerHour < filters.minPrice) return false;
     }
     if (filters.maxPrice) {
-      if (parseFloat(v.pricePerHour) > filters.maxPrice) return false;
+      if (v.pricePerHour > filters.maxPrice) return false;
     }
     if (filters.minSeats) {
       if (v.seats < filters.minSeats) return false;
     }
     if (filters.features && filters.features.length > 0) {
       const vehicleFeatures = v.features || [];
-      if (!filters.features.every(f => vehicleFeatures.includes(f))) return false;
+      if (!filters.features.every((f) => vehicleFeatures.includes(f)))
+        return false;
     }
     return true;
   });
@@ -111,9 +116,7 @@ export default function BrowseScreen() {
 
   const handleTypeToggle = useCallback((type: string) => {
     setSelectedTypes((prev) =>
-      prev.includes(type)
-        ? prev.filter((t) => t !== type)
-        : [...prev, type]
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
     );
   }, []);
 
@@ -121,7 +124,7 @@ export default function BrowseScreen() {
     (vehicle: Vehicle) => {
       navigation.navigate("VehicleDetail", { vehicleId: vehicle.id });
     },
-    [navigation]
+    [navigation],
   );
 
   const handleFilterPress = useCallback(() => {
@@ -148,7 +151,7 @@ export default function BrowseScreen() {
         isFavorite={isFavorite(item.id)}
       />
     ),
-    [handleVehiclePress, toggleFavorite, isFavorite]
+    [handleVehiclePress, toggleFavorite, isFavorite],
   );
 
   const keyExtractor = useCallback((item: Vehicle) => item.id, []);
@@ -157,9 +160,14 @@ export default function BrowseScreen() {
     () => (
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <ThemedText type="h1">{t("browse_title", settings.language)}</ThemedText>
+          <ThemedText type="h1">
+            {t("browse_title", settings.language)}
+          </ThemedText>
           <Pressable
-            style={[styles.mapButton, { backgroundColor: theme.backgroundDefault }]}
+            style={[
+              styles.mapButton,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
             onPress={handleMapPress}
           >
             <Feather name="map" size={20} color={theme.text} />
@@ -167,8 +175,12 @@ export default function BrowseScreen() {
         </View>
         <View style={styles.locationRow}>
           <Feather name="map-pin" size={14} color={theme.textSecondary} />
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-            {settings.savedLocations.find(l => l.isDefault)?.address || t("browse_set_location", settings.language)}
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, marginLeft: 4 }}
+          >
+            {settings.savedLocations.find((l) => l.isDefault)?.address ||
+              t("browse_set_location", settings.language)}
           </ThemedText>
         </View>
         <SearchBar
@@ -209,7 +221,7 @@ export default function BrowseScreen() {
       handleFilterPress,
       handleTypeToggle,
       handleMapPress,
-    ]
+    ],
   );
 
   const ListEmpty = useMemo(
@@ -225,14 +237,16 @@ export default function BrowseScreen() {
         }}
       />
     ),
-    []
+    [],
   );
 
   if (isLoading) {
     return (
       <ThemedView style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <ThemedText style={{ marginTop: Spacing.md }}>Loading vehicles...</ThemedText>
+        <ThemedText style={{ marginTop: Spacing.md }}>
+          Loading vehicles...
+        </ThemedText>
       </ThemedView>
     );
   }
