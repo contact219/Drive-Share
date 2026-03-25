@@ -51,6 +51,7 @@ function setupCors(app: express.Application) {
 function setupBodyParsing(app: express.Application) {
   app.use(
     express.json({
+      limit: "20mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       },
@@ -231,6 +232,7 @@ function configureExpoAndLanding(app: express.Application) {
   });
 
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
+  app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
   log("Expo routing: Checking expo-platform header on / and /manifest");

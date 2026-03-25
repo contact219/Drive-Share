@@ -410,8 +410,21 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-            <input type="url" id="vehicle-image" class="w-full px-3 py-2 border rounded-lg" required>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Photo</label>
+            <div class="space-y-2">
+              <div id="image-preview-container" class="hidden">
+                <img id="image-preview" src="" alt="Vehicle preview" class="w-full h-40 object-cover rounded-lg border mb-2">
+              </div>
+              <div class="flex gap-2">
+                <label class="flex-none cursor-pointer bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <span id="upload-btn-text">Upload Photo</span>
+                  <input type="file" id="vehicle-image-file" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+                </label>
+                <input type="url" id="vehicle-image" class="flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Or paste image URL" oninput="handleImageUrlInput(this.value)">
+              </div>
+              <p id="upload-status" class="text-xs text-gray-500 hidden"></p>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Location Address</label>
@@ -1027,10 +1040,72 @@
       }
     });
 
+    function handleImageUrlInput(url) {
+      const previewContainer = document.getElementById('image-preview-container');
+      const previewImg = document.getElementById('image-preview');
+      if (url && url.startsWith('http')) {
+        previewImg.src = url;
+        previewContainer.classList.remove('hidden');
+      } else {
+        previewContainer.classList.add('hidden');
+      }
+    }
+
+    async function handleImageUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const statusEl = document.getElementById('upload-status');
+      const btnText = document.getElementById('upload-btn-text');
+      const previewContainer = document.getElementById('image-preview-container');
+      const previewImg = document.getElementById('image-preview');
+
+      statusEl.textContent = 'Uploading...';
+      statusEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
+      statusEl.classList.add('text-gray-500');
+      btnText.textContent = 'Uploading...';
+
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const res = await fetch(`${API_BASE}/admin/upload-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, data: base64, mimeType: file.type })
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+        const { url } = await res.json();
+
+        document.getElementById('vehicle-image').value = url;
+        previewImg.src = url;
+        previewContainer.classList.remove('hidden');
+        statusEl.textContent = 'Photo uploaded successfully';
+        statusEl.classList.remove('text-gray-500', 'text-red-500');
+        statusEl.classList.add('text-green-600');
+        btnText.textContent = 'Change Photo';
+      } catch (err) {
+        statusEl.textContent = 'Upload failed. Please try again or paste a URL.';
+        statusEl.classList.remove('text-gray-500', 'text-green-600');
+        statusEl.classList.add('text-red-500');
+        btnText.textContent = 'Upload Photo';
+      }
+    }
+
     function openVehicleModal(vehicle = null) {
       document.getElementById('modal-title').textContent = vehicle ? 'Edit Vehicle' : 'Add Vehicle';
       document.getElementById('vehicle-modal').classList.remove('hidden');
       document.getElementById('vehicle-modal').classList.add('flex');
+
+      const previewContainer = document.getElementById('image-preview-container');
+      const previewImg = document.getElementById('image-preview');
+      const statusEl = document.getElementById('upload-status');
+      const btnText = document.getElementById('upload-btn-text');
 
       if (vehicle) {
         document.getElementById('vehicle-id').value = vehicle.id;
@@ -1047,10 +1122,23 @@
         document.getElementById('vehicle-image').value = vehicle.imageUrl;
         document.getElementById('vehicle-location').value = vehicle.locationAddress;
         document.getElementById('vehicle-features').value = (vehicle.features || []).join(', ');
+        if (vehicle.imageUrl) {
+          previewImg.src = vehicle.imageUrl;
+          previewContainer.classList.remove('hidden');
+        } else {
+          previewContainer.classList.add('hidden');
+        }
       } else {
         document.getElementById('vehicle-form').reset();
         document.getElementById('vehicle-id').value = '';
+        previewContainer.classList.add('hidden');
+        previewImg.src = '';
       }
+
+      statusEl.classList.add('hidden');
+      statusEl.textContent = '';
+      btnText.textContent = 'Upload Photo';
+      document.getElementById('vehicle-image-file').value = '';
     }
 
     function closeVehicleModal() {

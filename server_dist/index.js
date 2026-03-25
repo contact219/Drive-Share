@@ -572,6 +572,8 @@ import express from "express";
 // server/routes.ts
 import { createServer } from "node:http";
 import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 // server/storage.ts
 init_schema();
@@ -1041,47 +1043,6 @@ var storage = new DatabaseStorage();
 init_schema();
 import * as bcrypt from "bcryptjs";
 
-// server/stripeClient.ts
-import Stripe from "stripe";
-var connectionSettings;
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY ? "repl " + process.env.REPL_IDENTITY : process.env.WEB_REPL_RENEWAL ? "depl " + process.env.WEB_REPL_RENEWAL : null;
-  if (!xReplitToken) {
-    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
-  }
-  const connectorName = "stripe";
-  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
-  const targetEnvironment = isProduction ? "production" : "development";
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", connectorName);
-  url.searchParams.set("environment", targetEnvironment);
-  const response = await fetch(url.toString(), {
-    headers: {
-      "Accept": "application/json",
-      "X_REPLIT_TOKEN": xReplitToken
-    }
-  });
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
-  if (!connectionSettings || (!connectionSettings.settings.publishable || !connectionSettings.settings.secret)) {
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
-  }
-  return {
-    publishableKey: connectionSettings.settings.publishable,
-    secretKey: connectionSettings.settings.secret
-  };
-}
-async function getUncachableStripeClient() {
-  const { secretKey } = await getCredentials();
-  return new Stripe(secretKey);
-}
-async function getStripePublishableKey() {
-  const { publishableKey } = await getCredentials();
-  return publishableKey;
-}
-
 // server/seedIfEmpty.ts
 init_db();
 init_schema();
@@ -1486,6 +1447,47 @@ async function migrateToDevState() {
   }
 }
 
+// server/stripeClient.ts
+import Stripe from "stripe";
+var connectionSettings;
+async function getCredentials() {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY ? "repl " + process.env.REPL_IDENTITY : process.env.WEB_REPL_RENEWAL ? "depl " + process.env.WEB_REPL_RENEWAL : null;
+  if (!xReplitToken) {
+    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
+  }
+  const connectorName = "stripe";
+  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+  const targetEnvironment = isProduction ? "production" : "development";
+  const url = new URL(`https://${hostname}/api/v2/connection`);
+  url.searchParams.set("include_secrets", "true");
+  url.searchParams.set("connector_names", connectorName);
+  url.searchParams.set("environment", targetEnvironment);
+  const response = await fetch(url.toString(), {
+    headers: {
+      "Accept": "application/json",
+      "X_REPLIT_TOKEN": xReplitToken
+    }
+  });
+  const data = await response.json();
+  connectionSettings = data.items?.[0];
+  if (!connectionSettings || (!connectionSettings.settings.publishable || !connectionSettings.settings.secret)) {
+    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+  }
+  return {
+    publishableKey: connectionSettings.settings.publishable,
+    secretKey: connectionSettings.settings.secret
+  };
+}
+async function getUncachableStripeClient() {
+  const { secretKey } = await getCredentials();
+  return new Stripe(secretKey);
+}
+async function getStripePublishableKey() {
+  const { publishableKey } = await getCredentials();
+  return publishableKey;
+}
+
 // server/email.ts
 import sgMail from "@sendgrid/mail";
 var RUSH_CONFIG = {
@@ -1823,7 +1825,18 @@ Support: ${RUSH_CONFIG.supportEmail}
 async function registerRoutes(app2) {
   app2.get("/api/vehicles", async (req, res) => {
     try {
-      const { fuelType, transmission, minPrice, maxPrice, type, minSeats, features, lat, lng, radius } = req.query;
+      const {
+        fuelType,
+        transmission,
+        minPrice,
+        maxPrice,
+        type,
+        minSeats,
+        features,
+        lat,
+        lng,
+        radius
+      } = req.query;
       if (fuelType || transmission || minPrice || maxPrice || type || minSeats || features || lat && lng) {
         const filters = {};
         if (fuelType) filters.fuelType = fuelType;
@@ -1906,9 +1919,12 @@ async function registerRoutes(app2) {
       let verifiedEmail = null;
       let verifiedName = clientName || null;
       if (provider === "google") {
-        const googleRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const googleRes = await fetch(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
         if (!googleRes.ok) {
           return res.status(401).json({ error: "Invalid Google token" });
         }
@@ -1921,7 +1937,9 @@ async function registerRoutes(app2) {
           if (parts.length !== 3) {
             return res.status(401).json({ error: "Invalid Apple token format" });
           }
-          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64").toString()
+          );
           if (!payload.email || payload.iss !== "https://appleid.apple.com") {
             return res.status(401).json({ error: "Invalid Apple token" });
           }
@@ -1974,21 +1992,23 @@ async function registerRoutes(app2) {
             vehicle.name,
             trip.startDate.toISOString(),
             trip.endDate.toISOString(),
-            trip.totalCost
-          ).catch((err) => console.error("Failed to send renter confirmation email:", err));
-          if (vehicle.ownerId) {
-            const owner = await storage.getUser(vehicle.ownerId);
-            if (owner && owner.email) {
-              sendNewBookingNotificationToOwner(
-                owner.email,
-                owner.name,
-                renter.name,
-                vehicle.name,
-                trip.startDate.toISOString(),
-                trip.endDate.toISOString(),
-                trip.totalCost
-              ).catch((err) => console.error("Failed to send owner notification email:", err));
-            }
+            Number(trip.totalCost)
+          ).catch(
+            (err) => console.error("Failed to send renter confirmation email:", err)
+          );
+          const owner = await getVehicleOwnerUser(vehicle.id);
+          if (owner && owner.email) {
+            sendNewBookingNotificationToOwner(
+              owner.email,
+              owner.name,
+              renter.name,
+              vehicle.name,
+              trip.startDate.toISOString(),
+              trip.endDate.toISOString(),
+              Number(trip.totalCost)
+            ).catch(
+              (err) => console.error("Failed to send owner notification email:", err)
+            );
           }
         }
       } catch (emailError) {
@@ -2011,18 +2031,18 @@ async function registerRoutes(app2) {
           const vehicle = await storage.getVehicle(trip.vehicleId);
           if (renter && vehicle && renter.email) {
             let ownerName = "the host";
-            if (vehicle.ownerId) {
-              const owner = await storage.getUser(vehicle.ownerId);
-              if (owner) {
-                ownerName = owner.name;
-              }
+            const owner = await getVehicleOwnerUser(vehicle.id);
+            if (owner) {
+              ownerName = owner.name;
             }
             sendTripCompletedEmail(
               renter.email,
               renter.name,
               vehicle.name,
               ownerName
-            ).catch((err) => console.error("Failed to send trip completed email:", err));
+            ).catch(
+              (err) => console.error("Failed to send trip completed email:", err)
+            );
           }
         } catch (emailError) {
           console.error("Email notification error (non-blocking):", emailError);
@@ -2050,32 +2070,60 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to add favorite" });
     }
   });
-  app2.delete("/api/favorites/:userId/:vehicleId", async (req, res) => {
-    try {
-      await storage.removeFavorite(req.params.userId, req.params.vehicleId);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: "Failed to remove favorite" });
+  app2.delete(
+    "/api/favorites/:userId/:vehicleId",
+    async (req, res) => {
+      try {
+        await storage.removeFavorite(req.params.userId, req.params.vehicleId);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to remove favorite" });
+      }
     }
-  });
-  app2.post("/api/admin/migrate-from-dev", async (req, res) => {
+  );
+  app2.post(
+    "/api/admin/migrate-from-dev",
+    async (req, res) => {
+      try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+          return res.status(401).json({ error: "Admin credentials required" });
+        }
+        const user = await storage.getUserByEmail(email);
+        if (!user || !user.isAdmin) {
+          return res.status(403).json({ error: "Admin access required" });
+        }
+        const passwordValid = await bcrypt.compare(password, user.password);
+        if (!passwordValid) {
+          return res.status(403).json({ error: "Invalid credentials" });
+        }
+        const result = await migrateToDevState();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: "Migration failed" });
+      }
+    }
+  );
+  app2.post("/api/admin/upload-image", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(401).json({ error: "Admin credentials required" });
+      const { filename, data, mimeType } = req.body;
+      if (!filename || !data || !mimeType) {
+        return res.status(400).json({ error: "filename, data, and mimeType are required" });
       }
-      const user = await storage.getUserByEmail(email);
-      if (!user || !user.isAdmin) {
-        return res.status(403).json({ error: "Admin access required" });
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ error: "Only image files are allowed" });
       }
-      const passwordValid = await bcrypt.compare(password, user.password);
-      if (!passwordValid) {
-        return res.status(403).json({ error: "Invalid credentials" });
-      }
-      const result = await migrateToDevState();
-      res.json(result);
+      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      const ext = mimeType.split("/")[1].replace("jpeg", "jpg");
+      const safeName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
+      const filePath = path.join(uploadsDir, safeName);
+      const buffer = Buffer.from(data, "base64");
+      fs.writeFileSync(filePath, buffer);
+      res.json({ url: `/uploads/vehicles/${safeName}` });
     } catch (error) {
-      res.status(500).json({ error: "Migration failed" });
+      res.status(500).json({ error: "Failed to upload image" });
     }
   });
   app2.get("/api/admin/users", async (_req, res) => {
@@ -2107,38 +2155,53 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to create user" });
     }
   });
-  app2.patch("/api/admin/users/:id/password", async (req, res) => {
-    try {
-      const userId = req.params.id;
-      const { password } = req.body;
-      console.log(`[PASSWORD UPDATE] User ID: ${userId}, Password length: ${password?.length || 0}`);
-      if (!password || password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+  app2.patch(
+    "/api/admin/users/:id/password",
+    async (req, res) => {
+      try {
+        const userId = req.params.id;
+        const { password } = req.body;
+        console.log(
+          `[PASSWORD UPDATE] User ID: ${userId}, Password length: ${password?.length || 0}`
+        );
+        if (!password || password.length < 6) {
+          return res.status(400).json({ error: "Password must be at least 6 characters" });
+        }
+        const existingUser = await storage.getUser(userId);
+        console.log(
+          `[PASSWORD UPDATE] User exists: ${existingUser ? existingUser.email : "NOT FOUND"}`
+        );
+        if (!existingUser) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        console.log(
+          `[PASSWORD UPDATE] Hashed password: ${hashedPassword.substring(0, 20)}...`
+        );
+        const updatedUser = await storage.updateUser(userId, {
+          password: hashedPassword
+        });
+        console.log(
+          `[PASSWORD UPDATE] Update result: ${updatedUser ? updatedUser.email : "NULL"}`
+        );
+        if (!updatedUser) {
+          return res.status(500).json({ error: "Failed to update user password" });
+        }
+        const { password: _, ...userWithoutPassword } = updatedUser;
+        res.json(userWithoutPassword);
+      } catch (error) {
+        console.error("Password update error:", error);
+        res.status(500).json({ error: "Failed to update password" });
       }
-      const existingUser = await storage.getUser(userId);
-      console.log(`[PASSWORD UPDATE] User exists: ${existingUser ? existingUser.email : "NOT FOUND"}`);
-      if (!existingUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      console.log(`[PASSWORD UPDATE] Hashed password: ${hashedPassword.substring(0, 20)}...`);
-      const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
-      console.log(`[PASSWORD UPDATE] Update result: ${updatedUser ? updatedUser.email : "NULL"}`);
-      if (!updatedUser) {
-        return res.status(500).json({ error: "Failed to update user password" });
-      }
-      const { password: _, ...userWithoutPassword } = updatedUser;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Password update error:", error);
-      res.status(500).json({ error: "Failed to update password" });
     }
-  });
+  );
   app2.post("/api/auth/change-password", async (req, res) => {
     try {
       const { email, currentPassword, newPassword } = req.body;
       if (!email || !currentPassword || !newPassword) {
-        return res.status(400).json({ error: "Email, current password, and new password are required" });
+        return res.status(400).json({
+          error: "Email, current password, and new password are required"
+        });
       }
       if (newPassword.length < 6) {
         return res.status(400).json({ error: "New password must be at least 6 characters" });
@@ -2147,7 +2210,10 @@ async function registerRoutes(app2) {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      const isValidPassword = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
       if (!isValidPassword) {
         return res.status(401).json({ error: "Current password is incorrect" });
       }
@@ -2265,8 +2331,13 @@ async function registerRoutes(app2) {
       ]);
       const activeTrips = trips2.filter((t) => t.status === "active").length;
       const upcomingTrips = trips2.filter((t) => t.status === "upcoming").length;
-      const completedTrips = trips2.filter((t) => t.status === "completed").length;
-      const totalRevenue = trips2.reduce((sum, t) => sum + parseFloat(t.totalCost || "0"), 0);
+      const completedTrips = trips2.filter(
+        (t) => t.status === "completed"
+      ).length;
+      const totalRevenue = trips2.reduce(
+        (sum, t) => sum + parseFloat(t.totalCost || "0"),
+        0
+      );
       res.json({
         totalUsers: users2.length,
         totalVehicles: vehicles2.length,
@@ -2307,38 +2378,44 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch reviews" });
     }
   });
-  app2.get("/api/vehicles/:id/availability", async (req, res) => {
-    try {
-      const { startDate, endDate } = req.query;
-      if (!startDate || !endDate) {
-        return res.status(400).json({ error: "Start and end dates are required" });
+  app2.get(
+    "/api/vehicles/:id/availability",
+    async (req, res) => {
+      try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: "Start and end dates are required" });
+        }
+        const slots = await storage.getAvailabilitySlots(
+          req.params.id,
+          new Date(startDate),
+          new Date(endDate)
+        );
+        res.json(slots);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch availability" });
       }
-      const slots = await storage.getAvailabilitySlots(
-        req.params.id,
-        new Date(startDate),
-        new Date(endDate)
-      );
-      res.json(slots);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch availability" });
     }
-  });
-  app2.post("/api/vehicles/:id/availability/check", async (req, res) => {
-    try {
-      const { startDate, endDate } = req.body;
-      if (!startDate || !endDate) {
-        return res.status(400).json({ error: "Start and end dates are required" });
+  );
+  app2.post(
+    "/api/vehicles/:id/availability/check",
+    async (req, res) => {
+      try {
+        const { startDate, endDate } = req.body;
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: "Start and end dates are required" });
+        }
+        const isAvailable = await storage.checkAvailability(
+          req.params.id,
+          new Date(startDate),
+          new Date(endDate)
+        );
+        res.json({ available: isAvailable });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to check availability" });
       }
-      const isAvailable = await storage.checkAvailability(
-        req.params.id,
-        new Date(startDate),
-        new Date(endDate)
-      );
-      res.json({ available: isAvailable });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to check availability" });
     }
-  });
+  );
   app2.post("/api/trips/quote", async (req, res) => {
     try {
       const { vehicleId, startDate, endDate, includeInsurance } = req.body;
@@ -2348,14 +2425,20 @@ async function registerRoutes(app2) {
       }
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const hours = Math.ceil((end.getTime() - start.getTime()) / (1e3 * 60 * 60));
+      const hours = Math.ceil(
+        (end.getTime() - start.getTime()) / (1e3 * 60 * 60)
+      );
       const days = Math.ceil(hours / 24);
       const pricePerHour = parseFloat(vehicle.pricePerHour);
       const baseCost = hours <= 24 ? hours * pricePerHour : days * pricePerHour * 20;
       const insuranceCost = includeInsurance ? days * 15 : 0;
       const serviceFee = baseCost * 0.1;
       const totalCost = baseCost + insuranceCost + serviceFee;
-      const isAvailable = await storage.checkAvailability(vehicleId, start, end);
+      const isAvailable = await storage.checkAvailability(
+        vehicleId,
+        start,
+        end
+      );
       res.json({
         available: isAvailable,
         hours,
@@ -2376,25 +2459,31 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to generate quote" });
     }
   });
-  app2.post("/api/notifications/register", async (req, res) => {
-    try {
-      const tokenData = insertPushTokenSchema.parse(req.body);
-      const token = await storage.registerPushToken(tokenData);
-      res.status(201).json(token);
-    } catch (error) {
-      console.error("Register token error:", error);
-      res.status(500).json({ error: "Failed to register push token" });
+  app2.post(
+    "/api/notifications/register",
+    async (req, res) => {
+      try {
+        const tokenData = insertPushTokenSchema.parse(req.body);
+        const token = await storage.registerPushToken(tokenData);
+        res.status(201).json(token);
+      } catch (error) {
+        console.error("Register token error:", error);
+        res.status(500).json({ error: "Failed to register push token" });
+      }
     }
-  });
-  app2.post("/api/notifications/deactivate", async (req, res) => {
-    try {
-      const { token } = req.body;
-      await storage.deactivatePushToken(token);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: "Failed to deactivate token" });
+  );
+  app2.post(
+    "/api/notifications/deactivate",
+    async (req, res) => {
+      try {
+        const { token } = req.body;
+        await storage.deactivatePushToken(token);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to deactivate token" });
+      }
     }
-  });
+  );
   app2.get("/api/owner/profile", async (req, res) => {
     try {
       const { userId } = req.query;
@@ -2435,27 +2524,19 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to update owner profile" });
     }
   });
-  app2.get("/api/owner/:ownerId/vehicles", async (req, res) => {
-    try {
-      const ownerVehicleList = await storage.getOwnerVehicles(req.params.ownerId);
-      const enriched = await Promise.all(
-        ownerVehicleList.map(async (ov) => {
-          const vehicle = await storage.getVehicle(ov.vehicleId);
-          const verifications = await storage.getAllVerifications();
-          const verification = verifications.find((v) => v.vehicleId === ov.vehicleId);
-          return {
-            ...ov,
-            vehicle: vehicle || null,
-            verificationStatus: verification?.status || null,
-            verificationNotes: verification?.reviewerNotes || null
-          };
-        })
-      );
-      res.json(enriched);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch owner vehicles" });
+  app2.get(
+    "/api/owner/:ownerId/vehicles",
+    async (req, res) => {
+      try {
+        const ownerVehicles2 = await storage.getOwnerVehicles(
+          req.params.ownerId
+        );
+        res.json(ownerVehicles2);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch owner vehicles" });
+      }
     }
-  });
+  );
   app2.post("/api/owner/vehicles", async (req, res) => {
     try {
       const { ownerId, vehicleData } = req.body;
@@ -2468,11 +2549,6 @@ async function registerRoutes(app2) {
         vehicleId: vehicle.id,
         listingStatus: "pending"
       });
-      await storage.createVerification({
-        vehicleId: vehicle.id,
-        ownerId,
-        status: "pending"
-      });
       res.status(201).json({ vehicle, ownerVehicle });
     } catch (error) {
       console.error("Create owner vehicle error:", error);
@@ -2481,14 +2557,21 @@ async function registerRoutes(app2) {
   });
   app2.patch("/api/owner/vehicles/:id", async (req, res) => {
     try {
-      const ownerVehicle = await storage.updateOwnerVehicle(req.params.id, req.body);
+      const ownerVehicle = await storage.updateOwnerVehicle(
+        req.params.id,
+        req.body
+      );
       if (!ownerVehicle) {
         return res.status(404).json({ error: "Owner vehicle not found" });
       }
       if (req.body.listingStatus === "active") {
-        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: true });
+        await storage.updateVehicle(ownerVehicle.vehicleId, {
+          isAvailable: true
+        });
       } else if (req.body.listingStatus === "paused" || req.body.listingStatus === "pending") {
-        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: false });
+        await storage.updateVehicle(ownerVehicle.vehicleId, {
+          isAvailable: false
+        });
       }
       res.json(ownerVehicle);
     } catch (error) {
@@ -2503,127 +2586,157 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to delete owner vehicle" });
     }
   });
-  app2.post("/api/owner/vehicles/:vehicleId/availability", async (req, res) => {
-    try {
-      const { startTime, endTime, isBlocked } = req.body;
-      const slot = await storage.createAvailabilitySlot({
-        vehicleId: req.params.vehicleId,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        isBlocked: isBlocked || false,
-        source: "owner"
-      });
-      res.status(201).json(slot);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create availability slot" });
+  app2.post(
+    "/api/owner/vehicles/:vehicleId/availability",
+    async (req, res) => {
+      try {
+        const { startTime, endTime, isBlocked } = req.body;
+        const slot = await storage.createAvailabilitySlot({
+          vehicleId: req.params.vehicleId,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          isBlocked: isBlocked || false,
+          source: "owner"
+        });
+        res.status(201).json(slot);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to create availability slot" });
+      }
     }
-  });
-  app2.delete("/api/owner/availability/:id", async (req, res) => {
-    try {
-      await storage.deleteAvailabilitySlot(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete availability slot" });
+  );
+  app2.delete(
+    "/api/owner/availability/:id",
+    async (req, res) => {
+      try {
+        await storage.deleteAvailabilitySlot(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to delete availability slot" });
+      }
     }
-  });
+  );
   app2.get("/api/admin/verifications", async (_req, res) => {
     try {
       const verifications = await storage.getAllVerifications();
-      const enrichedVerifications = await Promise.all(verifications.map(async (v) => {
-        const vehicle = await storage.getVehicle(v.vehicleId);
-        const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
-        const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
-        return {
-          ...v,
-          vehicle,
-          ownerName: owner?.name || "Unknown",
-          ownerEmail: owner?.email || "Unknown"
-        };
-      }));
+      const enrichedVerifications = await Promise.all(
+        verifications.map(async (v) => {
+          const vehicle = await storage.getVehicle(v.vehicleId);
+          const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
+          const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
+          return {
+            ...v,
+            vehicle,
+            ownerName: owner?.name || "Unknown",
+            ownerEmail: owner?.email || "Unknown"
+          };
+        })
+      );
       res.json(enrichedVerifications);
     } catch (error) {
       console.error("Fetch verifications error:", error);
       res.status(500).json({ error: "Failed to fetch verifications" });
     }
   });
-  app2.get("/api/admin/verifications/pending", async (_req, res) => {
-    try {
-      const verifications = await storage.getPendingVerifications();
-      const enrichedVerifications = await Promise.all(verifications.map(async (v) => {
-        const vehicle = await storage.getVehicle(v.vehicleId);
-        const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
-        const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
-        return {
-          ...v,
-          vehicle,
-          ownerName: owner?.name || "Unknown",
-          ownerEmail: owner?.email || "Unknown"
-        };
-      }));
-      res.json(enrichedVerifications);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch pending verifications" });
-    }
-  });
-  app2.patch("/api/admin/verifications/:id/decision", async (req, res) => {
-    try {
-      const { status, reviewerId, reviewNotes, rejectionReason } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Invalid status" });
-      }
-      const verification = await storage.updateVerification(req.params.id, {
-        status,
-        reviewerId,
-        reviewNotes,
-        rejectionReason: status === "rejected" ? rejectionReason : null,
-        decidedAt: /* @__PURE__ */ new Date()
-      });
-      if (!verification) {
-        return res.status(404).json({ error: "Verification not found" });
-      }
-      if (status === "approved") {
-        await storage.updateVehicle(verification.vehicleId, { isAvailable: true });
-        if (verification.ownerId) {
-          const ownerVehicles2 = await storage.getOwnerVehicles(verification.ownerId);
-          const ownerVehicle = ownerVehicles2.find((ov) => ov.vehicleId === verification.vehicleId);
-          if (ownerVehicle) {
-            await storage.updateOwnerVehicle(ownerVehicle.id, { listingStatus: "active" });
-          }
-        }
-      }
+  app2.get(
+    "/api/admin/verifications/pending",
+    async (_req, res) => {
       try {
-        const vehicle = await storage.getVehicle(verification.vehicleId);
-        if (verification.ownerId && vehicle) {
-          const ownerProfile = await db_getOwnerProfileById(verification.ownerId);
-          if (ownerProfile) {
-            const owner = await storage.getUser(ownerProfile.userId);
-            if (owner && owner.email) {
-              if (status === "approved") {
-                sendVehicleVerificationApprovedEmail(
-                  owner.email,
-                  owner.name,
-                  vehicle.name
-                ).catch((err) => console.error("Failed to send approval email:", err));
-              } else {
-                sendVehicleVerificationRejectedEmail(
-                  owner.email,
-                  owner.name,
-                  vehicle.name,
-                  rejectionReason
-                ).catch((err) => console.error("Failed to send rejection email:", err));
-              }
+        const verifications = await storage.getPendingVerifications();
+        const enrichedVerifications = await Promise.all(
+          verifications.map(async (v) => {
+            const vehicle = await storage.getVehicle(v.vehicleId);
+            const ownerProfile = v.ownerId ? await db_getOwnerProfileById(v.ownerId) : null;
+            const owner = ownerProfile ? await storage.getUser(ownerProfile.userId) : null;
+            return {
+              ...v,
+              vehicle,
+              ownerName: owner?.name || "Unknown",
+              ownerEmail: owner?.email || "Unknown"
+            };
+          })
+        );
+        res.json(enrichedVerifications);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch pending verifications" });
+      }
+    }
+  );
+  app2.patch(
+    "/api/admin/verifications/:id/decision",
+    async (req, res) => {
+      try {
+        const { status, reviewerId, reviewNotes, rejectionReason } = req.body;
+        if (!["approved", "rejected"].includes(status)) {
+          return res.status(400).json({ error: "Invalid status" });
+        }
+        const verification = await storage.updateVerification(req.params.id, {
+          status,
+          reviewerId,
+          reviewNotes,
+          rejectionReason: status === "rejected" ? rejectionReason : null,
+          decidedAt: /* @__PURE__ */ new Date()
+        });
+        if (!verification) {
+          return res.status(404).json({ error: "Verification not found" });
+        }
+        if (status === "approved") {
+          await storage.updateVehicle(verification.vehicleId, {
+            isAvailable: true
+          });
+          if (verification.ownerId) {
+            const ownerVehicles2 = await storage.getOwnerVehicles(
+              verification.ownerId
+            );
+            const ownerVehicle = ownerVehicles2.find(
+              (ov) => ov.vehicleId === verification.vehicleId
+            );
+            if (ownerVehicle) {
+              await storage.updateOwnerVehicle(ownerVehicle.id, {
+                listingStatus: "active"
+              });
             }
           }
         }
-      } catch (emailError) {
-        console.error("Email notification error (non-blocking):", emailError);
+        try {
+          const vehicle = await storage.getVehicle(verification.vehicleId);
+          if (verification.ownerId && vehicle) {
+            const ownerProfile = await db_getOwnerProfileById(
+              verification.ownerId
+            );
+            if (ownerProfile) {
+              const owner = await storage.getUser(ownerProfile.userId);
+              if (owner && owner.email) {
+                if (status === "approved") {
+                  sendVehicleVerificationApprovedEmail(
+                    owner.email,
+                    owner.name,
+                    vehicle.name
+                  ).catch(
+                    (err) => console.error("Failed to send approval email:", err)
+                  );
+                } else {
+                  sendVehicleVerificationRejectedEmail(
+                    owner.email,
+                    owner.name,
+                    vehicle.name,
+                    rejectionReason
+                  ).catch(
+                    (err) => console.error("Failed to send rejection email:", err)
+                  );
+                }
+              }
+            }
+          }
+        } catch (emailError) {
+          console.error("Email notification error (non-blocking):", emailError);
+        }
+        res.json(verification);
+      } catch (error) {
+        console.error("Verification decision error:", error);
+        res.status(500).json({ error: "Failed to update verification" });
       }
-      res.json(verification);
-    } catch (error) {
-      console.error("Verification decision error:", error);
-      res.status(500).json({ error: "Failed to update verification" });
     }
-  });
+  );
   app2.get("/api/admin/insurance", async (_req, res) => {
     try {
       const policies = await storage.getInsurancePolicies();
@@ -2636,7 +2749,9 @@ async function registerRoutes(app2) {
     try {
       const { ownerId, vehicleId, providerType } = req.body;
       if (!ownerId || !vehicleId || !providerType) {
-        return res.status(400).json({ error: "Missing required fields: ownerId, vehicleId, providerType" });
+        return res.status(400).json({
+          error: "Missing required fields: ownerId, vehicleId, providerType"
+        });
       }
       if (!["platform", "owner"].includes(providerType)) {
         return res.status(400).json({ error: "providerType must be 'platform' or 'owner'" });
@@ -2650,7 +2765,10 @@ async function registerRoutes(app2) {
   });
   app2.patch("/api/admin/insurance/:id", async (req, res) => {
     try {
-      const policy = await storage.updateInsurancePolicy(req.params.id, req.body);
+      const policy = await storage.updateInsurancePolicy(
+        req.params.id,
+        req.body
+      );
       if (!policy) {
         return res.status(404).json({ error: "Policy not found" });
       }
@@ -2684,103 +2802,128 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch payouts" });
     }
   });
-  app2.get("/api/stripe/publishable-key", async (_req, res) => {
-    try {
-      const publishableKey = await getStripePublishableKey();
-      res.json({ publishableKey });
-    } catch (error) {
-      console.error("Stripe key error:", error);
-      res.status(500).json({ error: "Failed to get Stripe key" });
+  app2.get(
+    "/api/stripe/publishable-key",
+    async (_req, res) => {
+      try {
+        const publishableKey = await getStripePublishableKey();
+        res.json({ publishableKey });
+      } catch (error) {
+        console.error("Stripe key error:", error);
+        res.status(500).json({ error: "Failed to get Stripe key" });
+      }
     }
-  });
-  app2.post("/api/stripe/create-payment-intent", async (req, res) => {
-    try {
-      const { tripId, userId, amount } = req.body;
-      if (!tripId || !userId || typeof amount !== "number" || amount <= 0) {
-        return res.status(400).json({ error: "Invalid payment parameters" });
-      }
-      const stripe = await getUncachableStripeClient();
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      let customerId = user.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: user.name,
-          metadata: { userId: user.id }
-        });
-        customerId = customer.id;
-        await storage.updateUser(userId, { stripeCustomerId: customerId });
-      }
-      const amountCents = Math.round(amount * 100);
-      const platformFeeCents = Math.round(amountCents * 0.1);
-      const ownerPayoutCents = amountCents - platformFeeCents;
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountCents,
-        currency: "usd",
-        customer: customerId,
-        metadata: {
-          tripId,
-          userId
+  );
+  app2.post(
+    "/api/stripe/create-payment-intent",
+    async (req, res) => {
+      try {
+        const { tripId, userId, amount } = req.body;
+        if (!tripId || !userId || typeof amount !== "number" || amount <= 0) {
+          return res.status(400).json({ error: "Invalid payment parameters" });
         }
-      });
-      const payment = await storage.createPayment({
-        tripId,
-        userId,
-        stripePaymentIntentId: paymentIntent.id,
-        stripeCustomerId: customerId,
-        amount: (amountCents / 100).toFixed(2),
-        platformFee: (platformFeeCents / 100).toFixed(2),
-        ownerPayout: (ownerPayoutCents / 100).toFixed(2),
-        status: "pending"
-      });
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentId: payment.id
-      });
-    } catch (error) {
-      console.error("Payment intent error:", error);
-      if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
-        return res.status(400).json({ error: error.message });
+        const stripe = await getUncachableStripeClient();
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        let customerId = user.stripeCustomerId;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.name,
+            metadata: { userId: user.id }
+          });
+          customerId = customer.id;
+          await storage.updateUser(userId, {
+            stripeCustomerId: customerId
+          });
+        }
+        const amountCents = Math.round(amount * 100);
+        const platformFeeCents = Math.round(amountCents * 0.1);
+        const ownerPayoutCents = amountCents - platformFeeCents;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amountCents,
+          currency: "usd",
+          customer: customerId,
+          metadata: {
+            tripId,
+            userId
+          }
+        });
+        const payment = await storage.createPayment({
+          tripId,
+          userId,
+          stripePaymentIntentId: paymentIntent.id,
+          stripeCustomerId: customerId,
+          amount: (amountCents / 100).toFixed(2),
+          platformFee: (platformFeeCents / 100).toFixed(2),
+          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+          status: "pending"
+        });
+        res.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentId: payment.id
+        });
+      } catch (error) {
+        console.error("Payment intent error:", error);
+        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
+          return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: "Failed to create payment intent" });
       }
-      res.status(500).json({ error: "Failed to create payment intent" });
     }
-  });
-  app2.post("/api/stripe/confirm-payment", async (req, res) => {
-    try {
-      const { paymentId, tripId } = req.body;
-      if (!paymentId || !tripId) {
-        return res.status(400).json({ error: "Missing paymentId or tripId" });
+  );
+  app2.post(
+    "/api/stripe/confirm-payment",
+    async (req, res) => {
+      try {
+        const { paymentId, tripId } = req.body;
+        if (!paymentId || !tripId) {
+          return res.status(400).json({ error: "Missing paymentId or tripId" });
+        }
+        const payment = await storage.getPayment(paymentId);
+        if (!payment) {
+          return res.status(404).json({ error: "Payment not found" });
+        }
+        await storage.updatePayment(paymentId, { status: "completed" });
+        await storage.updateTrip(tripId, { status: "upcoming" });
+        res.json({ success: true });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to confirm payment" });
       }
-      const payment = await storage.getPayment(paymentId);
-      if (!payment) {
-        return res.status(404).json({ error: "Payment not found" });
+    }
+  );
+  app2.get(
+    "/api/user/:userId/documents",
+    async (req, res) => {
+      try {
+        const docs = await storage.getUserDocuments(req.params.userId);
+        res.json(docs);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch user documents" });
       }
-      await storage.updatePayment(paymentId, { status: "completed" });
-      await storage.updateTrip(tripId, { status: "upcoming" });
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to confirm payment" });
     }
-  });
-  app2.get("/api/user/:userId/documents", async (req, res) => {
-    try {
-      const docs = await storage.getUserDocuments(req.params.userId);
-      res.json(docs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch user documents" });
-    }
-  });
+  );
   app2.post("/api/user/documents", async (req, res) => {
     try {
-      const { userId, documentType, documentData, fileName, mimeType, expiryDate } = req.body;
+      const {
+        userId,
+        documentType,
+        documentData,
+        fileName,
+        mimeType,
+        expiryDate
+      } = req.body;
       if (!userId || !documentType) {
         return res.status(400).json({ error: "Missing required fields: userId, documentType" });
       }
-      if (!["drivers_license", "insurance_card", "proof_of_identity"].includes(documentType)) {
-        return res.status(400).json({ error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity" });
+      if (!["drivers_license", "insurance_card", "proof_of_identity"].includes(
+        documentType
+      )) {
+        return res.status(400).json({
+          error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity"
+        });
       }
       const doc = await storage.createUserDocument({
         userId,
@@ -2807,39 +2950,46 @@ async function registerRoutes(app2) {
       } else {
         docs = await storage.getAllUserDocuments();
       }
-      const docsWithUsers = await Promise.all(docs.map(async (doc) => {
-        const user = await storage.getUser(doc.userId);
-        return {
-          ...doc,
-          userName: user?.name || "Unknown User",
-          userEmail: user?.email || ""
-        };
-      }));
+      const docsWithUsers = await Promise.all(
+        docs.map(async (doc) => {
+          const user = await storage.getUser(doc.userId);
+          return {
+            ...doc,
+            userName: user?.name || "Unknown User",
+            userEmail: user?.email || ""
+          };
+        })
+      );
       res.json(docsWithUsers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user documents" });
     }
   });
-  app2.patch("/api/admin/user-documents/:id", async (req, res) => {
-    try {
-      const { verificationStatus, reviewNotes, reviewerId } = req.body;
-      if (!verificationStatus || !["approved", "rejected"].includes(verificationStatus)) {
-        return res.status(400).json({ error: "verificationStatus must be 'approved' or 'rejected'" });
+  app2.patch(
+    "/api/admin/user-documents/:id",
+    async (req, res) => {
+      try {
+        const { verificationStatus, reviewNotes, reviewerId } = req.body;
+        if (!verificationStatus || !["approved", "rejected"].includes(verificationStatus)) {
+          return res.status(400).json({
+            error: "verificationStatus must be 'approved' or 'rejected'"
+          });
+        }
+        const doc = await storage.updateUserDocument(req.params.id, {
+          verificationStatus,
+          reviewNotes: reviewNotes || null,
+          reviewerId: reviewerId || null,
+          reviewedAt: /* @__PURE__ */ new Date()
+        });
+        if (!doc) {
+          return res.status(404).json({ error: "Document not found" });
+        }
+        res.json(doc);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to update document" });
       }
-      const doc = await storage.updateUserDocument(req.params.id, {
-        verificationStatus,
-        reviewNotes: reviewNotes || null,
-        reviewerId: reviewerId || null,
-        reviewedAt: /* @__PURE__ */ new Date()
-      });
-      if (!doc) {
-        return res.status(404).json({ error: "Document not found" });
-      }
-      res.json(doc);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update document" });
     }
-  });
+  );
   app2.delete("/api/user/documents/:id", async (req, res) => {
     try {
       await storage.deleteUserDocument(req.params.id);
@@ -2852,24 +3002,26 @@ async function registerRoutes(app2) {
     try {
       const { userId } = req.params;
       const convs = await storage.getConversationsByUser(userId);
-      const enrichedConvs = await Promise.all(convs.map(async (conv) => {
-        const participant1 = await storage.getUser(conv.participant1Id);
-        const participant2 = await storage.getUser(conv.participant2Id);
-        const vehicle = conv.vehicleId ? await storage.getVehicle(conv.vehicleId) : null;
-        const otherParticipant = conv.participant1Id === userId ? participant2 : participant1;
-        const unreadCount = conv.participant1Id === userId ? conv.participant1Unread : conv.participant2Unread;
-        return {
-          ...conv,
-          participant1Name: participant1?.name || "Unknown",
-          participant2Name: participant2?.name || "Unknown",
-          otherParticipantName: otherParticipant?.name || "Unknown",
-          otherParticipantId: otherParticipant?.id,
-          otherParticipantAvatar: otherParticipant?.avatarIndex || 0,
-          vehicleName: vehicle?.name || null,
-          vehicleImage: vehicle?.imageUrl || null,
-          unreadCount: unreadCount || 0
-        };
-      }));
+      const enrichedConvs = await Promise.all(
+        convs.map(async (conv) => {
+          const participant1 = await storage.getUser(conv.participant1Id);
+          const participant2 = await storage.getUser(conv.participant2Id);
+          const vehicle = conv.vehicleId ? await storage.getVehicle(conv.vehicleId) : null;
+          const otherParticipant = conv.participant1Id === userId ? participant2 : participant1;
+          const unreadCount = conv.participant1Id === userId ? conv.participant1Unread : conv.participant2Unread;
+          return {
+            ...conv,
+            participant1Name: participant1?.name || "Unknown",
+            participant2Name: participant2?.name || "Unknown",
+            otherParticipantName: otherParticipant?.name || "Unknown",
+            otherParticipantId: otherParticipant?.id,
+            otherParticipantAvatar: otherParticipant?.avatarIndex || 0,
+            vehicleName: vehicle?.name || null,
+            vehicleImage: vehicle?.imageUrl || null,
+            unreadCount: unreadCount || 0
+          };
+        })
+      );
       res.json(enrichedConvs);
     } catch (error) {
       console.error("Get conversations error:", error);
@@ -2885,7 +3037,11 @@ async function registerRoutes(app2) {
       if (participant1Id === participant2Id) {
         return res.status(400).json({ error: "Cannot create a conversation with yourself" });
       }
-      const existingConv = await storage.findExistingConversation(participant1Id, participant2Id, vehicleId);
+      const existingConv = await storage.findExistingConversation(
+        participant1Id,
+        participant2Id,
+        vehicleId
+      );
       if (existingConv) {
         return res.json(existingConv);
       }
@@ -2902,85 +3058,96 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to create conversation" });
     }
   });
-  app2.get("/api/conversations/:conversationId/messages", async (req, res) => {
-    try {
-      const { conversationId } = req.params;
-      const { userId } = req.query;
-      const messages2 = await storage.getMessagesByConversation(conversationId);
-      const enrichedMessages = await Promise.all(messages2.map(async (msg) => {
-        const sender = await storage.getUser(msg.senderId);
-        return {
-          ...msg,
-          senderName: sender?.name || "Unknown",
-          senderAvatar: sender?.avatarIndex || 0
-        };
-      }));
-      if (userId && typeof userId === "string") {
-        await storage.markMessagesAsRead(conversationId, userId);
+  app2.get(
+    "/api/conversations/:conversationId/messages",
+    async (req, res) => {
+      try {
+        const { conversationId } = req.params;
+        const { userId } = req.query;
+        const messages2 = await storage.getMessagesByConversation(conversationId);
+        const enrichedMessages = await Promise.all(
+          messages2.map(async (msg) => {
+            const sender = await storage.getUser(msg.senderId);
+            return {
+              ...msg,
+              senderName: sender?.name || "Unknown",
+              senderAvatar: sender?.avatarIndex || 0
+            };
+          })
+        );
+        if (userId && typeof userId === "string") {
+          await storage.markMessagesAsRead(conversationId, userId);
+          const conv = await storage.getConversation(conversationId);
+          if (conv) {
+            const updates = {};
+            if (conv.participant1Id === userId) {
+              updates.participant1Unread = 0;
+            } else if (conv.participant2Id === userId) {
+              updates.participant2Unread = 0;
+            }
+            await storage.updateConversation(conversationId, updates);
+          }
+        }
+        res.json(enrichedMessages);
+      } catch (error) {
+        console.error("Get messages error:", error);
+        res.status(500).json({ error: "Failed to fetch messages" });
+      }
+    }
+  );
+  app2.post(
+    "/api/conversations/:conversationId/messages",
+    async (req, res) => {
+      try {
+        const { conversationId } = req.params;
+        const { senderId, content, messageType } = req.body;
+        if (!senderId || !content) {
+          return res.status(400).json({ error: "senderId and content are required" });
+        }
+        const msg = await storage.createMessage({
+          conversationId,
+          senderId,
+          content,
+          messageType: messageType || "text"
+        });
         const conv = await storage.getConversation(conversationId);
         if (conv) {
-          const updates = {};
-          if (conv.participant1Id === userId) {
-            updates.participant1Unread = 0;
-          } else if (conv.participant2Id === userId) {
-            updates.participant2Unread = 0;
+          const preview = content.length > 50 ? content.substring(0, 50) + "..." : content;
+          const updates = {
+            lastMessageAt: /* @__PURE__ */ new Date(),
+            lastMessagePreview: preview
+          };
+          if (conv.participant1Id === senderId) {
+            updates.participant2Unread = (conv.participant2Unread || 0) + 1;
+          } else {
+            updates.participant1Unread = (conv.participant1Unread || 0) + 1;
           }
           await storage.updateConversation(conversationId, updates);
         }
+        const sender = await storage.getUser(senderId);
+        res.status(201).json({
+          ...msg,
+          senderName: sender?.name || "Unknown",
+          senderAvatar: sender?.avatarIndex || 0
+        });
+      } catch (error) {
+        console.error("Send message error:", error);
+        res.status(500).json({ error: "Failed to send message" });
       }
-      res.json(enrichedMessages);
-    } catch (error) {
-      console.error("Get messages error:", error);
-      res.status(500).json({ error: "Failed to fetch messages" });
     }
-  });
-  app2.post("/api/conversations/:conversationId/messages", async (req, res) => {
-    try {
-      const { conversationId } = req.params;
-      const { senderId, content, messageType } = req.body;
-      if (!senderId || !content) {
-        return res.status(400).json({ error: "senderId and content are required" });
+  );
+  app2.get(
+    "/api/messages/unread/:userId",
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const count = await storage.getUnreadMessageCount(userId);
+        res.json({ unreadCount: count });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to get unread count" });
       }
-      const msg = await storage.createMessage({
-        conversationId,
-        senderId,
-        content,
-        messageType: messageType || "text"
-      });
-      const conv = await storage.getConversation(conversationId);
-      if (conv) {
-        const preview = content.length > 50 ? content.substring(0, 50) + "..." : content;
-        const updates = {
-          lastMessageAt: /* @__PURE__ */ new Date(),
-          lastMessagePreview: preview
-        };
-        if (conv.participant1Id === senderId) {
-          updates.participant2Unread = (conv.participant2Unread || 0) + 1;
-        } else {
-          updates.participant1Unread = (conv.participant1Unread || 0) + 1;
-        }
-        await storage.updateConversation(conversationId, updates);
-      }
-      const sender = await storage.getUser(senderId);
-      res.status(201).json({
-        ...msg,
-        senderName: sender?.name || "Unknown",
-        senderAvatar: sender?.avatarIndex || 0
-      });
-    } catch (error) {
-      console.error("Send message error:", error);
-      res.status(500).json({ error: "Failed to send message" });
     }
-  });
-  app2.get("/api/messages/unread/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const count = await storage.getUnreadMessageCount(userId);
-      res.json({ unreadCount: count });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get unread count" });
-    }
-  });
+  );
   app2.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
@@ -2992,7 +3159,9 @@ async function registerRoutes(app2) {
         const resetLink = `https://${req.get("host")}/reset-password?token=${token}`;
         await sendPasswordResetEmail(user.email, user.name, resetLink, token);
       }
-      res.json({ message: "If an account exists with that email, a password reset link has been sent." });
+      res.json({
+        message: "If an account exists with that email, a password reset link has been sent."
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to process password reset request" });
     }
@@ -3022,10 +3191,24 @@ async function db_getOwnerProfileById(id) {
   const [profile] = await db2.select().from(ownerProfiles2).where(eq2(ownerProfiles2.id, id));
   return profile || null;
 }
+async function getVehicleOwnerUser(vehicleId) {
+  const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+  const { ownerVehicles: ownerVehicles2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const { eq: eq2 } = await import("drizzle-orm");
+  const [ownerVehicle] = await db2.select().from(ownerVehicles2).where(eq2(ownerVehicles2.vehicleId, vehicleId));
+  if (!ownerVehicle) {
+    return null;
+  }
+  const ownerProfile = await db_getOwnerProfileById(ownerVehicle.ownerId);
+  if (!ownerProfile) {
+    return null;
+  }
+  return storage.getUser(ownerProfile.userId);
+}
 
 // server/index.ts
-import * as fs from "fs";
-import * as path from "path";
+import * as fs2 from "fs";
+import * as path2 from "path";
 var app = express();
 var log = console.log;
 function setupCors(app2) {
@@ -3058,6 +3241,7 @@ function setupCors(app2) {
 function setupBodyParsing(app2) {
   app2.use(
     express.json({
+      limit: "20mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       }
@@ -3068,7 +3252,7 @@ function setupBodyParsing(app2) {
 function setupRequestLogging(app2) {
   app2.use((req, res, next) => {
     const start = Date.now();
-    const path2 = req.path;
+    const path3 = req.path;
     let capturedJsonResponse = void 0;
     const originalResJson = res.json;
     res.json = function(bodyJson, ...args) {
@@ -3076,9 +3260,9 @@ function setupRequestLogging(app2) {
       return originalResJson.apply(res, [bodyJson, ...args]);
     };
     res.on("finish", () => {
-      if (!path2.startsWith("/api")) return;
+      if (!path3.startsWith("/api")) return;
       const duration = Date.now() - start;
-      let logLine = `${req.method} ${path2} ${res.statusCode} in ${duration}ms`;
+      let logLine = `${req.method} ${path3} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -3092,8 +3276,8 @@ function setupRequestLogging(app2) {
 }
 function getAppName() {
   try {
-    const appJsonPath = path.resolve(process.cwd(), "app.json");
-    const appJsonContent = fs.readFileSync(appJsonPath, "utf-8");
+    const appJsonPath = path2.resolve(process.cwd(), "app.json");
+    const appJsonContent = fs2.readFileSync(appJsonPath, "utf-8");
     const appJson = JSON.parse(appJsonContent);
     return appJson.expo?.name || "App Landing Page";
   } catch {
@@ -3101,19 +3285,19 @@ function getAppName() {
   }
 }
 function serveExpoManifest(platform, res) {
-  const manifestPath = path.resolve(
+  const manifestPath = path2.resolve(
     process.cwd(),
     "static-build",
     platform,
     "manifest.json"
   );
-  if (!fs.existsSync(manifestPath)) {
+  if (!fs2.existsSync(manifestPath)) {
     return res.status(404).json({ error: `Manifest not found for platform: ${platform}` });
   }
   res.setHeader("expo-protocol-version", "1");
   res.setHeader("expo-sfv-version", "0");
   res.setHeader("content-type", "application/json");
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
+  const manifest = fs2.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
 function serveHtmlFile(res, content) {
@@ -3124,13 +3308,13 @@ function serveHtmlFile(res, content) {
   res.status(200).send(content);
 }
 function readTemplate(filename) {
-  const filePath = path.resolve(
+  const filePath = path2.resolve(
     process.cwd(),
     "server",
     "templates",
     filename
   );
-  return fs.readFileSync(filePath, "utf-8");
+  return fs2.readFileSync(filePath, "utf-8");
 }
 function serveLandingPage({
   res,
@@ -3154,13 +3338,13 @@ function serveResetPasswordPage(res) {
   serveHtmlFile(res, readTemplate("reset-password.html"));
 }
 function configureExpoAndLanding(app2) {
-  const templatePath = path.resolve(
+  const templatePath = path2.resolve(
     process.cwd(),
     "server",
     "templates",
     "landing-page.html"
   );
-  const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
+  const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
   log("Serving static Expo files with dynamic manifest routing");
   app2.use((req, res, next) => {
@@ -3197,8 +3381,9 @@ function configureExpoAndLanding(app2) {
     }
     next();
   });
-  app2.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app2.use(express.static(path.resolve(process.cwd(), "static-build")));
+  app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
+  app2.use("/uploads", express.static(path2.resolve(process.cwd(), "uploads")));
+  app2.use(express.static(path2.resolve(process.cwd(), "static-build")));
   log("Expo routing: Checking expo-platform header on / and /manifest");
 }
 function setupErrorHandler(app2) {

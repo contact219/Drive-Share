@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { storage } from "./storage";
 import {
   insertUserSchema,
@@ -368,6 +370,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+
+  app.post("/api/admin/upload-image", async (req: Request, res: Response) => {
+    try {
+      const { filename, data, mimeType } = req.body;
+      if (!filename || !data || !mimeType) {
+        return res.status(400).json({ error: "filename, data, and mimeType are required" });
+      }
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      const ext = mimeType.split("/")[1].replace("jpeg", "jpg");
+      const safeName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
+      const filePath = path.join(uploadsDir, safeName);
+      const buffer = Buffer.from(data, "base64");
+      fs.writeFileSync(filePath, buffer);
+      res.json({ url: `/uploads/vehicles/${safeName}` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
 
   app.get("/api/admin/users", async (_req: Request, res: Response) => {
     try {
