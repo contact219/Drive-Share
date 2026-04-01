@@ -2557,21 +2557,21 @@ async function registerRoutes(app2) {
   });
   app2.patch("/api/owner/vehicles/:id", async (req, res) => {
     try {
+      const { vehicleData, ...ownerVehicleUpdates } = req.body;
       const ownerVehicle = await storage.updateOwnerVehicle(
         req.params.id,
-        req.body
+        ownerVehicleUpdates
       );
       if (!ownerVehicle) {
         return res.status(404).json({ error: "Owner vehicle not found" });
       }
-      if (req.body.listingStatus === "active") {
-        await storage.updateVehicle(ownerVehicle.vehicleId, {
-          isAvailable: true
-        });
-      } else if (req.body.listingStatus === "paused" || req.body.listingStatus === "pending") {
-        await storage.updateVehicle(ownerVehicle.vehicleId, {
-          isAvailable: false
-        });
+      if (ownerVehicleUpdates.listingStatus === "active") {
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: true });
+      } else if (ownerVehicleUpdates.listingStatus === "paused" || ownerVehicleUpdates.listingStatus === "pending") {
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: false });
+      }
+      if (vehicleData) {
+        await storage.updateVehicle(ownerVehicle.vehicleId, vehicleData);
       }
       res.json(ownerVehicle);
     } catch (error) {

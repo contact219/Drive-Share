@@ -120,6 +120,45 @@ export default function OwnerDashboardScreen() {
     navigation.navigate("AddVehicle");
   }, [navigation]);
 
+  const handleEditVehicle = useCallback((ov: OwnerVehicle) => {
+    if (!ov.vehicle || !ownerProfile?.id) return;
+    navigation.navigate("EditVehicle", {
+      ownerVehicleId: ov.id,
+      ownerId: ownerProfile.id,
+      vehicle: ov.vehicle,
+    });
+  }, [navigation, ownerProfile?.id]);
+
+  const handleDeleteVehicle = useCallback((ov: OwnerVehicle) => {
+    const name = ov.vehicle?.name || `Vehicle #${ov.vehicleId.slice(0, 8)}`;
+    Alert.alert(
+      "Remove Vehicle",
+      `Are you sure you want to remove "${name}" from your listings? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await fetch(
+                new URL(`/api/owner/vehicles/${ov.id}`, getApiUrl()).toString(),
+                { method: "DELETE" }
+              );
+              if (response.ok || response.status === 204) {
+                queryClient.invalidateQueries({ queryKey: ["/api/owner", ownerProfile?.id, "vehicles"] });
+              } else {
+                Alert.alert("Error", "Failed to remove vehicle. Please try again.");
+              }
+            } catch {
+              Alert.alert("Error", "Failed to remove vehicle. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, [queryClient, ownerProfile?.id]);
+
   const getListingStatusInfo = (status: string) => {
     switch (status) {
       case "active":
@@ -377,15 +416,37 @@ export default function OwnerDashboardScreen() {
                     </View>
                   ) : null}
 
-                  <Pressable
-                    style={[styles.manageButton, { backgroundColor: theme.primary + "15" }]}
-                    onPress={() => v ? navigation.navigate("VehicleDetail", { vehicleId: v.id }) : null}
-                  >
-                    <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
-                      View Details
-                    </ThemedText>
-                    <Feather name="chevron-right" size={16} color={theme.primary} />
-                  </Pressable>
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      style={[styles.actionButton, { backgroundColor: theme.backgroundRoot }]}
+                      onPress={() => handleEditVehicle(ov)}
+                    >
+                      <Feather name="edit-2" size={15} color={theme.primary} />
+                      <ThemedText type="small" style={{ color: theme.primary, marginLeft: 5, fontWeight: "600" }}>
+                        Edit
+                      </ThemedText>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionButton, { backgroundColor: "#EF444415" }]}
+                      onPress={() => handleDeleteVehicle(ov)}
+                    >
+                      <Feather name="trash-2" size={15} color="#EF4444" />
+                      <ThemedText type="small" style={{ color: "#EF4444", marginLeft: 5, fontWeight: "600" }}>
+                        Remove
+                      </ThemedText>
+                    </Pressable>
+                    {v ? (
+                      <Pressable
+                        style={[styles.actionButton, { backgroundColor: theme.backgroundRoot }]}
+                        onPress={() => navigation.navigate("VehicleDetail", { vehicleId: v.id })}
+                      >
+                        <Feather name="eye" size={15} color={theme.textSecondary} />
+                        <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 5 }}>
+                          View
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
               </Card>
             );
@@ -528,12 +589,17 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
   },
-  manageButton: {
+  actionRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
-    marginTop: Spacing.xs,
   },
 });

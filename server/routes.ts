@@ -900,25 +900,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/owner/vehicles/:id", async (req: Request, res: Response) => {
     try {
+      const { vehicleData, ...ownerVehicleUpdates } = req.body;
+
       const ownerVehicle = await storage.updateOwnerVehicle(
         req.params.id,
-        req.body,
+        ownerVehicleUpdates,
       );
       if (!ownerVehicle) {
         return res.status(404).json({ error: "Owner vehicle not found" });
       }
 
-      if (req.body.listingStatus === "active") {
-        await storage.updateVehicle(ownerVehicle.vehicleId, {
-          isAvailable: true,
-        });
+      if (ownerVehicleUpdates.listingStatus === "active") {
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: true });
       } else if (
-        req.body.listingStatus === "paused" ||
-        req.body.listingStatus === "pending"
+        ownerVehicleUpdates.listingStatus === "paused" ||
+        ownerVehicleUpdates.listingStatus === "pending"
       ) {
-        await storage.updateVehicle(ownerVehicle.vehicleId, {
-          isAvailable: false,
-        });
+        await storage.updateVehicle(ownerVehicle.vehicleId, { isAvailable: false });
+      }
+
+      if (vehicleData) {
+        await storage.updateVehicle(ownerVehicle.vehicleId, vehicleData);
       }
 
       res.json(ownerVehicle);
