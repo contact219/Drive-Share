@@ -22,11 +22,30 @@ interface ApiVehicle {
   isAvailable: boolean;
 }
 
+function normalizeType(type: string): Vehicle["type"] {
+  const t = type.toLowerCase();
+  const valid = ["sedan", "suv", "electric", "luxury", "compact", "truck", "van", "sports"];
+  return (valid.includes(t) ? t : "sedan") as Vehicle["type"];
+}
+
+function normalizeFuelType(fuelType: string): Vehicle["fuelType"] {
+  const f = fuelType.toLowerCase();
+  if (f === "gasoline" || f === "gas") return "gas";
+  if (f === "electric") return "electric";
+  if (f === "hybrid") return "hybrid";
+  return "gas";
+}
+
+function normalizeTransmission(transmission: string): Vehicle["transmission"] {
+  const t = transmission.toLowerCase();
+  return (t === "manual" ? "manual" : "automatic") as Vehicle["transmission"];
+}
+
 function transformVehicle(apiVehicle: ApiVehicle): Vehicle {
   return {
     id: apiVehicle.id,
     name: apiVehicle.name,
-    type: apiVehicle.type as Vehicle["type"],
+    type: normalizeType(apiVehicle.type),
     brand: apiVehicle.brand,
     model: apiVehicle.model,
     year: apiVehicle.year,
@@ -36,8 +55,8 @@ function transformVehicle(apiVehicle: ApiVehicle): Vehicle {
     rating: parseFloat(apiVehicle.rating),
     reviewCount: apiVehicle.reviewCount,
     seats: apiVehicle.seats,
-    transmission: apiVehicle.transmission as Vehicle["transmission"],
-    fuelType: apiVehicle.fuelType as Vehicle["fuelType"],
+    transmission: normalizeTransmission(apiVehicle.transmission),
+    fuelType: normalizeFuelType(apiVehicle.fuelType),
     features: apiVehicle.features || [],
     distance: Math.random() * 5,
     location: {

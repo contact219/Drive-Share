@@ -19,9 +19,29 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "EditVehicle">;
 
-const VEHICLE_TYPES = ["Sedan", "SUV", "Truck", "Van", "Sports", "Luxury", "Compact", "Electric"];
-const FUEL_TYPES = ["Gasoline", "Diesel", "Electric", "Hybrid"];
-const TRANSMISSIONS = ["Automatic", "Manual"];
+const VEHICLE_TYPE_OPTIONS = [
+  { label: "Sedan", value: "sedan" },
+  { label: "SUV", value: "suv" },
+  { label: "Truck", value: "truck" },
+  { label: "Van", value: "van" },
+  { label: "Sports", value: "sports" },
+  { label: "Luxury", value: "luxury" },
+  { label: "Compact", value: "compact" },
+  { label: "Electric", value: "electric" },
+];
+const FUEL_TYPE_OPTIONS = [
+  { label: "Gasoline", value: "gas" },
+  { label: "Electric", value: "electric" },
+  { label: "Hybrid", value: "hybrid" },
+  { label: "Diesel", value: "diesel" },
+];
+const TRANSMISSION_OPTIONS = [
+  { label: "Automatic", value: "automatic" },
+  { label: "Manual", value: "manual" },
+];
+const VEHICLE_TYPES = VEHICLE_TYPE_OPTIONS.map(o => o.label);
+const FUEL_TYPES = FUEL_TYPE_OPTIONS.map(o => o.label);
+const TRANSMISSIONS = TRANSMISSION_OPTIONS.map(o => o.label);
 const FEATURES = ["Bluetooth", "GPS", "Backup Camera", "Heated Seats", "Sunroof", "USB Charging", "Apple CarPlay", "Android Auto", "Cruise Control", "Keyless Entry"];
 
 export default function EditVehicleScreen() {
@@ -38,13 +58,16 @@ export default function EditVehicleScreen() {
   const [model, setModel] = useState(vehicle.model);
   const [year, setYear] = useState(String(vehicle.year));
   const [vehicleType, setVehicleType] = useState(
-    VEHICLE_TYPES.find(t => t.toLowerCase() === vehicle.type.toLowerCase()) || vehicle.type
+    VEHICLE_TYPE_OPTIONS.find(o => o.value === vehicle.type.toLowerCase())?.label ??
+    VEHICLE_TYPES.find(t => t.toLowerCase() === vehicle.type.toLowerCase()) ?? "Sedan"
   );
   const [fuelType, setFuelType] = useState(
-    FUEL_TYPES.find(f => f.toLowerCase() === vehicle.fuelType.toLowerCase()) || vehicle.fuelType
+    FUEL_TYPE_OPTIONS.find(o => o.value === vehicle.fuelType.toLowerCase())?.label ??
+    FUEL_TYPES.find(f => f.toLowerCase() === vehicle.fuelType.toLowerCase()) ?? "Gasoline"
   );
   const [transmission, setTransmission] = useState(
-    TRANSMISSIONS.find(t => t.toLowerCase() === vehicle.transmission.toLowerCase()) || vehicle.transmission
+    TRANSMISSION_OPTIONS.find(o => o.value === vehicle.transmission.toLowerCase())?.label ??
+    TRANSMISSIONS.find(t => t.toLowerCase() === vehicle.transmission.toLowerCase()) ?? "Automatic"
   );
   const [seats, setSeats] = useState(String(vehicle.seats));
   const [pricePerHour, setPricePerHour] = useState(String(parseFloat(vehicle.pricePerHour)));
@@ -91,12 +114,12 @@ export default function EditVehicleScreen() {
               brand,
               model,
               year: yearNum,
-              type: vehicleType.toLowerCase(),
+              type: VEHICLE_TYPE_OPTIONS.find(o => o.label === vehicleType)?.value ?? vehicleType.toLowerCase(),
               pricePerHour: priceNum.toFixed(2),
               imageUrl: imageUrl || vehicle.imageUrl,
               seats: parseInt(seats) || 5,
-              fuelType: fuelType.toLowerCase(),
-              transmission: transmission.toLowerCase(),
+              fuelType: FUEL_TYPE_OPTIONS.find(o => o.label === fuelType)?.value ?? fuelType.toLowerCase(),
+              transmission: TRANSMISSION_OPTIONS.find(o => o.label === transmission)?.value ?? transmission.toLowerCase(),
               features: selectedFeatures,
               locationAddress,
             },

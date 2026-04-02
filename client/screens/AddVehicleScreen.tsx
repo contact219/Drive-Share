@@ -20,9 +20,29 @@ import { TextInput } from "react-native";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const VEHICLE_TYPES = ["Sedan", "SUV", "Truck", "Van", "Sports", "Luxury", "Compact", "Electric"];
-const FUEL_TYPES = ["Gasoline", "Diesel", "Electric", "Hybrid"];
-const TRANSMISSIONS = ["Automatic", "Manual"];
+const VEHICLE_TYPE_OPTIONS = [
+  { label: "Sedan", value: "sedan" },
+  { label: "SUV", value: "suv" },
+  { label: "Truck", value: "truck" },
+  { label: "Van", value: "van" },
+  { label: "Sports", value: "sports" },
+  { label: "Luxury", value: "luxury" },
+  { label: "Compact", value: "compact" },
+  { label: "Electric", value: "electric" },
+];
+const FUEL_TYPE_OPTIONS = [
+  { label: "Gasoline", value: "gas" },
+  { label: "Electric", value: "electric" },
+  { label: "Hybrid", value: "hybrid" },
+  { label: "Diesel", value: "diesel" },
+];
+const TRANSMISSION_OPTIONS = [
+  { label: "Automatic", value: "automatic" },
+  { label: "Manual", value: "manual" },
+];
+const VEHICLE_TYPES = VEHICLE_TYPE_OPTIONS.map(o => o.label);
+const FUEL_TYPES = FUEL_TYPE_OPTIONS.map(o => o.label);
+const TRANSMISSIONS = TRANSMISSION_OPTIONS.map(o => o.label);
 const FEATURES = ["Bluetooth", "GPS", "Backup Camera", "Heated Seats", "Sunroof", "USB Charging", "Apple CarPlay", "Android Auto", "Cruise Control", "Keyless Entry"];
 
 interface OwnerProfile {
@@ -41,9 +61,9 @@ export default function AddVehicleScreen() {
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
-  const [vehicleType, setVehicleType] = useState("");
-  const [fuelType, setFuelType] = useState("");
-  const [transmission, setTransmission] = useState("");
+  const [vehicleType, setVehicleType] = useState("Sedan");
+  const [fuelType, setFuelType] = useState("Gasoline");
+  const [transmission, setTransmission] = useState("Automatic");
   const [seats, setSeats] = useState("5");
   const [pricePerHour, setPricePerHour] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
@@ -97,17 +117,21 @@ export default function AddVehicleScreen() {
     setIsSubmitting(true);
 
     try {
+      const typeValue = VEHICLE_TYPE_OPTIONS.find(o => o.label === vehicleType)?.value ?? vehicleType.toLowerCase();
+      const fuelValue = FUEL_TYPE_OPTIONS.find(o => o.label === fuelType)?.value ?? fuelType.toLowerCase();
+      const transmissionValue = TRANSMISSION_OPTIONS.find(o => o.label === transmission)?.value ?? transmission.toLowerCase();
+
       const vehicleData = {
         name: `${brand} ${model}`,
         brand,
         model,
         year: yearNum,
-        type: vehicleType,
+        type: typeValue,
         pricePerHour: priceNum.toFixed(2),
         imageUrl: imageUrl || "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800",
         seats: parseInt(seats) || 5,
-        fuelType,
-        transmission,
+        fuelType: fuelValue,
+        transmission: transmissionValue,
         features: selectedFeatures,
         locationAddress,
       };
