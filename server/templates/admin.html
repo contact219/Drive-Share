@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rush Admin Dashboard v3</title>
+  <title>Rush Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -13,1576 +13,1367 @@
           colors: {
             primary: '#FF6B35',
             secondary: '#004E89',
-            accent: '#F7B801',
+            sidebar: '#0f172a',
+            'sidebar-hover': '#1e293b',
           }
         }
       }
     }
   </script>
+  <style>
+    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 text-slate-400 rounded-lg cursor-pointer transition-all duration-150 text-sm font-medium; }
+    .sidebar-link:hover { @apply bg-slate-800 text-white; }
+    .sidebar-link.active { @apply bg-primary text-white shadow-lg; }
+    .stat-card { @apply bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4; }
+    .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+    .badge-green { @apply bg-green-100 text-green-700; }
+    .badge-amber { @apply bg-amber-100 text-amber-700; }
+    .badge-red { @apply bg-red-100 text-red-700; }
+    .badge-blue { @apply bg-blue-100 text-blue-700; }
+    .badge-gray { @apply bg-gray-100 text-gray-600; }
+    .table-row { @apply flex items-center gap-4 px-6 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors; }
+    .btn-primary { @apply bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition; }
+    .btn-secondary { @apply bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition; }
+    .btn-danger { @apply bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .input { @apply w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent; }
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .toast { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); color: white; font-size: 14px; font-weight: 500; min-width: 280px; animation: slideIn 0.3s ease; }
+    .toast-success { background: #22c55e; }
+    .toast-error { background: #ef4444; }
+    .toast-info { background: #3b82f6; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+    .modal-overlay { @apply fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center; }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <div id="app">
-    <div id="login-screen" class="min-h-screen flex items-center justify-center">
-      <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <div class="text-center mb-8">
-          <img src="/assets/images/icon.png?v=3" alt="Rush Enterprise" style="width: 80px; height: 80px; object-fit: contain; margin: 0 auto 12px auto; display: block;" />
-          <h1 class="text-3xl font-bold text-primary">Rush Admin</h1>
-          <p class="text-gray-600 mt-2">Sign in to manage your fleet</p>
-          <p class="text-xs text-gray-400 mt-1">Version 3.0 - Enhanced</p>
+<body class="bg-slate-50 min-h-screen">
+<div id="toast-container"></div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900">Rush Admin</h1>
+      <p class="text-gray-500 text-sm mt-1">Fleet Management Platform</p>
+    </div>
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Email</label>
+        <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="username" class="input" required>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" class="input" required>
+      </div>
+      <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:opacity-90 transition mt-2">Sign In</button>
+    </form>
+    <p id="login-error" class="text-red-500 text-sm text-center mt-4 hidden"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen" class="hidden flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-60 bg-sidebar flex-shrink-0 flex flex-col min-h-screen fixed left-0 top-0 bottom-0 z-30">
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
+      <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <span class="text-white font-bold text-lg">Rush</span>
+      <span class="text-slate-500 text-xs mt-0.5">Admin</span>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <p class="text-slate-600 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Overview</p>
+      <div class="sidebar-link active" onclick="showTab('analytics')" id="nav-analytics">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Analytics
+      </div>
+      <div class="sidebar-link" onclick="showTab('calendar')" id="nav-calendar">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Calendar
+        <span id="nav-badge-calendar" class="ml-auto bg-primary text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
+      </div>
+      <p class="text-slate-600 text-xs font-semibold uppercase tracking-wider px-4 mt-4 mb-2">Management</p>
+      <div class="sidebar-link" onclick="showTab('verifications')" id="nav-verifications">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Verifications
+        <span id="nav-badge-verifications" class="ml-auto bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
+      </div>
+      <div class="sidebar-link" onclick="showTab('user-documents')" id="nav-user-documents">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        User Documents
+        <span id="nav-badge-user-documents" class="ml-auto bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
+      </div>
+      <div class="sidebar-link" onclick="showTab('vehicles')" id="nav-vehicles">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l3.5.875M13 16H3m10 0l3-8h2l2 8m0 0h-3m-6-9v9"/></svg>
+        Vehicles
+      </div>
+      <div class="sidebar-link" onclick="showTab('users')" id="nav-users">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Users
+      </div>
+      <div class="sidebar-link" onclick="showTab('trips')" id="nav-trips">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Trips
+      </div>
+      <p class="text-slate-600 text-xs font-semibold uppercase tracking-wider px-4 mt-4 mb-2">Finance</p>
+      <div class="sidebar-link" onclick="showTab('payments')" id="nav-payments">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        Payments
+      </div>
+      <div class="sidebar-link" onclick="showTab('insurance')" id="nav-insurance">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Insurance
+      </div>
+    </nav>
+    <div class="px-3 py-4 border-t border-slate-800">
+      <div class="flex items-center gap-3 px-3 py-2">
+        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0" id="admin-avatar">A</div>
+        <div class="flex-1 min-w-0">
+          <p class="text-white text-sm font-medium truncate" id="admin-name">Admin</p>
+          <p class="text-slate-500 text-xs">Administrator</p>
         </div>
-        <form id="login-form" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="username" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
-          </div>
-          <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition">
-            Sign In
-          </button>
-        </form>
-        <p id="login-error" class="text-red-500 text-center mt-4 hidden"></p>
+        <button onclick="logout()" title="Sign out" class="text-slate-500 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
       </div>
     </div>
+  </aside>
 
-    <div id="dashboard-screen" class="hidden">
-      <nav class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <img src="/assets/images/icon.png?v=3" alt="Rush Enterprise" style="width: 40px; height: 40px; object-fit: contain;" />
-            <h1 class="text-2xl font-bold text-primary">Rush Admin</h1>
+  <!-- Main Content -->
+  <main class="ml-60 flex-1 flex flex-col min-h-screen">
+    <!-- Top bar -->
+    <header class="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div>
+        <h2 id="page-title" class="text-xl font-bold text-gray-900">Analytics</h2>
+        <p id="page-subtitle" class="text-xs text-gray-400 mt-0.5">Platform overview and insights</p>
+      </div>
+      <button onclick="refreshCurrentTab()" class="btn-secondary flex items-center gap-2 text-xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+    </header>
+
+    <div class="p-8 flex-1">
+      <!-- Stats Row -->
+      <div id="stats-row" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           </div>
-          <div class="flex items-center gap-4">
-            <span id="admin-name" class="text-gray-600"></span>
-            <button onclick="logout()" class="text-gray-500 hover:text-primary">Logout</button>
+          <div><p class="text-xs text-gray-500 font-medium">Users</p><p id="stat-users" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l3.5.875M13 16H3m10 0l3-8h2l2 8"/></svg>
+          </div>
+          <div><p class="text-xs text-gray-500 font-medium">Vehicles</p><p id="stat-vehicles" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div><p class="text-xs text-gray-500 font-medium">Active Trips</p><p id="stat-active" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div><p class="text-xs text-gray-500 font-medium">Revenue</p><p id="stat-revenue" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div><p class="text-xs text-gray-500 font-medium">Pending</p><p id="stat-pending" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div><p class="text-xs text-gray-500 font-medium">Platform Fees</p><p id="stat-fees" class="text-2xl font-bold text-gray-900">—</p></div>
+        </div>
+      </div>
+
+      <!-- Tab Content Panels -->
+
+      <!-- Analytics -->
+      <div id="content-analytics" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 class="font-semibold text-gray-900 mb-1">Revenue Trend</h3>
+            <p class="text-xs text-gray-400 mb-4">Monthly revenue over time</p>
+            <canvas id="revenueChart" height="200"></canvas>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 class="font-semibold text-gray-900 mb-1">Trip Status</h3>
+            <p class="text-xs text-gray-400 mb-4">Distribution by status</p>
+            <canvas id="tripStatusChart" height="200"></canvas>
           </div>
         </div>
-      </nav>
-
-      <div class="max-w-7xl mx-auto px-4 py-8">
-        <div id="stats" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Total Users</p>
-            <p id="stat-users" class="text-2xl font-bold text-secondary">-</p>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div class="px-6 py-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-900">Top Performing Vehicles</h3>
           </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Vehicles</p>
-            <p id="stat-vehicles" class="text-2xl font-bold text-secondary">-</p>
-          </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Active Trips</p>
-            <p id="stat-active" class="text-2xl font-bold text-primary">-</p>
-          </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Revenue</p>
-            <p id="stat-revenue" class="text-2xl font-bold text-green-600">-</p>
-          </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Pending Approvals</p>
-            <p id="stat-pending" class="text-2xl font-bold text-amber-500">-</p>
-          </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm">
-            <p class="text-gray-500 text-xs">Platform Fees</p>
-            <p id="stat-fees" class="text-2xl font-bold text-purple-600">-</p>
-          </div>
+          <div id="top-vehicles" class="divide-y divide-gray-50"></div>
         </div>
+      </div>
 
-        <div class="flex flex-wrap gap-2 mb-6">
-          <button onclick="showTab('analytics')" id="tab-analytics" class="px-4 py-2 rounded-lg bg-primary text-white font-medium text-sm">Analytics</button>
-          <button onclick="showTab('calendar')" id="tab-calendar" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Calendar</button>
-          <button onclick="showTab('verifications')" id="tab-verifications" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Verifications</button>
-          <button onclick="showTab('vehicles')" id="tab-vehicles" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Vehicles</button>
-          <button onclick="showTab('users')" id="tab-users" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Users</button>
-          <button onclick="showTab('trips')" id="tab-trips" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Trips</button>
-          <button onclick="showTab('insurance')" id="tab-insurance" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Insurance</button>
-          <button onclick="showTab('payments')" id="tab-payments" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">Payments</button>
-          <button onclick="showTab('user-documents')" id="tab-user-documents" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-300">User Documents</button>
-        </div>
-
-        <div id="content-analytics" class="space-y-6">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white rounded-xl shadow-sm p-6">
-              <h3 class="text-lg font-semibold mb-4">Revenue Trend</h3>
-              <canvas id="revenueChart" height="200"></canvas>
+      <!-- Calendar -->
+      <div id="content-calendar" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+          <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Booking Calendar</h2>
+              <p class="text-xs text-gray-400 mt-0.5">View all bookings by date</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm p-6">
-              <h3 class="text-lg font-semibold mb-4">Trip Status Distribution</h3>
-              <canvas id="tripStatusChart" height="200"></canvas>
-            </div>
-          </div>
-          <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="text-lg font-semibold mb-4">Top Performing Vehicles</h3>
-            <div id="top-vehicles" class="divide-y"></div>
-          </div>
-        </div>
-
-        <div id="content-calendar" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-xl font-semibold">Booking Calendar</h2>
-              <div class="flex items-center gap-4">
-                <select id="calendar-vehicle-filter" onchange="renderCalendar()" class="px-3 py-2 border rounded-lg text-sm">
-                  <option value="">All Vehicles</option>
-                </select>
-                <div class="flex items-center gap-2">
-                  <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                  </button>
-                  <span id="calendar-month-label" class="font-semibold text-lg min-w-[180px] text-center"></span>
-                  <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                  </button>
-                  <button onclick="goToToday()" class="ml-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">Today</button>
-                </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <select id="calendar-vehicle-filter" onchange="renderCalendar()" class="input w-40">
+                <option value="">All Vehicles</option>
+              </select>
+              <div class="flex items-center gap-1">
+                <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg transition"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                <span id="calendar-month-label" class="font-semibold text-gray-900 min-w-[160px] text-center text-sm"></span>
+                <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg transition"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                <button onclick="goToToday()" class="ml-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition">Today</button>
               </div>
             </div>
-            <div class="flex gap-4 text-sm">
-              <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Upcoming</div>
-              <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Active</div>
-              <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-green-500"></span> Completed</div>
-              <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gray-400"></span> Cancelled</div>
-            </div>
           </div>
-          <div class="p-4">
-            <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Sun</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Mon</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Tue</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Wed</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Thu</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Fri</div>
-              <div class="bg-gray-50 p-2 text-center text-sm font-medium text-gray-600">Sat</div>
-            </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-gray-200 mt-px"></div>
-          </div>
-          <div id="calendar-day-details" class="border-t p-6 hidden">
-            <h3 id="calendar-day-title" class="text-lg font-semibold mb-4"></h3>
-            <div id="calendar-day-bookings" class="space-y-3"></div>
+          <div class="flex flex-wrap gap-4 text-xs text-gray-600">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>Upcoming</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>Active</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>Completed</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block"></span>Cancelled</span>
           </div>
         </div>
-
-        <div id="content-verifications" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b flex justify-between items-center">
-            <h2 class="text-xl font-semibold">Vehicle Verification Queue</h2>
-            <span id="verification-count" class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-medium">0 pending</span>
+        <div class="p-4">
+          <div class="grid grid-cols-7 rounded-t-xl overflow-hidden">
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Sun</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Mon</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Tue</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Wed</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Thu</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Fri</div>
+            <div class="bg-gray-50 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-100">Sat</div>
           </div>
-          <div id="verifications-list" class="divide-y"></div>
-          <div id="no-verifications" class="p-8 text-center text-gray-500 hidden">
-            No pending verifications
+          <div id="calendar-grid" class="grid grid-cols-7 border border-gray-100 rounded-b-xl overflow-hidden"></div>
+        </div>
+        <div id="calendar-day-details" class="border-t border-gray-100 p-6 hidden">
+          <h3 id="calendar-day-title" class="font-semibold text-gray-900 mb-4"></h3>
+          <div id="calendar-day-bookings" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- Verifications -->
+      <div id="content-verifications" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-gray-900">Vehicle Verification Queue</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Review and approve host vehicle listings</p>
+          </div>
+          <span id="verification-count" class="badge badge-amber">0 pending</span>
+        </div>
+        <div id="verifications-list"></div>
+        <div id="no-verifications" class="py-16 text-center hidden">
+          <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-gray-400 text-sm">All caught up — no pending verifications</p>
+        </div>
+      </div>
+
+      <!-- User Documents -->
+      <div id="content-user-documents" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-gray-900">User Documents</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Verify driver licenses, insurance cards and identity documents</p>
+          </div>
+          <select id="doc-filter" onchange="loadUserDocuments()" class="input w-44">
+            <option value="">All Documents</option>
+            <option value="pending">Pending Review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div id="user-documents-list"></div>
+        <div id="no-user-documents" class="py-16 text-center hidden">
+          <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="text-gray-400 text-sm">No documents to review</p>
+        </div>
+      </div>
+
+      <!-- Vehicles -->
+      <div id="content-vehicles" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-gray-900">Vehicles</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Manage the fleet</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="vehicle-search" oninput="filterVehicles()" placeholder="Search vehicles…" class="input w-48">
+            <button onclick="openVehicleModal()" class="btn-primary flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Add Vehicle
+            </button>
           </div>
         </div>
+        <div id="vehicles-list"></div>
+      </div>
 
-        <div id="content-vehicles" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b flex justify-between items-center">
-            <h2 class="text-xl font-semibold">Vehicle Management</h2>
-            <button onclick="openVehicleModal()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-90">+ Add Vehicle</button>
+      <!-- Users -->
+      <div id="content-users" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-gray-900">Users</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Manage user accounts</p>
           </div>
-          <div id="vehicles-list" class="divide-y"></div>
-        </div>
-
-        <div id="content-users" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b flex justify-between items-center">
-            <h2 class="text-xl font-semibold">User Management</h2>
-            <button onclick="openUserModal()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-90">+ Add User</button>
-          </div>
-          <div id="users-list" class="divide-y"></div>
-        </div>
-
-        <div id="content-trips" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b">
-            <h2 class="text-xl font-semibold">Trip Management</h2>
-          </div>
-          <div id="trips-list" class="divide-y"></div>
-        </div>
-
-        <div id="content-insurance" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b">
-            <h2 class="text-xl font-semibold">Insurance Policies</h2>
-          </div>
-          <div class="p-4">
-            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
-              <h4 class="font-medium text-blue-800 mb-2">Platform Insurance Options</h4>
-              <p class="text-sm text-blue-700">Rush offers optional trip insurance at $15/day. Owners can also provide their own coverage.</p>
-            </div>
-          </div>
-          <div id="insurance-list" class="divide-y"></div>
-          <div id="no-insurance" class="p-8 text-center text-gray-500 hidden">
-            No insurance policies submitted yet
+          <div class="flex items-center gap-2">
+            <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search users…" class="input w-48">
+            <button onclick="openUserModal()" class="btn-primary flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Add User
+            </button>
           </div>
         </div>
+        <div id="users-list"></div>
+      </div>
 
-        <div id="content-payments" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b">
-            <h2 class="text-xl font-semibold">Payment History</h2>
+      <!-- Trips -->
+      <div id="content-trips" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-gray-900">Trips</h2>
+            <p class="text-xs text-gray-400 mt-0.5">All platform bookings</p>
           </div>
-          <div id="payments-list" class="divide-y"></div>
-          <div id="no-payments" class="p-8 text-center text-gray-500 hidden">
-            No payments recorded yet
-          </div>
+          <select id="trip-status-filter" onchange="filterTrips()" class="input w-40">
+            <option value="">All Statuses</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
+        <div id="trips-list"></div>
+      </div>
 
-        <div id="content-user-documents" class="bg-white rounded-xl shadow-sm hidden">
-          <div class="p-6 border-b flex justify-between items-center">
-            <h2 class="text-xl font-semibold">User Documents</h2>
-            <div class="flex gap-2">
-              <select id="doc-filter" onchange="loadUserDocuments()" class="px-3 py-2 border rounded-lg text-sm">
-                <option value="">All Documents</option>
-                <option value="pending">Pending Review</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-          </div>
-          <div class="p-4 bg-blue-50">
-            <p class="text-sm text-blue-700">Review and verify user-uploaded driver's licenses and insurance cards. Documents must be verified before users can rent vehicles.</p>
-          </div>
-          <div id="user-documents-list" class="divide-y"></div>
-          <div id="no-user-documents" class="p-8 text-center text-gray-500 hidden">
-            No documents to review
-          </div>
+      <!-- Payments -->
+      <div id="content-payments" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h2 class="font-semibold text-gray-900">Payment History</h2>
+          <p class="text-xs text-gray-400 mt-0.5">All Stripe transactions</p>
+        </div>
+        <div id="payments-list"></div>
+        <div id="no-payments" class="py-16 text-center hidden">
+          <p class="text-gray-400 text-sm">No payments recorded yet</p>
+        </div>
+      </div>
+
+      <!-- Insurance -->
+      <div id="content-insurance" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h2 class="font-semibold text-gray-900">Insurance Policies</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Owner-submitted and platform coverage</p>
+        </div>
+        <div class="px-6 py-3 bg-blue-50 border-b border-blue-100">
+          <p class="text-xs text-blue-700">Rush offers optional trip insurance at $15/day. Owners can also provide their own coverage documentation.</p>
+        </div>
+        <div id="insurance-list"></div>
+        <div id="no-insurance" class="py-16 text-center hidden">
+          <p class="text-gray-400 text-sm">No insurance policies on file</p>
         </div>
       </div>
     </div>
+  </main>
+</div>
 
-    <div id="document-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-semibold mb-4">Review Document</h3>
-        <div id="document-details" class="space-y-4 mb-6"></div>
-        <div id="document-image-container" class="mb-6 bg-gray-100 rounded-lg p-4">
-          <img id="document-image" class="max-w-full mx-auto rounded-lg shadow" alt="Document" style="max-height: 400px;">
-        </div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Review Notes (optional)</label>
-            <textarea id="document-notes" class="w-full px-3 py-2 border rounded-lg" rows="3" placeholder="Add any notes about this document..."></textarea>
-          </div>
-        </div>
-        <div class="flex gap-4 pt-4">
-          <button type="button" onclick="closeDocumentModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-          <button type="button" onclick="rejectDocument()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Reject</button>
-          <button type="button" onclick="approveDocument()" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Approve</button>
-        </div>
-      </div>
+<!-- DOCUMENT MODAL -->
+<div id="document-modal" class="modal-overlay fixed hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Review Document</h3>
+      <button onclick="closeDocumentModal()" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
-
-    <div id="verification-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-6 w-full max-w-lg">
-        <h3 class="text-xl font-semibold mb-4">Review Vehicle Listing</h3>
-        <div id="verification-details" class="space-y-4 mb-6"></div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Review Notes (optional)</label>
-            <textarea id="verification-notes" class="w-full px-3 py-2 border rounded-lg" rows="3" placeholder="Add any notes about this review..."></textarea>
-          </div>
-          <div id="rejection-reason-field" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Rejection Reason</label>
-            <textarea id="rejection-reason" class="w-full px-3 py-2 border rounded-lg" rows="2" placeholder="Explain why this listing is being rejected..."></textarea>
-          </div>
-        </div>
-        <div class="flex gap-4 pt-4">
-          <button type="button" onclick="closeVerificationModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-          <button type="button" onclick="rejectVerification()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Reject</button>
-          <button type="button" onclick="approveVerification()" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Approve</button>
-        </div>
+    <div class="p-6 space-y-5">
+      <div id="document-details"></div>
+      <div id="document-image-container" class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+        <img id="document-image" class="max-w-full mx-auto rounded-lg shadow-sm" alt="Document" style="max-height:380px;">
       </div>
-    </div>
-
-    <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 id="user-modal-title" class="text-xl font-semibold mb-4">Add User</h3>
-        <form id="user-form" class="space-y-4">
-          <input type="hidden" id="user-id">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input type="text" id="user-name" class="w-full px-3 py-2 border rounded-lg" required>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" id="user-email" class="w-full px-3 py-2 border rounded-lg" required>
-          </div>
-          <div id="user-password-field">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" id="user-password" class="w-full px-3 py-2 border rounded-lg" minlength="6">
-          </div>
-          <div>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="user-is-admin" class="w-4 h-4 text-primary rounded">
-              <span class="text-sm font-medium text-gray-700">Administrator</span>
-            </label>
-          </div>
-          <p id="user-error" class="text-red-500 text-sm hidden"></p>
-          <div class="flex gap-4 pt-4">
-            <button type="button" onclick="closeUserModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Save</button>
-          </div>
-        </form>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Review Notes</label>
+        <textarea id="document-notes" class="input" rows="3" placeholder="Add notes about this document (required for rejection)…"></textarea>
       </div>
-    </div>
-
-    <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold mb-4">Change Password</h3>
-        <form id="password-form" class="space-y-4">
-          <input type="hidden" id="password-user-id">
-          <p id="password-user-email" class="text-gray-600 text-sm mb-2"></p>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-            <input type="password" id="new-password" class="w-full px-3 py-2 border rounded-lg" minlength="6" required>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input type="password" id="confirm-password" class="w-full px-3 py-2 border rounded-lg" minlength="6" required>
-          </div>
-          <p id="password-error" class="text-red-500 text-sm hidden"></p>
-          <div class="flex gap-4 pt-4">
-            <button type="button" onclick="closePasswordModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Change Password</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="vehicle-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h3 id="modal-title" class="text-xl font-semibold mb-4">Add Vehicle</h3>
-        <form id="vehicle-form" class="space-y-4">
-          <input type="hidden" id="vehicle-id">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input type="text" id="vehicle-name" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <input type="text" id="vehicle-brand" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
-              <input type="text" id="vehicle-model" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
-              <input type="number" id="vehicle-year" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select id="vehicle-type" class="w-full px-3 py-2 border rounded-lg" required>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-                <option value="sports">Sports</option>
-                <option value="luxury">Luxury</option>
-                <option value="compact">Compact</option>
-                <option value="truck">Truck</option>
-                <option value="van">Van</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Price/Hour ($)</label>
-              <input type="number" step="0.01" id="vehicle-price" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Seats</label>
-              <input type="number" id="vehicle-seats" class="w-full px-3 py-2 border rounded-lg" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
-              <select id="vehicle-fuel" class="w-full px-3 py-2 border rounded-lg" required>
-                <option value="gas">Gas</option>
-                <option value="electric">Electric</option>
-                <option value="hybrid">Hybrid</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Transmission</label>
-              <select id="vehicle-transmission" class="w-full px-3 py-2 border rounded-lg" required>
-                <option value="automatic">Automatic</option>
-                <option value="manual">Manual</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Available</label>
-              <select id="vehicle-available" class="w-full px-3 py-2 border rounded-lg">
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Photo</label>
-            <div class="space-y-2">
-              <div id="image-preview-container" class="hidden">
-                <img id="image-preview" src="" alt="Vehicle preview" class="w-full h-40 object-cover rounded-lg border mb-2">
-              </div>
-              <div class="flex gap-2">
-                <label class="flex-none cursor-pointer bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  <span id="upload-btn-text">Upload Photo</span>
-                  <input type="file" id="vehicle-image-file" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
-                </label>
-                <input type="url" id="vehicle-image" class="flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Or paste image URL" oninput="handleImageUrlInput(this.value)">
-              </div>
-              <p id="upload-status" class="text-xs text-gray-500 hidden"></p>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Location Address</label>
-            <input type="text" id="vehicle-location" class="w-full px-3 py-2 border rounded-lg" required>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Features (comma separated)</label>
-            <input type="text" id="vehicle-features" class="w-full px-3 py-2 border rounded-lg" placeholder="Bluetooth, Navigation, Heated Seats">
-          </div>
-          <div class="flex gap-4 pt-4">
-            <button type="button" onclick="closeVehicleModal()" class="flex-1 px-4 py-2 border rounded-lg">Cancel</button>
-            <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg">Save</button>
-          </div>
-        </form>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeDocumentModal()" class="btn-secondary flex-1">Cancel</button>
+        <button onclick="rejectDocument()" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition">Reject</button>
+        <button onclick="approveDocument()" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition">Approve</button>
       </div>
     </div>
   </div>
+</div>
 
-  <script>
-    let currentUser = null;
-    let currentVerification = null;
-    let revenueChart = null;
-    let tripStatusChart = null;
-    const API_BASE = '/api';
-    let authToken = sessionStorage.getItem('rush_admin_token');
+<!-- VERIFICATION MODAL -->
+<div id="verification-modal" class="modal-overlay fixed hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Review Vehicle Listing</h3>
+      <button onclick="closeVerificationModal()" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div id="verification-details"></div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Review Notes (optional)</label>
+        <textarea id="verification-notes" class="input" rows="3" placeholder="Internal notes about this review…"></textarea>
+      </div>
+      <div id="rejection-reason-field" class="hidden">
+        <label class="block text-xs font-semibold text-red-600 uppercase tracking-wide mb-1.5">Rejection Reason <span class="text-red-500">*</span></label>
+        <textarea id="rejection-reason" class="input border-red-200 focus:ring-red-400" rows="2" placeholder="Explain why this listing is being rejected…"></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeVerificationModal()" class="btn-secondary flex-1">Cancel</button>
+        <button onclick="rejectVerification()" id="reject-btn" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition">Reject</button>
+        <button onclick="approveVerification()" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function authFetch(url, options = {}) {
-      const headers = Object.assign({}, options.headers || {});
-      if (authToken) {
-        headers['Authorization'] = 'Bearer ' + authToken;
-      }
-      return fetch(url, Object.assign({}, options, { headers }));
-    }
+<!-- USER MODAL -->
+<div id="user-modal" class="modal-overlay fixed hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 id="user-modal-title" class="text-lg font-semibold text-gray-900">Add User</h3>
+      <button onclick="closeUserModal()" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="user-form" class="p-6 space-y-4">
+      <input type="hidden" id="user-id">
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Name</label><input type="text" id="user-name" class="input" required></div>
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Email</label><input type="email" id="user-email" class="input" required></div>
+      <div id="user-password-field">
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Password</label>
+        <input type="password" id="user-password" class="input" minlength="8">
+      </div>
+      <label class="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:border-primary transition">
+        <input type="checkbox" id="user-is-admin" class="w-4 h-4 text-primary rounded">
+        <div><p class="text-sm font-medium text-gray-700">Administrator</p><p class="text-xs text-gray-400">Full platform access</p></div>
+      </label>
+      <p id="user-error" class="text-red-500 text-sm hidden"></p>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeUserModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1">Save User</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
+<!-- PASSWORD MODAL -->
+<div id="password-modal" class="modal-overlay fixed hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 class="text-lg font-semibold text-gray-900">Change Password</h3>
+      <button onclick="closePasswordModal()" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="password-form" class="p-6 space-y-4">
+      <input type="hidden" id="password-user-id">
+      <div class="p-3 bg-gray-50 rounded-lg">
+        <p class="text-xs text-gray-500">Changing password for</p>
+        <p id="password-user-email" class="text-sm font-medium text-gray-800 mt-0.5"></p>
+      </div>
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">New Password</label><input type="password" id="new-password" class="input" minlength="8" required></div>
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Confirm Password</label><input type="password" id="confirm-password" class="input" minlength="8" required></div>
+      <p id="password-error" class="text-red-500 text-sm hidden"></p>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closePasswordModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1">Change Password</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-      try {
-        const res = await fetch(`${API_BASE}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
+<!-- VEHICLE MODAL -->
+<div id="vehicle-modal" class="modal-overlay fixed hidden">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Add Vehicle</h3>
+      <button onclick="closeVehicleModal()" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="vehicle-form" class="p-6 space-y-5">
+      <input type="hidden" id="vehicle-id">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Name</label><input type="text" id="vehicle-name" class="input" required></div>
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Brand</label><input type="text" id="vehicle-brand" class="input" required></div>
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Model</label><input type="text" id="vehicle-model" class="input" required></div>
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Year</label><input type="number" id="vehicle-year" class="input" required></div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Type</label>
+          <select id="vehicle-type" class="input" required>
+            <option value="sedan">Sedan</option><option value="suv">SUV</option><option value="sports">Sports</option>
+            <option value="luxury">Luxury</option><option value="compact">Compact</option><option value="truck">Truck</option><option value="van">Van</option>
+          </select>
+        </div>
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Price/Hour ($)</label><input type="number" step="0.01" id="vehicle-price" class="input" required></div>
+        <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Seats</label><input type="number" id="vehicle-seats" class="input" required></div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Fuel Type</label>
+          <select id="vehicle-fuel" class="input" required><option value="gas">Gas</option><option value="electric">Electric</option><option value="hybrid">Hybrid</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Transmission</label>
+          <select id="vehicle-transmission" class="input" required><option value="automatic">Automatic</option><option value="manual">Manual</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Available</label>
+          <select id="vehicle-available" class="input"><option value="true">Yes</option><option value="false">No</option></select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Vehicle Photo</label>
+        <div id="image-preview-container" class="hidden mb-3">
+          <img id="image-preview" src="" alt="Vehicle preview" class="w-full h-44 object-cover rounded-xl border border-gray-100">
+        </div>
+        <div class="flex gap-2">
+          <label class="flex-none cursor-pointer bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span id="upload-btn-text">Upload Photo</span>
+            <input type="file" id="vehicle-image-file" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+          </label>
+          <input type="url" id="vehicle-image" class="input flex-1 text-sm" placeholder="Or paste image URL" oninput="handleImageUrlInput(this.value)">
+        </div>
+        <p id="upload-status" class="text-xs mt-1 hidden"></p>
+      </div>
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Location Address</label><input type="text" id="vehicle-location" class="input" required></div>
+      <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Features (comma-separated)</label><input type="text" id="vehicle-features" class="input" placeholder="Bluetooth, Navigation, Heated Seats"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeVehicleModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1">Save Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        if (!res.ok) throw new Error('Invalid credentials');
+<script>
+  let currentUser = null;
+  let currentVerification = null;
+  let revenueChart = null;
+  let tripStatusChart = null;
+  let allVehicles = [];
+  let allUsers = [];
+  let allTrips = [];
+  let currentTab = 'analytics';
+  const API_BASE = '/api';
+  let authToken = sessionStorage.getItem('rush_admin_token');
 
-        const body = await res.json();
-        currentUser = body.user || body;
-        authToken = body.token || null;
+  const PAGE_META = {
+    analytics: { title: 'Analytics', subtitle: 'Platform overview and insights' },
+    calendar: { title: 'Booking Calendar', subtitle: 'View all bookings by date' },
+    verifications: { title: 'Vehicle Verifications', subtitle: 'Review and approve host listings' },
+    'user-documents': { title: 'User Documents', subtitle: 'Verify driver licenses and identity documents' },
+    vehicles: { title: 'Vehicles', subtitle: 'Manage the fleet' },
+    users: { title: 'Users', subtitle: 'Manage user accounts' },
+    trips: { title: 'Trips', subtitle: 'All platform bookings' },
+    payments: { title: 'Payment History', subtitle: 'All Stripe transactions' },
+    insurance: { title: 'Insurance Policies', subtitle: 'Owner-submitted and platform coverage' },
+  };
 
-        if (!currentUser.isAdmin) {
-          authToken = null;
-          throw new Error('Admin access required');
-        }
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    const icons = {
+      success: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',
+      error: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>',
+      info: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    };
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `${icons[type] || ''}<span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
 
-        if (authToken) {
-          sessionStorage.setItem('rush_admin_token', authToken);
-        }
+  function authFetch(url, options = {}) {
+    const headers = Object.assign({}, options.headers || {});
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    return fetch(url, Object.assign({}, options, { headers }));
+  }
 
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('dashboard-screen').classList.remove('hidden');
-        document.getElementById('admin-name').textContent = currentUser.name;
-        loadDashboard();
-      } catch (err) {
-        document.getElementById('login-error').textContent = err.message;
-        document.getElementById('login-error').classList.remove('hidden');
-      }
-    });
-
-    function logout() {
-      currentUser = null;
-      authToken = null;
-      sessionStorage.removeItem('rush_admin_token');
-      document.getElementById('login-screen').classList.remove('hidden');
-      document.getElementById('dashboard-screen').classList.add('hidden');
-    }
-
-    async function loadDashboard() {
-      loadStats();
-      loadAnalytics();
-      loadVerifications();
-      loadVehicles();
-      loadUsers();
-      loadTrips();
-      loadInsurance();
-      loadPayments();
-    }
-
-    async function loadStats() {
-      try {
-        const [statsRes, analyticsRes] = await Promise.all([
-          authFetch(`${API_BASE}/admin/stats`),
-          authFetch(`${API_BASE}/admin/analytics`)
-        ]);
-        const stats = await statsRes.json();
-        const analytics = await analyticsRes.json();
-        
-        document.getElementById('stat-users').textContent = stats.totalUsers;
-        document.getElementById('stat-vehicles').textContent = stats.totalVehicles;
-        document.getElementById('stat-active').textContent = stats.activeTrips;
-        document.getElementById('stat-revenue').textContent = '$' + parseFloat(stats.totalRevenue).toLocaleString();
-        document.getElementById('stat-pending').textContent = analytics.pendingVerifications || 0;
-        document.getElementById('stat-fees').textContent = '$' + parseFloat(analytics.platformFees || 0).toLocaleString();
-      } catch (error) {
-        console.error('Error loading stats:', error);
-      }
-    }
-
-    async function loadAnalytics() {
-      try {
-        const res = await authFetch(`${API_BASE}/admin/analytics`);
-        const data = await res.json();
-        
-        if (revenueChart) revenueChart.destroy();
-        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-        revenueChart = new Chart(revenueCtx, {
-          type: 'line',
-          data: {
-            labels: data.revenueByMonth?.map(r => r.month) || [],
-            datasets: [{
-              label: 'Revenue',
-              data: data.revenueByMonth?.map(r => r.revenue) || [],
-              borderColor: '#FF6B35',
-              backgroundColor: 'rgba(255, 107, 53, 0.1)',
-              fill: true,
-              tension: 0.4
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-          }
-        });
-
-        if (tripStatusChart) tripStatusChart.destroy();
-        const tripCtx = document.getElementById('tripStatusChart').getContext('2d');
-        tripStatusChart = new Chart(tripCtx, {
-          type: 'doughnut',
-          data: {
-            labels: data.tripsByStatus?.map(t => t.status) || [],
-            datasets: [{
-              data: data.tripsByStatus?.map(t => t.count) || [],
-              backgroundColor: ['#F7B801', '#FF6B35', '#22C55E', '#EF4444']
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom' } }
-          }
-        });
-
-        const topVehiclesEl = document.getElementById('top-vehicles');
-        if (data.topVehicles?.length > 0) {
-          topVehiclesEl.innerHTML = data.topVehicles.map((v, i) => `
-            <div class="p-4 flex items-center gap-4">
-              <span class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">${i + 1}</span>
-              <div class="flex-1">
-                <p class="font-semibold">${v.name}</p>
-                <p class="text-sm text-gray-500">${v.trips} trips</p>
-              </div>
-              <p class="font-semibold text-green-600">$${v.revenue.toFixed(2)}</p>
-            </div>
-          `).join('');
-        } else {
-          topVehiclesEl.innerHTML = '<p class="p-4 text-gray-500 text-center">No trip data yet</p>';
-        }
-      } catch (error) {
-        console.error('Error loading analytics:', error);
-      }
-    }
-
-    async function loadVerifications() {
-      try {
-        const res = await authFetch(`${API_BASE}/admin/verifications`);
-        const verifications = await res.json();
-        const pending = verifications.filter(v => v.status === 'pending');
-        
-        document.getElementById('verification-count').textContent = `${pending.length} pending`;
-        
-        const container = document.getElementById('verifications-list');
-        const noVerifications = document.getElementById('no-verifications');
-        
-        if (verifications.length === 0) {
-          container.innerHTML = '';
-          noVerifications.classList.remove('hidden');
-        } else {
-          noVerifications.classList.add('hidden');
-          container.innerHTML = verifications.map(v => `
-            <div class="p-4 flex items-center gap-4">
-              <img src="${v.vehicle?.imageUrl || ''}" class="w-20 h-14 object-cover rounded-lg bg-gray-100">
-              <div class="flex-1">
-                <p class="font-semibold">${v.vehicle?.name || 'Unknown Vehicle'}</p>
-                <p class="text-sm text-gray-500">Submitted by ${v.ownerName}</p>
-                <p class="text-xs text-gray-400">${new Date(v.submittedAt).toLocaleDateString()}</p>
-              </div>
-              <span class="px-3 py-1 rounded-full text-xs font-medium ${
-                v.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                v.status === 'approved' ? 'bg-green-100 text-green-700' :
-                'bg-red-100 text-red-700'
-              }">${v.status}</span>
-              ${v.status === 'pending' ? `
-                <button onclick="openVerificationModal('${v.id}')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-opacity-90">Review</button>
-              ` : ''}
-            </div>
-          `).join('');
-        }
-      } catch (error) {
-        console.error('Error loading verifications:', error);
-      }
-    }
-
-    async function openVerificationModal(id) {
-      try {
-        const res = await authFetch(`${API_BASE}/admin/verifications`);
-        const verifications = await res.json();
-        currentVerification = verifications.find(v => v.id === id);
-        
-        if (!currentVerification) return;
-        
-        const detailsEl = document.getElementById('verification-details');
-        detailsEl.innerHTML = `
-          <div class="flex gap-4">
-            <img src="${currentVerification.vehicle?.imageUrl || ''}" class="w-32 h-24 object-cover rounded-lg bg-gray-100">
-            <div class="flex-1">
-              <p class="font-semibold text-lg">${currentVerification.vehicle?.name || 'Unknown'}</p>
-              <p class="text-gray-600">${currentVerification.vehicle?.brand} ${currentVerification.vehicle?.model} ${currentVerification.vehicle?.year}</p>
-              <p class="text-sm text-gray-500 mt-1">$${parseFloat(currentVerification.vehicle?.pricePerHour || 0).toFixed(2)}/hour</p>
-            </div>
-          </div>
-          <div class="bg-gray-50 p-3 rounded-lg">
-            <p class="text-sm"><span class="font-medium">Owner:</span> ${currentVerification.ownerName}</p>
-            <p class="text-sm"><span class="font-medium">Email:</span> ${currentVerification.ownerEmail}</p>
-            <p class="text-sm"><span class="font-medium">Submitted:</span> ${new Date(currentVerification.submittedAt).toLocaleString()}</p>
-          </div>
-        `;
-        
-        document.getElementById('verification-notes').value = '';
-        document.getElementById('rejection-reason').value = '';
-        document.getElementById('rejection-reason-field').classList.add('hidden');
-        document.getElementById('verification-modal').classList.remove('hidden');
-        document.getElementById('verification-modal').classList.add('flex');
-      } catch (error) {
-        console.error('Error opening verification modal:', error);
-      }
-    }
-
-    function closeVerificationModal() {
-      document.getElementById('verification-modal').classList.add('hidden');
-      document.getElementById('verification-modal').classList.remove('flex');
-      currentVerification = null;
-    }
-
-    async function approveVerification() {
-      if (!currentVerification) return;
-      
-      try {
-        await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'approved',
-            reviewerId: currentUser.id,
-            reviewNotes: document.getElementById('verification-notes').value
-          })
-        });
-        closeVerificationModal();
-        loadVerifications();
-        loadVehicles();
-        loadStats();
-      } catch (error) {
-        console.error('Error approving verification:', error);
-      }
-    }
-
-    async function rejectVerification() {
-      const reasonField = document.getElementById('rejection-reason-field');
-      if (reasonField.classList.contains('hidden')) {
-        reasonField.classList.remove('hidden');
-        return;
-      }
-      
-      const reason = document.getElementById('rejection-reason').value;
-      if (!reason) {
-        alert('Please provide a rejection reason');
-        return;
-      }
-      
-      if (!currentVerification) return;
-      
-      try {
-        await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'rejected',
-            reviewerId: currentUser.id,
-            reviewNotes: document.getElementById('verification-notes').value,
-            rejectionReason: reason
-          })
-        });
-        closeVerificationModal();
-        loadVerifications();
-        loadStats();
-      } catch (error) {
-        console.error('Error rejecting verification:', error);
-      }
-    }
-
-    async function loadInsurance() {
-      try {
-        const res = await authFetch(`${API_BASE}/admin/insurance`);
-        const policies = await res.json();
-        
-        const container = document.getElementById('insurance-list');
-        const noInsurance = document.getElementById('no-insurance');
-        
-        if (policies.length === 0) {
-          container.innerHTML = '';
-          noInsurance.classList.remove('hidden');
-        } else {
-          noInsurance.classList.add('hidden');
-          container.innerHTML = policies.map(p => `
-            <div class="p-4 flex items-center gap-4">
-              <div class="w-10 h-10 rounded-full ${p.providerType === 'platform' ? 'bg-purple-100' : 'bg-blue-100'} flex items-center justify-center">
-                <span class="${p.providerType === 'platform' ? 'text-purple-600' : 'text-blue-600'} text-sm font-bold">
-                  ${p.providerType === 'platform' ? 'P' : 'O'}
-                </span>
-              </div>
-              <div class="flex-1">
-                <p class="font-semibold">${p.providerName || 'Platform Insurance'}</p>
-                <p class="text-sm text-gray-500">Policy: ${p.policyNumber || 'N/A'}</p>
-                <p class="text-xs text-gray-400">${p.coverageType || 'Standard Coverage'}</p>
-              </div>
-              <span class="px-3 py-1 rounded-full text-xs font-medium ${
-                p.verificationStatus === 'verified' ? 'bg-green-100 text-green-700' :
-                p.verificationStatus === 'pending' ? 'bg-amber-100 text-amber-700' :
-                'bg-red-100 text-red-700'
-              }">${p.verificationStatus}</span>
-              ${p.expiryDate ? `
-                <span class="text-xs ${new Date(p.expiryDate) < new Date() ? 'text-red-500' : 'text-gray-500'}">
-                  Expires: ${new Date(p.expiryDate).toLocaleDateString()}
-                </span>
-              ` : ''}
-            </div>
-          `).join('');
-        }
-      } catch (error) {
-        console.error('Error loading insurance:', error);
-      }
-    }
-
-    async function loadPayments() {
-      try {
-        const res = await authFetch(`${API_BASE}/admin/payments`);
-        const payments = await res.json();
-        
-        const container = document.getElementById('payments-list');
-        const noPayments = document.getElementById('no-payments');
-        
-        if (payments.length === 0) {
-          container.innerHTML = '';
-          noPayments.classList.remove('hidden');
-        } else {
-          noPayments.classList.add('hidden');
-          container.innerHTML = payments.map(p => `
-            <div class="p-4 flex items-center gap-4">
-              <div class="w-10 h-10 rounded-full ${p.status === 'completed' ? 'bg-green-100' : 'bg-amber-100'} flex items-center justify-center">
-                <span class="${p.status === 'completed' ? 'text-green-600' : 'text-amber-600'} text-lg">$</span>
-              </div>
-              <div class="flex-1">
-                <p class="font-semibold">$${parseFloat(p.amount).toFixed(2)}</p>
-                <p class="text-sm text-gray-500">Trip: ${p.tripId.substring(0, 8)}...</p>
-                <p class="text-xs text-gray-400">${new Date(p.createdAt).toLocaleString()}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-sm text-purple-600">Fee: $${parseFloat(p.platformFee || 0).toFixed(2)}</p>
-                <p class="text-sm text-green-600">Payout: $${parseFloat(p.ownerPayout || 0).toFixed(2)}</p>
-              </div>
-              <span class="px-3 py-1 rounded-full text-xs font-medium ${
-                p.status === 'completed' ? 'bg-green-100 text-green-700' :
-                p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                'bg-red-100 text-red-700'
-              }">${p.status}</span>
-            </div>
-          `).join('');
-        }
-      } catch (error) {
-        console.error('Error loading payments:', error);
-      }
-    }
-
-    function showTab(tab) {
-      const tabs = ['analytics', 'calendar', 'verifications', 'vehicles', 'users', 'trips', 'insurance', 'payments', 'user-documents'];
-      tabs.forEach(t => {
-        document.getElementById(`content-${t}`).classList.add('hidden');
-        document.getElementById(`tab-${t}`).classList.remove('bg-primary', 'text-white');
-        document.getElementById(`tab-${t}`).classList.add('bg-gray-200', 'text-gray-700');
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('login-error');
+    errEl.classList.add('hidden');
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value })
       });
-      document.getElementById(`content-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-${tab}`).classList.add('bg-primary', 'text-white');
-      document.getElementById(`tab-${tab}`).classList.remove('bg-gray-200', 'text-gray-700');
-      
-      if (tab === 'user-documents') {
-        loadUserDocuments();
-      }
-      if (tab === 'calendar') {
-        loadCalendarData();
-      }
+      if (!res.ok) throw new Error('Invalid credentials');
+      const body = await res.json();
+      currentUser = body.user || body;
+      authToken = body.token || null;
+      if (!currentUser.isAdmin) { authToken = null; throw new Error('Admin access required'); }
+      if (authToken) sessionStorage.setItem('rush_admin_token', authToken);
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('dashboard-screen').classList.remove('hidden');
+      const initial = currentUser.name.charAt(0).toUpperCase();
+      document.getElementById('admin-name').textContent = currentUser.name;
+      document.getElementById('admin-avatar').textContent = initial;
+      loadDashboard();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('hidden');
     }
+  });
 
-    async function loadVehicles() {
+  function logout() {
+    currentUser = null; authToken = null;
+    sessionStorage.removeItem('rush_admin_token');
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('dashboard-screen').classList.add('hidden');
+  }
+
+  async function loadDashboard() {
+    loadStats();
+    loadAnalytics();
+    loadVerifications();
+    loadVehicles();
+    loadUsers();
+    loadTrips();
+    loadInsurance();
+    loadPayments();
+  }
+
+  function refreshCurrentTab() {
+    const loaders = {
+      analytics: () => { loadStats(); loadAnalytics(); },
+      calendar: loadCalendarData,
+      verifications: loadVerifications,
+      'user-documents': loadUserDocuments,
+      vehicles: loadVehicles,
+      users: loadUsers,
+      trips: loadTrips,
+      payments: loadPayments,
+      insurance: loadInsurance,
+    };
+    if (loaders[currentTab]) loaders[currentTab]();
+    showToast('Refreshed', 'info');
+  }
+
+  function showTab(tab) {
+    const tabs = ['analytics','calendar','verifications','vehicles','users','trips','insurance','payments','user-documents'];
+    tabs.forEach(t => {
+      document.getElementById(`content-${t}`).classList.add('hidden');
+      const nav = document.getElementById(`nav-${t}`);
+      if (nav) { nav.classList.remove('active'); }
+    });
+    document.getElementById(`content-${tab}`).classList.remove('hidden');
+    const activeNav = document.getElementById(`nav-${tab}`);
+    if (activeNav) activeNav.classList.add('active');
+    currentTab = tab;
+    const meta = PAGE_META[tab] || {};
+    document.getElementById('page-title').textContent = meta.title || tab;
+    document.getElementById('page-subtitle').textContent = meta.subtitle || '';
+    if (tab === 'user-documents') loadUserDocuments();
+    if (tab === 'calendar') loadCalendarData();
+  }
+
+  async function loadStats() {
+    try {
+      const [sRes, aRes] = await Promise.all([authFetch(`${API_BASE}/admin/stats`), authFetch(`${API_BASE}/admin/analytics`)]);
+      const stats = await sRes.json();
+      const analytics = await aRes.json();
+      document.getElementById('stat-users').textContent = stats.totalUsers ?? '—';
+      document.getElementById('stat-vehicles').textContent = stats.totalVehicles ?? '—';
+      document.getElementById('stat-active').textContent = stats.activeTrips ?? '—';
+      document.getElementById('stat-revenue').textContent = '$' + parseFloat(stats.totalRevenue || 0).toLocaleString();
+      const pending = analytics.pendingVerifications || 0;
+      document.getElementById('stat-pending').textContent = pending;
+      document.getElementById('stat-fees').textContent = '$' + parseFloat(analytics.platformFees || 0).toLocaleString();
+      const vBadge = document.getElementById('nav-badge-verifications');
+      if (pending > 0) { vBadge.textContent = pending; vBadge.classList.remove('hidden'); } else { vBadge.classList.add('hidden'); }
+    } catch {}
+  }
+
+  async function loadAnalytics() {
+    try {
+      const res = await authFetch(`${API_BASE}/admin/analytics`);
+      const data = await res.json();
+      if (revenueChart) revenueChart.destroy();
+      revenueChart = new Chart(document.getElementById('revenueChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: data.revenueByMonth?.map(r => r.month) || [],
+          datasets: [{ label: 'Revenue', data: data.revenueByMonth?.map(r => r.revenue) || [], borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.08)', fill: true, tension: 0.4, pointBackgroundColor: '#FF6B35', pointRadius: 4 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f3f4f6' } }, x: { grid: { display: false } } } }
+      });
+      if (tripStatusChart) tripStatusChart.destroy();
+      tripStatusChart = new Chart(document.getElementById('tripStatusChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: data.tripsByStatus?.map(t => t.status) || [],
+          datasets: [{ data: data.tripsByStatus?.map(t => t.count) || [], backgroundColor: ['#F7B801','#FF6B35','#22C55E','#EF4444'], borderWidth: 0 }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
+      });
+      const el = document.getElementById('top-vehicles');
+      el.innerHTML = data.topVehicles?.length > 0
+        ? data.topVehicles.map((v, i) => `
+            <div class="flex items-center gap-4 px-6 py-4 border-b border-gray-50 last:border-0">
+              <span class="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">${i+1}</span>
+              <div class="flex-1"><p class="font-medium text-gray-900 text-sm">${v.name}</p><p class="text-xs text-gray-400">${v.trips} trips</p></div>
+              <p class="font-semibold text-green-600 text-sm">$${v.revenue.toFixed(2)}</p>
+            </div>`).join('')
+        : '<p class="px-6 py-8 text-gray-400 text-sm text-center">No trip data yet</p>';
+    } catch {}
+  }
+
+  async function loadVerifications() {
+    try {
+      const res = await authFetch(`${API_BASE}/admin/verifications`);
+      const verifications = await res.json();
+      const pending = verifications.filter(v => v.status === 'pending');
+      document.getElementById('verification-count').textContent = `${pending.length} pending`;
+      const container = document.getElementById('verifications-list');
+      const noEl = document.getElementById('no-verifications');
+      if (verifications.length === 0) { container.innerHTML = ''; noEl.classList.remove('hidden'); return; }
+      noEl.classList.add('hidden');
+      container.innerHTML = verifications.map(v => `
+        <div class="table-row">
+          <img src="${v.vehicle?.imageUrl || ''}" class="w-20 h-14 object-cover rounded-xl bg-gray-100 flex-shrink-0" onerror="this.src=''">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm">${v.vehicle?.name || 'Unknown Vehicle'}</p>
+            <p class="text-xs text-gray-500 mt-0.5">${v.ownerName} · ${v.ownerEmail}</p>
+            <p class="text-xs text-gray-400 mt-0.5">${new Date(v.submittedAt).toLocaleDateString()}</p>
+          </div>
+          <span class="badge ${v.status === 'pending' ? 'badge-amber' : v.status === 'approved' ? 'badge-green' : 'badge-red'}">${v.status}</span>
+          ${v.status === 'pending' ? `<button onclick="openVerificationModal('${CSS.escape(v.id)}')" class="btn-primary btn-sm flex-shrink-0">Review</button>` : ''}
+        </div>`).join('');
+      const docBadge = document.getElementById('nav-badge-verifications');
+      if (pending.length > 0) { docBadge.textContent = pending.length; docBadge.classList.remove('hidden'); }
+    } catch {}
+  }
+
+  let _verCache = [];
+  async function openVerificationModal(id) {
+    try {
+      if (_verCache.length === 0) {
+        const res = await authFetch(`${API_BASE}/admin/verifications`);
+        _verCache = await res.json();
+      }
+      currentVerification = _verCache.find(v => v.id === id);
+      if (!currentVerification) return;
+      document.getElementById('verification-details').innerHTML = `
+        <div class="flex gap-4 p-4 bg-gray-50 rounded-xl">
+          <img src="${currentVerification.vehicle?.imageUrl || ''}" class="w-28 h-20 object-cover rounded-lg bg-gray-200 flex-shrink-0" onerror="this.style.display='none'">
+          <div>
+            <p class="font-semibold text-gray-900">${currentVerification.vehicle?.name || 'Unknown'}</p>
+            <p class="text-sm text-gray-600">${currentVerification.vehicle?.brand || ''} ${currentVerification.vehicle?.model || ''} ${currentVerification.vehicle?.year || ''}</p>
+            <p class="text-xs text-gray-500 mt-1">$${parseFloat(currentVerification.vehicle?.pricePerHour || 0).toFixed(2)}/hr</p>
+            <p class="text-xs text-gray-500 mt-2">Owner: <strong>${currentVerification.ownerName}</strong> · ${currentVerification.ownerEmail}</p>
+          </div>
+        </div>`;
+      document.getElementById('verification-notes').value = '';
+      document.getElementById('rejection-reason').value = '';
+      document.getElementById('rejection-reason-field').classList.add('hidden');
+      document.getElementById('reject-btn').textContent = 'Reject';
+      const modal = document.getElementById('verification-modal');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+    } catch {}
+  }
+
+  function closeVerificationModal() {
+    const modal = document.getElementById('verification-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+    currentVerification = null; _verCache = [];
+  }
+
+  async function approveVerification() {
+    if (!currentVerification) return;
+    try {
+      const res = await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved', reviewerId: currentUser.id, reviewNotes: document.getElementById('verification-notes').value })
+      });
+      if (!res.ok) throw new Error('Failed');
+      closeVerificationModal(); loadVerifications(); loadStats();
+      showToast('Vehicle listing approved');
+    } catch { showToast('Failed to approve listing', 'error'); }
+  }
+
+  async function rejectVerification() {
+    const reasonField = document.getElementById('rejection-reason-field');
+    if (reasonField.classList.contains('hidden')) {
+      reasonField.classList.remove('hidden');
+      document.getElementById('reject-btn').textContent = 'Confirm Reject';
+      return;
+    }
+    const reason = document.getElementById('rejection-reason').value.trim();
+    if (!reason) { showToast('Please provide a rejection reason', 'error'); return; }
+    if (!currentVerification) return;
+    try {
+      const res = await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejected', reviewerId: currentUser.id, reviewNotes: document.getElementById('verification-notes').value, rejectionReason: reason })
+      });
+      if (!res.ok) throw new Error('Failed');
+      closeVerificationModal(); loadVerifications(); loadStats();
+      showToast('Vehicle listing rejected', 'info');
+    } catch { showToast('Failed to reject listing', 'error'); }
+  }
+
+  async function loadVehicles() {
+    try {
       const res = await authFetch(`${API_BASE}/admin/vehicles`);
-      const vehicles = await res.json();
-      const container = document.getElementById('vehicles-list');
-      container.innerHTML = vehicles.map(v => `
-        <div class="p-4 flex items-center gap-4">
-          <img src="${v.imageUrl}" class="w-20 h-14 object-cover rounded-lg">
-          <div class="flex-1">
-            <p class="font-semibold">${v.name}</p>
-            <p class="text-sm text-gray-500">${v.brand} ${v.model} ${v.year} - ${v.type}</p>
-          </div>
-          <div class="text-right">
-            <p class="font-semibold text-primary">$${parseFloat(v.pricePerHour).toFixed(2)}/hr</p>
-            <p class="text-sm ${v.isAvailable ? 'text-green-600' : 'text-red-600'}">${v.isAvailable ? 'Available' : 'Unavailable'}</p>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="editVehicle('${v.id}')" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Edit</button>
-            <button onclick="deleteVehicle('${v.id}')" class="px-3 py-1 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    }
+      allVehicles = await res.json();
+      renderVehicles(allVehicles);
+    } catch {}
+  }
 
-    async function loadUsers() {
+  function renderVehicles(vehicles) {
+    document.getElementById('vehicles-list').innerHTML = vehicles.length === 0
+      ? '<p class="px-6 py-8 text-gray-400 text-sm text-center">No vehicles found</p>'
+      : vehicles.map(v => `
+        <div class="table-row">
+          <img src="${v.imageUrl}" class="w-20 h-14 object-cover rounded-xl bg-gray-100 flex-shrink-0" onerror="this.src=''">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm">${v.name}</p>
+            <p class="text-xs text-gray-500 mt-0.5">${v.brand} ${v.model} · ${v.year} · ${v.type}</p>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <p class="font-semibold text-primary text-sm">$${parseFloat(v.pricePerHour).toFixed(2)}/hr</p>
+            <span class="badge ${v.isAvailable ? 'badge-green' : 'badge-gray'}">${v.isAvailable ? 'Available' : 'Unavailable'}</span>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            <button onclick="editVehicle('${CSS.escape(v.id)}')" class="btn-secondary btn-sm">Edit</button>
+            <button onclick="deleteVehicle('${CSS.escape(v.id)}')" class="btn-danger btn-sm">Delete</button>
+          </div>
+        </div>`).join('');
+  }
+
+  function filterVehicles() {
+    const q = document.getElementById('vehicle-search').value.toLowerCase();
+    renderVehicles(allVehicles.filter(v => v.name.toLowerCase().includes(q) || v.brand.toLowerCase().includes(q) || v.model.toLowerCase().includes(q)));
+  }
+
+  async function loadUsers() {
+    try {
       const res = await authFetch(`${API_BASE}/admin/users`);
-      const users = await res.json();
-      const container = document.getElementById('users-list');
-      container.innerHTML = users.map(u => `
-        <div class="p-4 flex items-center gap-4">
-          <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-            ${u.name.charAt(0).toUpperCase()}
-          </div>
-          <div class="flex-1">
-            <p class="font-semibold">${u.name}</p>
-            <p class="text-sm text-gray-500">${u.email}</p>
-          </div>
-          <div class="text-right mr-4">
-            <p class="text-sm">${u.tripsCompleted || 0} trips</p>
-            <p class="text-sm ${u.isAdmin ? 'text-primary font-medium' : u.isOwner ? 'text-secondary font-medium' : 'text-gray-500'}">${u.isAdmin ? 'Admin' : u.isOwner ? 'Owner' : 'User'}</p>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="editUser('${u.id}')" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Edit</button>
-            <button onclick="changeUserPassword('${u.id}', '${u.email}')" class="px-3 py-1 text-sm border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">Password</button>
-            <button onclick="deleteUser('${u.id}', '${u.email}')" class="px-3 py-1 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    }
+      allUsers = await res.json();
+      renderUsers(allUsers);
+    } catch {}
+  }
 
-    async function loadTrips() {
+  function renderUsers(users) {
+    document.getElementById('users-list').innerHTML = users.length === 0
+      ? '<p class="px-6 py-8 text-gray-400 text-sm text-center">No users found</p>'
+      : users.map(u => `
+        <div class="table-row">
+          <div class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">${u.name.charAt(0).toUpperCase()}</div>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm">${u.name}</p>
+            <p class="text-xs text-gray-500 mt-0.5">${u.email}</p>
+          </div>
+          <div class="text-right flex-shrink-0 mr-2">
+            <p class="text-xs text-gray-500">${u.tripsCompleted || 0} trips</p>
+            <span class="badge ${u.isAdmin ? 'badge-red' : u.isOwner ? 'badge-blue' : 'badge-gray'}">${u.isAdmin ? 'Admin' : u.isOwner ? 'Host' : 'User'}</span>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            <button onclick="editUser('${CSS.escape(u.id)}')" class="btn-secondary btn-sm">Edit</button>
+            <button onclick="changeUserPassword('${CSS.escape(u.id)}', '${u.email.replace(/'/g,"&#39;")}')" class="btn-secondary btn-sm">Password</button>
+            <button onclick="deleteUser('${CSS.escape(u.id)}', '${u.email.replace(/'/g,"&#39;")}')" class="btn-danger btn-sm">Delete</button>
+          </div>
+        </div>`).join('');
+  }
+
+  function filterUsers() {
+    const q = document.getElementById('user-search').value.toLowerCase();
+    renderUsers(allUsers.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+  }
+
+  async function loadTrips() {
+    try {
       const res = await authFetch(`${API_BASE}/admin/trips`);
-      const trips = await res.json();
-      const container = document.getElementById('trips-list');
-      container.innerHTML = trips.map(t => `
-        <div class="p-4 flex items-center gap-4">
-          <div class="flex-1">
-            <p class="font-semibold">Trip ${t.id.substring(0, 8)}...</p>
-            <p class="text-sm text-gray-500">${new Date(t.startDate).toLocaleDateString()} - ${new Date(t.endDate).toLocaleDateString()}</p>
+      allTrips = await res.json();
+      renderTrips(allTrips);
+    } catch {}
+  }
+
+  function renderTrips(trips) {
+    document.getElementById('trips-list').innerHTML = trips.length === 0
+      ? '<p class="px-6 py-8 text-gray-400 text-sm text-center">No trips found</p>'
+      : trips.map(t => `
+        <div class="table-row">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm font-mono">Trip ${t.id.substring(0,8)}</p>
+            <p class="text-xs text-gray-500 mt-0.5">${new Date(t.startDate).toLocaleDateString()} → ${new Date(t.endDate).toLocaleDateString()}</p>
           </div>
-          <div class="text-right">
-            <p class="font-semibold text-green-600">$${parseFloat(t.totalCost).toFixed(2)}</p>
-            <span class="px-2 py-1 rounded-full text-xs font-medium ${
-              t.status === 'completed' ? 'bg-green-100 text-green-700' :
-              t.status === 'active' ? 'bg-blue-100 text-blue-700' :
-              t.status === 'upcoming' ? 'bg-amber-100 text-amber-700' :
-              'bg-gray-100 text-gray-700'
-            }">${t.status}</span>
+          <div class="text-right flex-shrink-0">
+            <p class="font-semibold text-green-600 text-sm">$${parseFloat(t.totalCost).toFixed(2)}</p>
+            <span class="badge ${t.status==='completed'?'badge-green':t.status==='active'?'badge-blue':t.status==='upcoming'?'badge-amber':'badge-gray'}">${t.status}</span>
           </div>
-        </div>
-      `).join('');
-    }
+        </div>`).join('');
+  }
 
-    function openUserModal(user = null) {
-      document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add User';
-      document.getElementById('user-modal').classList.remove('hidden');
-      document.getElementById('user-modal').classList.add('flex');
-      document.getElementById('user-error').classList.add('hidden');
+  function filterTrips() {
+    const f = document.getElementById('trip-status-filter').value;
+    renderTrips(f ? allTrips.filter(t => t.status === f) : allTrips);
+  }
 
-      if (user) {
-        document.getElementById('user-id').value = user.id;
-        document.getElementById('user-name').value = user.name;
-        document.getElementById('user-email').value = user.email;
-        document.getElementById('user-email').disabled = true;
-        document.getElementById('user-password').value = '';
-        document.getElementById('user-password').placeholder = 'Leave blank to keep current';
-        document.getElementById('user-password').required = false;
-        document.getElementById('user-is-admin').checked = user.isAdmin;
-        document.getElementById('user-password-field').classList.add('hidden');
-      } else {
-        document.getElementById('user-form').reset();
-        document.getElementById('user-id').value = '';
-        document.getElementById('user-email').disabled = false;
-        document.getElementById('user-password').placeholder = '';
-        document.getElementById('user-password').required = true;
-        document.getElementById('user-password-field').classList.remove('hidden');
-      }
-    }
-
-    function closeUserModal() {
-      document.getElementById('user-modal').classList.add('hidden');
-      document.getElementById('user-modal').classList.remove('flex');
-    }
-
-    async function editUser(id) {
-      const res = await authFetch(`${API_BASE}/admin/users`);
-      const users = await res.json();
-      const user = users.find(u => u.id === id);
-      if (user) openUserModal(user);
-    }
-
-    async function deleteUser(id, email) {
-      if (id === currentUser.id) {
-        alert('You cannot delete your own account');
-        return;
-      }
-      if (!confirm(`Are you sure you want to delete user ${email}?`)) return;
-      await authFetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
-      loadUsers();
-      loadStats();
-    }
-
-    function changeUserPassword(id, email) {
-      document.getElementById('password-user-id').value = id;
-      document.getElementById('password-user-email').textContent = `Changing password for: ${email}`;
-      document.getElementById('password-modal').classList.remove('hidden');
-      document.getElementById('password-modal').classList.add('flex');
-      document.getElementById('password-error').classList.add('hidden');
-      document.getElementById('password-form').reset();
-    }
-
-    function closePasswordModal() {
-      document.getElementById('password-modal').classList.add('hidden');
-      document.getElementById('password-modal').classList.remove('flex');
-    }
-
-    document.getElementById('user-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('user-id').value;
-      const errorEl = document.getElementById('user-error');
-      errorEl.classList.add('hidden');
-
-      try {
-        if (id) {
-          const data = {
-            name: document.getElementById('user-name').value,
-            isAdmin: document.getElementById('user-is-admin').checked
-          };
-          await authFetch(`${API_BASE}/admin/users/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
-        } else {
-          const password = document.getElementById('user-password').value;
-          if (password.length < 6) {
-            errorEl.textContent = 'Password must be at least 6 characters';
-            errorEl.classList.remove('hidden');
-            return;
-          }
-          const res = await authFetch(`${API_BASE}/admin/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: document.getElementById('user-name').value,
-              email: document.getElementById('user-email').value,
-              password: password,
-              isAdmin: document.getElementById('user-is-admin').checked
-            })
-          });
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || 'Failed to create user');
-          }
-        }
-        closeUserModal();
-        loadUsers();
-        loadStats();
-      } catch (err) {
-        errorEl.textContent = err.message;
-        errorEl.classList.remove('hidden');
-      }
-    });
-
-    document.getElementById('password-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('password-user-id').value;
-      const newPassword = document.getElementById('new-password').value;
-      const confirmPassword = document.getElementById('confirm-password').value;
-      const errorEl = document.getElementById('password-error');
-      errorEl.classList.add('hidden');
-
-      if (newPassword !== confirmPassword) {
-        errorEl.textContent = 'Passwords do not match';
-        errorEl.classList.remove('hidden');
-        return;
-      }
-
-      if (newPassword.length < 6) {
-        errorEl.textContent = 'Password must be at least 6 characters';
-        errorEl.classList.remove('hidden');
-        return;
-      }
-
-      try {
-        const res = await authFetch(`${API_BASE}/admin/users/${id}/password`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: newPassword })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Failed to change password');
-        }
-        closePasswordModal();
-        alert('Password changed successfully');
-      } catch (err) {
-        errorEl.textContent = err.message;
-        errorEl.classList.remove('hidden');
-      }
-    });
-
-    function handleImageUrlInput(url) {
-      const previewContainer = document.getElementById('image-preview-container');
-      const previewImg = document.getElementById('image-preview');
-      if (url && url.startsWith('http')) {
-        previewImg.src = url;
-        previewContainer.classList.remove('hidden');
-      } else {
-        previewContainer.classList.add('hidden');
-      }
-    }
-
-    async function handleImageUpload(input) {
-      const file = input.files[0];
-      if (!file) return;
-
-      const statusEl = document.getElementById('upload-status');
-      const btnText = document.getElementById('upload-btn-text');
-      const previewContainer = document.getElementById('image-preview-container');
-      const previewImg = document.getElementById('image-preview');
-
-      statusEl.textContent = 'Uploading...';
-      statusEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
-      statusEl.classList.add('text-gray-500');
-      btnText.textContent = 'Uploading...';
-
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const res = await authFetch(`${API_BASE}/admin/upload-image`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, data: base64, mimeType: file.type })
-        });
-
-        if (!res.ok) throw new Error('Upload failed');
-        const { url } = await res.json();
-
-        document.getElementById('vehicle-image').value = url;
-        previewImg.src = url;
-        previewContainer.classList.remove('hidden');
-        statusEl.textContent = 'Photo uploaded successfully';
-        statusEl.classList.remove('text-gray-500', 'text-red-500');
-        statusEl.classList.add('text-green-600');
-        btnText.textContent = 'Change Photo';
-      } catch (err) {
-        statusEl.textContent = 'Upload failed. Please try again or paste a URL.';
-        statusEl.classList.remove('text-gray-500', 'text-green-600');
-        statusEl.classList.add('text-red-500');
-        btnText.textContent = 'Upload Photo';
-      }
-    }
-
-    function openVehicleModal(vehicle = null) {
-      document.getElementById('modal-title').textContent = vehicle ? 'Edit Vehicle' : 'Add Vehicle';
-      document.getElementById('vehicle-modal').classList.remove('hidden');
-      document.getElementById('vehicle-modal').classList.add('flex');
-
-      const previewContainer = document.getElementById('image-preview-container');
-      const previewImg = document.getElementById('image-preview');
-      const statusEl = document.getElementById('upload-status');
-      const btnText = document.getElementById('upload-btn-text');
-
-      if (vehicle) {
-        document.getElementById('vehicle-id').value = vehicle.id;
-        document.getElementById('vehicle-name').value = vehicle.name;
-        document.getElementById('vehicle-brand').value = vehicle.brand;
-        document.getElementById('vehicle-model').value = vehicle.model;
-        document.getElementById('vehicle-year').value = vehicle.year;
-        document.getElementById('vehicle-type').value = vehicle.type;
-        document.getElementById('vehicle-price').value = vehicle.pricePerHour;
-        document.getElementById('vehicle-seats').value = vehicle.seats;
-        document.getElementById('vehicle-fuel').value = vehicle.fuelType;
-        document.getElementById('vehicle-transmission').value = vehicle.transmission;
-        document.getElementById('vehicle-available').value = vehicle.isAvailable ? 'true' : 'false';
-        document.getElementById('vehicle-image').value = vehicle.imageUrl;
-        document.getElementById('vehicle-location').value = vehicle.locationAddress;
-        document.getElementById('vehicle-features').value = (vehicle.features || []).join(', ');
-        if (vehicle.imageUrl) {
-          previewImg.src = vehicle.imageUrl;
-          previewContainer.classList.remove('hidden');
-        } else {
-          previewContainer.classList.add('hidden');
-        }
-      } else {
-        document.getElementById('vehicle-form').reset();
-        document.getElementById('vehicle-id').value = '';
-        previewContainer.classList.add('hidden');
-        previewImg.src = '';
-      }
-
-      statusEl.classList.add('hidden');
-      statusEl.textContent = '';
-      btnText.textContent = 'Upload Photo';
-      document.getElementById('vehicle-image-file').value = '';
-    }
-
-    function closeVehicleModal() {
-      document.getElementById('vehicle-modal').classList.add('hidden');
-      document.getElementById('vehicle-modal').classList.remove('flex');
-    }
-
-    async function editVehicle(id) {
-      const res = await authFetch(`${API_BASE}/admin/vehicles`);
-      const vehicles = await res.json();
-      const vehicle = vehicles.find(v => v.id === id);
-      if (vehicle) openVehicleModal(vehicle);
-    }
-
-    async function deleteVehicle(id) {
-      if (!confirm('Are you sure you want to delete this vehicle?')) return;
-      await authFetch(`${API_BASE}/admin/vehicles/${id}`, { method: 'DELETE' });
-      loadVehicles();
-      loadStats();
-    }
-
-    document.getElementById('vehicle-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('vehicle-id').value;
-      const features = document.getElementById('vehicle-features').value
-        .split(',')
-        .map(f => f.trim())
-        .filter(f => f);
-
-      const data = {
-        name: document.getElementById('vehicle-name').value,
-        brand: document.getElementById('vehicle-brand').value,
-        model: document.getElementById('vehicle-model').value,
-        year: parseInt(document.getElementById('vehicle-year').value),
-        type: document.getElementById('vehicle-type').value,
-        pricePerHour: document.getElementById('vehicle-price').value,
-        seats: parseInt(document.getElementById('vehicle-seats').value),
-        fuelType: document.getElementById('vehicle-fuel').value,
-        transmission: document.getElementById('vehicle-transmission').value,
-        isAvailable: document.getElementById('vehicle-available').value === 'true',
-        imageUrl: document.getElementById('vehicle-image').value,
-        locationAddress: document.getElementById('vehicle-location').value,
-        features
-      };
-
-      if (id) {
-        await authFetch(`${API_BASE}/admin/vehicles/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-      } else {
-        await authFetch(`${API_BASE}/admin/vehicles`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-      }
-      closeVehicleModal();
-      loadVehicles();
-      loadStats();
-    });
-
-    let currentDocumentId = null;
-    let userDocumentsCache = [];
-
-    async function loadUserDocuments() {
-      try {
-        const filter = document.getElementById('doc-filter').value;
-        let url = `${API_BASE}/admin/user-documents`;
-        if (filter === 'pending') {
-          url += '?status=pending';
-        }
-        
-        const res = await fetch(url);
-        let docs = await res.json();
-        userDocumentsCache = docs;
-        
-        if (filter && filter !== 'pending') {
-          docs = docs.filter(d => d.verificationStatus === filter);
-        }
-        
-        const container = document.getElementById('user-documents-list');
-        const noDocsEl = document.getElementById('no-user-documents');
-        
-        if (docs.length === 0) {
-          container.innerHTML = '';
-          noDocsEl.classList.remove('hidden');
-        } else {
-          noDocsEl.classList.add('hidden');
-          container.innerHTML = docs.map(doc => {
-            const docTypeLabel = formatDocumentType(doc.documentType);
-            const statusColor = doc.verificationStatus === 'approved' ? 'green' : 
-                               doc.verificationStatus === 'rejected' ? 'red' : 'amber';
-            return `
-              <div class="p-4 flex items-center gap-4 hover:bg-gray-50">
-                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="font-semibold">${docTypeLabel}</p>
-                  <p class="text-sm text-gray-600">${doc.userName}</p>
-                  <p class="text-xs text-gray-400">${doc.userEmail}</p>
-                </div>
-                <div class="text-right mr-4">
-                  <p class="text-xs text-gray-500">${new Date(doc.submittedAt).toLocaleDateString()}</p>
-                  ${doc.fileName ? `<p class="text-xs text-gray-400">${doc.fileName}</p>` : ''}
-                </div>
-                <span class="px-3 py-1 rounded-full text-xs font-medium bg-${statusColor}-100 text-${statusColor}-700">
-                  ${doc.verificationStatus}
-                </span>
-                <button onclick="openDocumentModal('${doc.id}')" class="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-opacity-90">
-                  Review
-                </button>
-              </div>
-            `;
-          }).join('');
-        }
-      } catch (error) {
-        console.error('Error loading user documents:', error);
-      }
-    }
-
-    function formatDocumentType(type) {
-      const types = {
-        'drivers_license': "Driver's License",
-        'insurance_card': 'Insurance Card',
-        'proof_of_identity': 'Proof of Identity'
-      };
-      return types[type] || type;
-    }
-
-    function openDocumentModal(docId) {
-      currentDocumentId = docId;
-      const doc = userDocumentsCache.find(d => d.id === docId);
-      if (!doc) return;
-      
-      const modal = document.getElementById('document-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      
-      document.getElementById('document-details').innerHTML = `
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p class="text-gray-500">Document Type</p>
-            <p class="font-medium">${formatDocumentType(doc.documentType)}</p>
+  async function loadInsurance() {
+    try {
+      const res = await authFetch(`${API_BASE}/admin/insurance`);
+      const policies = await res.json();
+      const container = document.getElementById('insurance-list');
+      const noEl = document.getElementById('no-insurance');
+      if (policies.length === 0) { container.innerHTML = ''; noEl.classList.remove('hidden'); return; }
+      noEl.classList.add('hidden');
+      container.innerHTML = policies.map(p => `
+        <div class="table-row">
+          <div class="w-9 h-9 rounded-full ${p.providerType==='platform'?'bg-purple-100':'bg-blue-100'} flex items-center justify-center flex-shrink-0">
+            <span class="${p.providerType==='platform'?'text-purple-600':'text-blue-600'} text-sm font-bold">${p.providerType==='platform'?'P':'O'}</span>
           </div>
-          <div>
-            <p class="text-gray-500">User</p>
-            <p class="font-medium">${doc.userName}</p>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm">${p.providerName||'Platform Insurance'}</p>
+            <p class="text-xs text-gray-500">Policy: ${p.policyNumber||'N/A'} · ${p.coverageType||'Standard'}</p>
+          </div>
+          <span class="badge ${p.verificationStatus==='verified'?'badge-green':p.verificationStatus==='pending'?'badge-amber':'badge-red'}">${p.verificationStatus}</span>
+          ${p.expiryDate?`<span class="text-xs ${new Date(p.expiryDate)<new Date()?'text-red-500':'text-gray-400'} flex-shrink-0">Exp: ${new Date(p.expiryDate).toLocaleDateString()}</span>`:''}
+        </div>`).join('');
+    } catch {}
+  }
+
+  async function loadPayments() {
+    try {
+      const res = await authFetch(`${API_BASE}/admin/payments`);
+      const payments = await res.json();
+      const container = document.getElementById('payments-list');
+      const noEl = document.getElementById('no-payments');
+      if (payments.length === 0) { container.innerHTML = ''; noEl.classList.remove('hidden'); return; }
+      noEl.classList.add('hidden');
+      container.innerHTML = payments.map(p => `
+        <div class="table-row">
+          <div class="w-9 h-9 rounded-full ${p.status==='completed'?'bg-green-100':'bg-amber-100'} flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 ${p.status==='completed'?'text-green-600':'text-amber-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-gray-900 text-sm">$${parseFloat(p.amount).toFixed(2)}</p>
+            <p class="text-xs text-gray-500 font-mono">Trip ${p.tripId.substring(0,8)}</p>
+            <p class="text-xs text-gray-400">${new Date(p.createdAt).toLocaleString()}</p>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <p class="text-xs text-purple-600">Fee: $${parseFloat(p.platformFee||0).toFixed(2)}</p>
+            <p class="text-xs text-green-600">Payout: $${parseFloat(p.ownerPayout||0).toFixed(2)}</p>
+          </div>
+          <span class="badge ${p.status==='completed'?'badge-green':p.status==='pending'?'badge-amber':'badge-red'}">${p.status}</span>
+        </div>`).join('');
+    } catch {}
+  }
+
+  let currentDocumentId = null;
+  let userDocumentsCache = [];
+
+  async function loadUserDocuments() {
+    try {
+      const filter = document.getElementById('doc-filter').value;
+      let url = `${API_BASE}/admin/user-documents`;
+      if (filter === 'pending') url += '?status=pending';
+      const res = await authFetch(url);
+      let docs = await res.json();
+      userDocumentsCache = docs;
+      if (filter && filter !== 'pending') docs = docs.filter(d => d.verificationStatus === filter);
+      const container = document.getElementById('user-documents-list');
+      const noEl = document.getElementById('no-user-documents');
+      const pendingCount = userDocumentsCache.filter(d => d.verificationStatus === 'pending').length;
+      const badge = document.getElementById('nav-badge-user-documents');
+      if (pendingCount > 0) { badge.textContent = pendingCount; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
+      if (docs.length === 0) { container.innerHTML = ''; noEl.classList.remove('hidden'); return; }
+      noEl.classList.add('hidden');
+      container.innerHTML = docs.map(doc => `
+        <div class="table-row">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-900 text-sm">${formatDocumentType(doc.documentType)}</p>
+            <p class="text-xs text-gray-600">${doc.userName}</p>
             <p class="text-xs text-gray-400">${doc.userEmail}</p>
           </div>
-          <div>
-            <p class="text-gray-500">Submitted</p>
-            <p class="font-medium">${new Date(doc.submittedAt).toLocaleDateString()}</p>
+          <div class="text-right flex-shrink-0 mr-2">
+            <p class="text-xs text-gray-500">${new Date(doc.submittedAt).toLocaleDateString()}</p>
+            ${doc.expiryDate ? `<p class="text-xs ${new Date(doc.expiryDate)<new Date()?'text-red-500':'text-gray-400'}">Exp: ${new Date(doc.expiryDate).toLocaleDateString()}</p>` : ''}
           </div>
-          <div>
-            <p class="text-gray-500">Status</p>
-            <p class="font-medium capitalize">${doc.verificationStatus}</p>
-          </div>
-          ${doc.expiryDate ? `
-          <div>
-            <p class="text-gray-500">Expiry Date</p>
-            <p class="font-medium">${new Date(doc.expiryDate).toLocaleDateString()}</p>
-          </div>
-          ` : ''}
-        </div>
-      `;
-      
-      const imgContainer = document.getElementById('document-image-container');
-      const imgEl = document.getElementById('document-image');
-      
-      if (doc.documentData) {
-        imgContainer.classList.remove('hidden');
-        imgEl.src = doc.documentData;
-      } else {
-        imgContainer.classList.add('hidden');
-        imgEl.src = '';
-      }
-      
-      document.getElementById('document-notes').value = doc.reviewNotes || '';
-    }
+          <span class="badge ${doc.verificationStatus==='approved'?'badge-green':doc.verificationStatus==='rejected'?'badge-red':'badge-amber'}">${doc.verificationStatus}</span>
+          <button onclick="openDocumentModal('${CSS.escape(doc.id)}')" class="btn-primary btn-sm flex-shrink-0">Review</button>
+        </div>`).join('');
+    } catch (e) { showToast('Failed to load documents', 'error'); }
+  }
 
-    function closeDocumentModal() {
-      document.getElementById('document-modal').classList.add('hidden');
-      document.getElementById('document-modal').classList.remove('flex');
-      currentDocumentId = null;
-    }
+  function formatDocumentType(type) {
+    return { drivers_license: "Driver's License", insurance_card: 'Insurance Card', proof_of_identity: 'Proof of Identity' }[type] || type;
+  }
 
-    async function approveDocument() {
-      if (!currentDocumentId) return;
-      
-      try {
-        const notes = document.getElementById('document-notes').value;
-        const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            verificationStatus: 'approved',
-            reviewNotes: notes,
-            reviewerId: adminUser?.id
-          })
-        });
-        
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Failed to approve document');
-        }
-        
-        closeDocumentModal();
-        loadUserDocuments();
-        alert('Document approved successfully');
-      } catch (error) {
-        alert('Error: ' + error.message);
-      }
-    }
+  function openDocumentModal(docId) {
+    currentDocumentId = docId;
+    const doc = userDocumentsCache.find(d => d.id === docId);
+    if (!doc) return;
+    const modal = document.getElementById('document-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+    document.getElementById('document-details').innerHTML = `
+      <div class="grid grid-cols-2 gap-3 text-sm p-4 bg-gray-50 rounded-xl">
+        <div><p class="text-xs text-gray-500">Document Type</p><p class="font-medium text-gray-900">${formatDocumentType(doc.documentType)}</p></div>
+        <div><p class="text-xs text-gray-500">User</p><p class="font-medium text-gray-900">${doc.userName}</p><p class="text-xs text-gray-400">${doc.userEmail}</p></div>
+        <div><p class="text-xs text-gray-500">Submitted</p><p class="font-medium text-gray-900">${new Date(doc.submittedAt).toLocaleDateString()}</p></div>
+        <div><p class="text-xs text-gray-500">Status</p><span class="badge ${doc.verificationStatus==='approved'?'badge-green':doc.verificationStatus==='rejected'?'badge-red':'badge-amber'}">${doc.verificationStatus}</span></div>
+        ${doc.expiryDate ? `<div><p class="text-xs text-gray-500">Expiry</p><p class="font-medium ${new Date(doc.expiryDate)<new Date()?'text-red-600':'text-gray-900'}">${new Date(doc.expiryDate).toLocaleDateString()}</p></div>` : ''}
+      </div>`;
+    const imgContainer = document.getElementById('document-image-container');
+    const imgEl = document.getElementById('document-image');
+    if (doc.documentData) { imgContainer.classList.remove('hidden'); imgEl.src = doc.documentData; }
+    else { imgContainer.classList.add('hidden'); imgEl.src = ''; }
+    document.getElementById('document-notes').value = doc.reviewNotes || '';
+  }
 
-    async function rejectDocument() {
-      if (!currentDocumentId) return;
-      
-      const notes = document.getElementById('document-notes').value;
-      if (!notes) {
-        alert('Please add notes explaining why this document is being rejected.');
-        return;
-      }
-      
-      try {
-        const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            verificationStatus: 'rejected',
-            reviewNotes: notes,
-            reviewerId: adminUser?.id
-          })
-        });
-        
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Failed to reject document');
-        }
-        
-        closeDocumentModal();
-        loadUserDocuments();
-        alert('Document rejected');
-      } catch (error) {
-        alert('Error: ' + error.message);
-      }
-    }
+  function closeDocumentModal() {
+    const modal = document.getElementById('document-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+    currentDocumentId = null;
+  }
 
-    let calendarData = [];
-    let calendarVehicles = [];
-    let currentCalendarDate = new Date();
-
-    async function loadCalendarData() {
-      try {
-        const [tripsRes, vehiclesRes] = await Promise.all([
-          authFetch(`${API_BASE}/admin/calendar`),
-          authFetch(`${API_BASE}/admin/vehicles`)
-        ]);
-        calendarData = await tripsRes.json();
-        calendarVehicles = await vehiclesRes.json();
-        
-        const filterSelect = document.getElementById('calendar-vehicle-filter');
-        filterSelect.innerHTML = '<option value="">All Vehicles</option>' +
-          calendarVehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-        
-        renderCalendar();
-      } catch (error) {
-        console.error('Error loading calendar data:', error);
-      }
-    }
-
-    function changeMonth(delta) {
-      currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
-      renderCalendar();
-    }
-
-    function goToToday() {
-      currentCalendarDate = new Date();
-      renderCalendar();
-    }
-
-    function getStatusColor(status) {
-      switch (status) {
-        case 'upcoming': return 'bg-amber-500';
-        case 'active': return 'bg-blue-500';
-        case 'completed': return 'bg-green-500';
-        case 'cancelled': return 'bg-gray-400';
-        default: return 'bg-gray-300';
-      }
-    }
-
-    function getStatusBgLight(status) {
-      switch (status) {
-        case 'upcoming': return 'bg-amber-100 border-amber-300 text-amber-800';
-        case 'active': return 'bg-blue-100 border-blue-300 text-blue-800';
-        case 'completed': return 'bg-green-100 border-green-300 text-green-800';
-        case 'cancelled': return 'bg-gray-100 border-gray-300 text-gray-600';
-        default: return 'bg-gray-100 border-gray-300 text-gray-600';
-      }
-    }
-
-    function renderCalendar() {
-      const vehicleFilter = document.getElementById('calendar-vehicle-filter').value;
-      const year = currentCalendarDate.getFullYear();
-      const month = currentCalendarDate.getMonth();
-      
-      document.getElementById('calendar-month-label').textContent = 
-        new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const startDayOfWeek = firstDay.getDay();
-      const daysInMonth = lastDay.getDate();
-      
-      const filteredTrips = vehicleFilter 
-        ? calendarData.filter(t => t.vehicleId === vehicleFilter)
-        : calendarData;
-      
-      const grid = document.getElementById('calendar-grid');
-      grid.innerHTML = '';
-      
-      for (let i = 0; i < startDayOfWeek; i++) {
-        grid.innerHTML += '<div class="bg-gray-50 min-h-[100px] p-2"></div>';
-      }
-      
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const currentDate = new Date(year, month, day);
-        const isToday = dateStr === todayStr;
-        
-        const dayTrips = filteredTrips.filter(trip => {
-          const start = new Date(trip.startDate);
-          const end = new Date(trip.endDate);
-          return currentDate >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) &&
-                 currentDate <= new Date(end.getFullYear(), end.getMonth(), end.getDate());
-        });
-        
-        const tripDots = dayTrips.slice(0, 4).map(trip => 
-          `<div class="w-2 h-2 rounded-full ${getStatusColor(trip.status)}" title="${trip.vehicleName || 'Vehicle'}"></div>`
-        ).join('');
-        
-        const moreCount = dayTrips.length > 4 ? `<span class="text-xs text-gray-500">+${dayTrips.length - 4}</span>` : '';
-        
-        grid.innerHTML += `
-          <div onclick="showDayDetails('${dateStr}')" 
-               class="bg-white min-h-[100px] p-2 cursor-pointer hover:bg-gray-50 transition ${isToday ? 'ring-2 ring-primary' : ''}">
-            <div class="font-medium ${isToday ? 'text-primary' : 'text-gray-700'}">${day}</div>
-            <div class="flex flex-wrap gap-1 mt-1">
-              ${tripDots}
-              ${moreCount}
-            </div>
-            ${dayTrips.length > 0 ? `<div class="text-xs text-gray-500 mt-1">${dayTrips.length} booking${dayTrips.length > 1 ? 's' : ''}</div>` : ''}
-          </div>
-        `;
-      }
-      
-      const remainingCells = (7 - ((startDayOfWeek + daysInMonth) % 7)) % 7;
-      for (let i = 0; i < remainingCells; i++) {
-        grid.innerHTML += '<div class="bg-gray-50 min-h-[100px] p-2"></div>';
-      }
-      
-      document.getElementById('calendar-day-details').classList.add('hidden');
-    }
-
-    function showDayDetails(dateStr) {
-      const vehicleFilter = document.getElementById('calendar-vehicle-filter').value;
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const currentDate = new Date(year, month - 1, day);
-      
-      const filteredTrips = vehicleFilter 
-        ? calendarData.filter(t => t.vehicleId === vehicleFilter)
-        : calendarData;
-      
-      const dayTrips = filteredTrips.filter(trip => {
-        const start = new Date(trip.startDate);
-        const end = new Date(trip.endDate);
-        return currentDate >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) &&
-               currentDate <= new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  async function approveDocument() {
+    if (!currentDocumentId) return;
+    try {
+      const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationStatus: 'approved', reviewNotes: document.getElementById('document-notes').value, reviewerId: currentUser?.id })
       });
-      
-      const detailsEl = document.getElementById('calendar-day-details');
-      const titleEl = document.getElementById('calendar-day-title');
-      const bookingsEl = document.getElementById('calendar-day-bookings');
-      
-      titleEl.textContent = currentDate.toLocaleDateString('en-US', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed'); }
+      closeDocumentModal(); loadUserDocuments();
+      showToast('Document approved successfully');
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  }
+
+  async function rejectDocument() {
+    if (!currentDocumentId) return;
+    const notes = document.getElementById('document-notes').value.trim();
+    if (!notes) { showToast('Please add rejection notes before rejecting', 'error'); return; }
+    try {
+      const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationStatus: 'rejected', reviewNotes: notes, reviewerId: currentUser?.id })
       });
-      
-      if (dayTrips.length === 0) {
-        bookingsEl.innerHTML = '<p class="text-gray-500">No bookings on this day</p>';
-      } else {
-        bookingsEl.innerHTML = dayTrips.map(trip => `
-          <div class="p-4 rounded-lg border ${getStatusBgLight(trip.status)}">
-            <div class="flex items-center gap-4">
-              <img src="${trip.vehicleImage || ''}" class="w-16 h-12 object-cover rounded-lg bg-gray-100" onerror="this.style.display='none'">
-              <div class="flex-1">
-                <p class="font-semibold">${trip.vehicleName || 'Unknown Vehicle'}</p>
-                <p class="text-sm">${trip.userName || 'Unknown User'} (${trip.userEmail || ''})</p>
-                <p class="text-xs mt-1">
-                  ${new Date(trip.startDate).toLocaleString()} - ${new Date(trip.endDate).toLocaleString()}
-                </p>
-              </div>
-              <div class="text-right">
-                <p class="font-bold">$${parseFloat(trip.totalCost || 0).toFixed(2)}</p>
-                <span class="inline-block px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                  trip.status === 'completed' ? 'bg-green-200 text-green-800' :
-                  trip.status === 'active' ? 'bg-blue-200 text-blue-800' :
-                  trip.status === 'upcoming' ? 'bg-amber-200 text-amber-800' :
-                  'bg-gray-200 text-gray-700'
-                }">${trip.status}</span>
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-      
-      detailsEl.classList.remove('hidden');
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed'); }
+      closeDocumentModal(); loadUserDocuments();
+      showToast('Document rejected', 'info');
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  }
+
+  function openUserModal(user = null) {
+    document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add User';
+    document.getElementById('user-error').classList.add('hidden');
+    if (user) {
+      document.getElementById('user-id').value = user.id;
+      document.getElementById('user-name').value = user.name;
+      document.getElementById('user-email').value = user.email;
+      document.getElementById('user-email').disabled = true;
+      document.getElementById('user-password').required = false;
+      document.getElementById('user-is-admin').checked = user.isAdmin;
+      document.getElementById('user-password-field').classList.add('hidden');
+    } else {
+      document.getElementById('user-form').reset();
+      document.getElementById('user-id').value = '';
+      document.getElementById('user-email').disabled = false;
+      document.getElementById('user-password').required = true;
+      document.getElementById('user-password-field').classList.remove('hidden');
     }
-  </script>
+    const modal = document.getElementById('user-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+
+  function closeUserModal() {
+    const modal = document.getElementById('user-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+
+  async function editUser(id) {
+    const user = allUsers.find(u => u.id === id);
+    if (user) openUserModal(user);
+  }
+
+  async function deleteUser(id, email) {
+    if (id === currentUser.id) { showToast('You cannot delete your own account', 'error'); return; }
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+    try {
+      await authFetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
+      loadUsers(); loadStats();
+      showToast('User deleted');
+    } catch { showToast('Failed to delete user', 'error'); }
+  }
+
+  function changeUserPassword(id, email) {
+    document.getElementById('password-user-id').value = id;
+    document.getElementById('password-user-email').textContent = email;
+    document.getElementById('password-error').classList.add('hidden');
+    document.getElementById('password-form').reset();
+    const modal = document.getElementById('password-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+
+  function closePasswordModal() {
+    const modal = document.getElementById('password-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+
+  document.getElementById('user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('user-id').value;
+    const errEl = document.getElementById('user-error');
+    errEl.classList.add('hidden');
+    try {
+      if (id) {
+        await authFetch(`${API_BASE}/admin/users/${id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: document.getElementById('user-name').value, isAdmin: document.getElementById('user-is-admin').checked })
+        });
+      } else {
+        const password = document.getElementById('user-password').value;
+        if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; errEl.classList.remove('hidden'); return; }
+        const res = await authFetch(`${API_BASE}/admin/users`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: document.getElementById('user-name').value, email: document.getElementById('user-email').value, password, isAdmin: document.getElementById('user-is-admin').checked })
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed'); }
+      }
+      closeUserModal(); loadUsers(); loadStats();
+      showToast(id ? 'User updated' : 'User created');
+    } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  });
+
+  document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('password-user-id').value;
+    const newPwd = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    const errEl = document.getElementById('password-error');
+    errEl.classList.add('hidden');
+    if (newPwd !== confirm) { errEl.textContent = 'Passwords do not match'; errEl.classList.remove('hidden'); return; }
+    if (newPwd.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; errEl.classList.remove('hidden'); return; }
+    try {
+      const res = await authFetch(`${API_BASE}/admin/users/${id}/password`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPwd })
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed'); }
+      closePasswordModal(); showToast('Password changed successfully');
+    } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  });
+
+  function handleImageUrlInput(url) {
+    const pc = document.getElementById('image-preview-container');
+    const pi = document.getElementById('image-preview');
+    if (url && url.startsWith('http')) { pi.src = url; pc.classList.remove('hidden'); }
+    else { pc.classList.add('hidden'); }
+  }
+
+  async function handleImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('upload-status');
+    const btnText = document.getElementById('upload-btn-text');
+    statusEl.textContent = 'Uploading…'; statusEl.className = 'text-xs mt-1 text-gray-400'; statusEl.classList.remove('hidden');
+    btnText.textContent = 'Uploading…';
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await authFetch(`${API_BASE}/admin/upload-image`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, data: base64, mimeType: file.type })
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const { url } = await res.json();
+      document.getElementById('vehicle-image').value = url;
+      document.getElementById('image-preview').src = url;
+      document.getElementById('image-preview-container').classList.remove('hidden');
+      statusEl.textContent = 'Photo uploaded'; statusEl.className = 'text-xs mt-1 text-green-600';
+      btnText.textContent = 'Change Photo';
+    } catch {
+      statusEl.textContent = 'Upload failed — paste a URL instead'; statusEl.className = 'text-xs mt-1 text-red-500';
+      btnText.textContent = 'Upload Photo';
+    }
+  }
+
+  function openVehicleModal(vehicle = null) {
+    document.getElementById('modal-title').textContent = vehicle ? 'Edit Vehicle' : 'Add Vehicle';
+    const pc = document.getElementById('image-preview-container');
+    const pi = document.getElementById('image-preview');
+    document.getElementById('upload-status').classList.add('hidden');
+    document.getElementById('upload-btn-text').textContent = 'Upload Photo';
+    document.getElementById('vehicle-image-file').value = '';
+    if (vehicle) {
+      document.getElementById('vehicle-id').value = vehicle.id;
+      document.getElementById('vehicle-name').value = vehicle.name;
+      document.getElementById('vehicle-brand').value = vehicle.brand;
+      document.getElementById('vehicle-model').value = vehicle.model;
+      document.getElementById('vehicle-year').value = vehicle.year;
+      document.getElementById('vehicle-type').value = vehicle.type;
+      document.getElementById('vehicle-price').value = vehicle.pricePerHour;
+      document.getElementById('vehicle-seats').value = vehicle.seats;
+      document.getElementById('vehicle-fuel').value = vehicle.fuelType;
+      document.getElementById('vehicle-transmission').value = vehicle.transmission;
+      document.getElementById('vehicle-available').value = vehicle.isAvailable ? 'true' : 'false';
+      document.getElementById('vehicle-image').value = vehicle.imageUrl;
+      document.getElementById('vehicle-location').value = vehicle.locationAddress;
+      document.getElementById('vehicle-features').value = (vehicle.features || []).join(', ');
+      if (vehicle.imageUrl) { pi.src = vehicle.imageUrl; pc.classList.remove('hidden'); } else { pc.classList.add('hidden'); }
+    } else {
+      document.getElementById('vehicle-form').reset();
+      document.getElementById('vehicle-id').value = '';
+      pc.classList.add('hidden'); pi.src = '';
+    }
+    const modal = document.getElementById('vehicle-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+  }
+
+  function closeVehicleModal() {
+    const modal = document.getElementById('vehicle-modal');
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+  }
+
+  async function editVehicle(id) {
+    const vehicle = allVehicles.find(v => v.id === id);
+    if (vehicle) openVehicleModal(vehicle);
+  }
+
+  async function deleteVehicle(id) {
+    if (!confirm('Delete this vehicle? This cannot be undone.')) return;
+    try {
+      await authFetch(`${API_BASE}/admin/vehicles/${id}`, { method: 'DELETE' });
+      loadVehicles(); loadStats();
+      showToast('Vehicle deleted');
+    } catch { showToast('Failed to delete vehicle', 'error'); }
+  }
+
+  document.getElementById('vehicle-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('vehicle-id').value;
+    const data = {
+      name: document.getElementById('vehicle-name').value,
+      brand: document.getElementById('vehicle-brand').value,
+      model: document.getElementById('vehicle-model').value,
+      year: parseInt(document.getElementById('vehicle-year').value),
+      type: document.getElementById('vehicle-type').value,
+      pricePerHour: document.getElementById('vehicle-price').value,
+      seats: parseInt(document.getElementById('vehicle-seats').value),
+      fuelType: document.getElementById('vehicle-fuel').value,
+      transmission: document.getElementById('vehicle-transmission').value,
+      isAvailable: document.getElementById('vehicle-available').value === 'true',
+      imageUrl: document.getElementById('vehicle-image').value,
+      locationAddress: document.getElementById('vehicle-location').value,
+      features: document.getElementById('vehicle-features').value.split(',').map(f => f.trim()).filter(Boolean)
+    };
+    try {
+      const res = await authFetch(id ? `${API_BASE}/admin/vehicles/${id}` : `${API_BASE}/admin/vehicles`, {
+        method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to save vehicle');
+      closeVehicleModal(); loadVehicles(); loadStats();
+      showToast(id ? 'Vehicle updated' : 'Vehicle added');
+    } catch (e) { showToast(e.message, 'error'); }
+  });
+
+  // Calendar
+  let calendarData = [], calendarVehicles = [], currentCalendarDate = new Date();
+
+  async function loadCalendarData() {
+    try {
+      const [tripsRes, vehiclesRes] = await Promise.all([authFetch(`${API_BASE}/admin/calendar`), authFetch(`${API_BASE}/admin/vehicles`)]);
+      calendarData = await tripsRes.json();
+      calendarVehicles = await vehiclesRes.json();
+      const sel = document.getElementById('calendar-vehicle-filter');
+      sel.innerHTML = '<option value="">All Vehicles</option>' + calendarVehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+      renderCalendar();
+    } catch {}
+  }
+
+  function changeMonth(d) { currentCalendarDate.setMonth(currentCalendarDate.getMonth() + d); renderCalendar(); }
+  function goToToday() { currentCalendarDate = new Date(); renderCalendar(); }
+
+  function renderCalendar() {
+    const vf = document.getElementById('calendar-vehicle-filter').value;
+    const year = currentCalendarDate.getFullYear(), month = currentCalendarDate.getMonth();
+    document.getElementById('calendar-month-label').textContent = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const firstDay = new Date(year, month, 1), daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDow = firstDay.getDay();
+    const filtered = vf ? calendarData.filter(t => t.vehicleId === vf) : calendarData;
+    const grid = document.getElementById('calendar-grid');
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    let html = '';
+    for (let i = 0; i < startDow; i++) html += '<div class="bg-gray-50 min-h-[90px] p-2"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const cd = new Date(year, month, day);
+      const isToday = ds === todayStr;
+      const dayTrips = filtered.filter(t => { const s = new Date(t.startDate), e = new Date(t.endDate); return cd >= new Date(s.getFullYear(),s.getMonth(),s.getDate()) && cd <= new Date(e.getFullYear(),e.getMonth(),e.getDate()); });
+      const dots = dayTrips.slice(0,3).map(t => `<span class="w-1.5 h-1.5 rounded-full inline-block ${t.status==='upcoming'?'bg-amber-500':t.status==='active'?'bg-blue-500':t.status==='completed'?'bg-green-500':'bg-gray-400'}"></span>`).join('');
+      html += `<div onclick="showDayDetails('${ds}')" class="bg-white min-h-[90px] p-2 cursor-pointer hover:bg-orange-50 transition border-b border-r border-gray-100 ${isToday?'ring-2 ring-inset ring-primary':''}">
+        <span class="text-xs font-semibold ${isToday?'text-primary':'text-gray-600'}">${day}</span>
+        <div class="flex flex-wrap gap-0.5 mt-1">${dots}${dayTrips.length>3?`<span class="text-xs text-gray-400">+${dayTrips.length-3}</span>`:''}</div>
+        ${dayTrips.length>0?`<p class="text-xs text-gray-400 mt-0.5">${dayTrips.length}</p>`:''}
+      </div>`;
+    }
+    const rem = (7 - ((startDow + daysInMonth) % 7)) % 7;
+    for (let i = 0; i < rem; i++) html += '<div class="bg-gray-50 min-h-[90px] p-2 border-b border-r border-gray-100"></div>';
+    grid.innerHTML = html;
+    document.getElementById('calendar-day-details').classList.add('hidden');
+  }
+
+  function showDayDetails(ds) {
+    const vf = document.getElementById('calendar-vehicle-filter').value;
+    const [y,m,d] = ds.split('-').map(Number);
+    const cd = new Date(y, m-1, d);
+    const filtered = vf ? calendarData.filter(t => t.vehicleId === vf) : calendarData;
+    const dayTrips = filtered.filter(t => { const s = new Date(t.startDate), e = new Date(t.endDate); return cd >= new Date(s.getFullYear(),s.getMonth(),s.getDate()) && cd <= new Date(e.getFullYear(),e.getMonth(),e.getDate()); });
+    const detailsEl = document.getElementById('calendar-day-details');
+    document.getElementById('calendar-day-title').textContent = cd.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('calendar-day-bookings').innerHTML = dayTrips.length === 0
+      ? '<p class="text-gray-400 text-sm">No bookings on this day</p>'
+      : dayTrips.map(t => `
+          <div class="flex items-center gap-4 p-4 rounded-xl border ${t.status==='active'?'border-blue-200 bg-blue-50':t.status==='upcoming'?'border-amber-200 bg-amber-50':t.status==='completed'?'border-green-200 bg-green-50':'border-gray-200 bg-gray-50'}">
+            <img src="${t.vehicleImage||''}" class="w-16 h-12 object-cover rounded-lg bg-gray-100 flex-shrink-0" onerror="this.style.display='none'">
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-900 text-sm">${t.vehicleName||'Unknown Vehicle'}</p>
+              <p class="text-xs text-gray-600">${t.userName||''} · ${t.userEmail||''}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${new Date(t.startDate).toLocaleString()} → ${new Date(t.endDate).toLocaleString()}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="font-semibold text-gray-900 text-sm">$${parseFloat(t.totalCost||0).toFixed(2)}</p>
+              <span class="badge ${t.status==='completed'?'badge-green':t.status==='active'?'badge-blue':t.status==='upcoming'?'badge-amber':'badge-gray'}">${t.status}</span>
+            </div>
+          </div>`).join('');
+    detailsEl.classList.remove('hidden');
+  }
+
+  // Close modals on overlay click
+  ['document-modal','verification-modal','user-modal','password-modal','vehicle-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) { this.classList.add('hidden'); this.classList.remove('flex'); }
+    });
+  });
+</script>
 </body>
 </html>
