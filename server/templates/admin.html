@@ -738,11 +738,13 @@
   function showTab(tab) {
     const tabs = ['analytics','calendar','verifications','vehicles','users','trips','insurance','payments','user-documents'];
     tabs.forEach(t => {
-      document.getElementById(`content-${t}`).style.display = 'none';
+      const el = document.getElementById(`content-${t}`);
+      if (el) el.classList.add('hidden');
       const nav = document.getElementById(`nav-${t}`);
-      if (nav) { nav.classList.remove('active'); }
+      if (nav) nav.classList.remove('active');
     });
-    document.getElementById(`content-${tab}`).style.display = '';
+    const activeEl = document.getElementById(`content-${tab}`);
+    if (activeEl) activeEl.classList.remove('hidden');
     const activeNav = document.getElementById(`nav-${tab}`);
     if (activeNav) activeNav.classList.add('active');
     currentTab = tab;
