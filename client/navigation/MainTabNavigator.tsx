@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, AntDesign } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
@@ -75,7 +75,7 @@ export default function MainTabNavigator() {
         options={{
           title: "Favorites",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "heart" : "heart-outline"} size={size} color={color} />
+            <AntDesign name={focused ? "heart" : "hearto"} size={size} color={color} />
           ),
         }}
       />

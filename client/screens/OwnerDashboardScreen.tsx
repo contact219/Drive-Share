@@ -14,7 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { getApiUrl } from "@/lib/query-client";
+import { getApiUrl, buildAuthHeaders } from "@/lib/query-client";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -65,8 +65,10 @@ export default function OwnerDashboardScreen() {
     queryKey: ["/api/owner/profile"],
     queryFn: async () => {
       if (!user?.id) return null;
+      const headers = await buildAuthHeaders();
       const response = await fetch(
-        new URL(`/api/owner/profile?userId=${user.id}`, getApiUrl()).toString()
+        new URL(`/api/owner/profile?userId=${user.id}`, getApiUrl()).toString(),
+        { headers }
       );
       if (!response.ok) return null;
       return response.json();
@@ -79,8 +81,10 @@ export default function OwnerDashboardScreen() {
     queryKey: ["/api/owner", ownerProfile?.id, "vehicles"],
     queryFn: async () => {
       if (!ownerProfile?.id) return [];
+      const headers = await buildAuthHeaders();
       const response = await fetch(
-        new URL(`/api/owner/${ownerProfile.id}/vehicles`, getApiUrl()).toString()
+        new URL(`/api/owner/${ownerProfile.id}/vehicles`, getApiUrl()).toString(),
+        { headers }
       );
       if (!response.ok) return [];
       return response.json();
@@ -102,17 +106,21 @@ export default function OwnerDashboardScreen() {
     if (!user?.id) return;
 
     try {
+      const headers = await buildAuthHeaders({ "Content-Type": "application/json" });
       const response = await fetch(new URL("/api/owner/profile", getApiUrl()).toString(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ userId: user.id }),
       });
 
       if (response.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/owner/profile"] });
+      } else {
+        const body = await response.json().catch(() => ({}));
+        Alert.alert("Error", body.error || "Could not create host profile. Please try again.");
       }
     } catch (error) {
-      console.error("Error becoming host:", error);
+      Alert.alert("Error", "Network error. Please check your connection and try again.");
     }
   }, [user?.id, queryClient]);
 
@@ -141,9 +149,10 @@ export default function OwnerDashboardScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              const headers = await buildAuthHeaders();
               const response = await fetch(
                 new URL(`/api/owner/vehicles/${ov.id}`, getApiUrl()).toString(),
-                { method: "DELETE" }
+                { method: "DELETE", headers }
               );
               if (response.ok || response.status === 204) {
                 queryClient.invalidateQueries({ queryKey: ["/api/owner", ownerProfile?.id, "vehicles"] });

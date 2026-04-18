@@ -19,7 +19,7 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-async function buildAuthHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+export async function buildAuthHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
   const headers: Record<string, string> = { ...extra };
   const token = await getAuthToken();
   if (token) {

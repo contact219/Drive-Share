@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, AntDesign } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -78,8 +78,8 @@ export function VehicleCard({
           style={styles.compactFavoriteButton}
           hitSlop={8}
         >
-          <Ionicons
-            name={isFavorite ? "heart" : "heart-outline"}
+          <AntDesign
+            name={isFavorite ? "heart" : "hearto"}
             size={20}
             color={isFavorite ? Colors.light.error : theme.textSecondary}
           />
@@ -123,8 +123,8 @@ export function VehicleCard({
           style={[styles.favoriteButton, { backgroundColor: theme.backgroundRoot }]}
           hitSlop={8}
         >
-          <Ionicons
-            name={isFavorite ? "heart" : "heart-outline"}
+          <AntDesign
+            name={isFavorite ? "heart" : "hearto"}
             size={22}
             color={isFavorite ? Colors.light.error : theme.textSecondary}
           />

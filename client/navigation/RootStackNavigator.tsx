@@ -179,67 +179,67 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="PaymentMethods"
         component={PaymentMethodsScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Payment Methods" }}
       />
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Notifications" }}
       />
       <Stack.Screen
         name="DrivingLicense"
         component={DrivingLicenseScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Driving License" }}
       />
       <Stack.Screen
         name="HelpSupport"
         component={HelpSupportScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Help & Support" }}
       />
       <Stack.Screen
         name="Appearance"
         component={AppearanceScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Appearance" }}
       />
       <Stack.Screen
         name="Language"
         component={LanguageScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Language" }}
       />
       <Stack.Screen
         name="Location"
         component={LocationScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Location" }}
       />
       <Stack.Screen
         name="RateApp"
         component={RateAppScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Rate App" }}
       />
       <Stack.Screen
         name="ShareApp"
         component={ShareAppScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Share App" }}
       />
       <Stack.Screen
         name="DataDownload"
         component={DataDownloadScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Download My Data" }}
       />
       <Stack.Screen
         name="VehicleMap"
         component={VehicleMapScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Map View" }}
       />
       <Stack.Screen
         name="OwnerDashboard"
         component={OwnerDashboardScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Host Dashboard" }}
       />
       <Stack.Screen
         name="Conversations"
         component={ConversationsScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Messages" }}
       />
       <Stack.Screen
         name="Chat"
@@ -252,12 +252,12 @@ export default function RootStackNavigator() {
       <Stack.Screen
         name="AddVehicle"
         component={AddVehicleScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Add Vehicle" }}
       />
       <Stack.Screen
         name="EditVehicle"
         component={EditVehicleScreen}
-        options={{ headerShown: false }}
+        options={{ ...opaqueScreenOptions, headerTitle: "Edit Vehicle" }}
       />
     </Stack.Navigator>
   );
