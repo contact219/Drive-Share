@@ -153,44 +153,44 @@
     </div>
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       <p class="nav-section-label">Overview</p>
-      <div class="sidebar-link active" onclick="showTab('analytics')" id="nav-analytics">
+      <div class="sidebar-link active" data-tab="analytics" id="nav-analytics">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Analytics
       </div>
-      <div class="sidebar-link" onclick="showTab('calendar')" id="nav-calendar">
+      <div class="sidebar-link" data-tab="calendar" id="nav-calendar">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Calendar
         <span id="nav-badge-calendar" class="ml-auto bg-primary text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
       </div>
       <p class="nav-section-label mt-4">Management</p>
-      <div class="sidebar-link" onclick="showTab('verifications')" id="nav-verifications">
+      <div class="sidebar-link" data-tab="verifications" id="nav-verifications">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Verifications
         <span id="nav-badge-verifications" class="ml-auto bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
       </div>
-      <div class="sidebar-link" onclick="showTab('user-documents')" id="nav-user-documents">
+      <div class="sidebar-link" data-tab="user-documents" id="nav-user-documents">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         User Documents
         <span id="nav-badge-user-documents" class="ml-auto bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5 hidden"></span>
       </div>
-      <div class="sidebar-link" onclick="showTab('vehicles')" id="nav-vehicles">
+      <div class="sidebar-link" data-tab="vehicles" id="nav-vehicles">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l3.5.875M13 16H3m10 0l3-8h2l2 8m0 0h-3m-6-9v9"/></svg>
         Vehicles
       </div>
-      <div class="sidebar-link" onclick="showTab('users')" id="nav-users">
+      <div class="sidebar-link" data-tab="users" id="nav-users">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         Users
       </div>
-      <div class="sidebar-link" onclick="showTab('trips')" id="nav-trips">
+      <div class="sidebar-link" data-tab="trips" id="nav-trips">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
         Trips
       </div>
       <p class="nav-section-label mt-4">Finance</p>
-      <div class="sidebar-link" onclick="showTab('payments')" id="nav-payments">
+      <div class="sidebar-link" data-tab="payments" id="nav-payments">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
         Payments
       </div>
-      <div class="sidebar-link" onclick="showTab('insurance')" id="nav-insurance">
+      <div class="sidebar-link" data-tab="insurance" id="nav-insurance">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
         Insurance
       </div>
@@ -289,7 +289,7 @@
       </div>
 
       <!-- Calendar -->
-      <div id="content-calendar" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-calendar" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="p-6 border-b border-gray-100">
           <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
             <div>
@@ -334,7 +334,7 @@
       </div>
 
       <!-- Verifications -->
-      <div id="content-verifications" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-verifications" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 class="font-semibold text-gray-900">Vehicle Verification Queue</h2>
@@ -350,7 +350,7 @@
       </div>
 
       <!-- User Documents -->
-      <div id="content-user-documents" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-user-documents" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-semibold text-gray-900">User Documents</h2>
@@ -371,7 +371,7 @@
       </div>
 
       <!-- Vehicles -->
-      <div id="content-vehicles" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-vehicles" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-semibold text-gray-900">Vehicles</h2>
@@ -389,7 +389,7 @@
       </div>
 
       <!-- Users -->
-      <div id="content-users" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-users" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-semibold text-gray-900">Users</h2>
@@ -407,7 +407,7 @@
       </div>
 
       <!-- Trips -->
-      <div id="content-trips" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-trips" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="font-semibold text-gray-900">Trips</h2>
@@ -425,7 +425,7 @@
       </div>
 
       <!-- Payments -->
-      <div id="content-payments" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-payments" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100">
           <h2 class="font-semibold text-gray-900">Payment History</h2>
           <p class="text-xs text-gray-400 mt-0.5">All Stripe transactions</p>
@@ -437,7 +437,7 @@
       </div>
 
       <!-- Insurance -->
-      <div id="content-insurance" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div id="content-insurance" style="display:none" class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="px-6 py-4 border-b border-gray-100">
           <h2 class="font-semibold text-gray-900">Insurance Policies</h2>
           <p class="text-xs text-gray-400 mt-0.5">Owner-submitted and platform coverage</p>
@@ -736,6 +736,13 @@
   }
 
   const TAB_IDS = ['analytics','calendar','verifications','vehicles','users','trips','insurance','payments','user-documents'];
+
+  // Attach nav click handlers via event listeners (no inline onclick needed)
+  document.querySelectorAll('.sidebar-link[data-tab]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      showTab(el.getAttribute('data-tab'));
+    });
+  });
 
   function showTab(tab) {
     TAB_IDS.forEach(t => {
