@@ -1,11 +1,5 @@
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
@@ -568,6 +562,8 @@ var init_db = __esm({
 
 // server/index.ts
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 // server/routes.ts
 import { createServer } from "node:http";
@@ -596,22 +592,8 @@ var DatabaseStorage = class {
     return db.select().from(users).orderBy(desc(users.createdAt));
   }
   async updateUser(id, updates) {
-    console.log(`[STORAGE] updateUser called with id: ${id}`);
-    console.log(`[STORAGE] Updates:`, JSON.stringify(updates, (key, value) => key === "password" ? value?.substring(0, 20) + "..." : value));
-    try {
-      const result = await db.update(users).set({ ...updates, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, id)).returning();
-      console.log(`[STORAGE] Update result count: ${result.length}`);
-      if (result.length > 0) {
-        console.log(`[STORAGE] Updated user email: ${result[0].email}`);
-        console.log(`[STORAGE] Updated password hash: ${result[0].password?.substring(0, 20)}...`);
-      } else {
-        console.log(`[STORAGE] No user found with id: ${id}`);
-      }
-      return result[0] || void 0;
-    } catch (error) {
-      console.error(`[STORAGE] Update error:`, error);
-      throw error;
-    }
+    const [result] = await db.update(users).set({ ...updates, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, id)).returning();
+    return result || void 0;
   }
   async deleteUser(id) {
     const result = await db.delete(users).where(eq(users.id, id));
@@ -1821,7 +1803,56 @@ Support: ${RUSH_CONFIG.supportEmail}
   return sendEmail({ to: email, subject, text: text2, html });
 }
 
+// server/middleware.ts
+import jwt from "jsonwebtoken";
+var JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.warn("WARNING: JWT_SECRET env var not set \u2014 using insecure fallback. Set JWT_SECRET in production.");
+}
+var SECRET = JWT_SECRET || "insecure-dev-secret-change-me";
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  const token = authHeader.slice(7);
+  try {
+    const payload = jwt.verify(token, SECRET);
+    req.user = payload;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    next();
+  });
+}
+function signToken(payload) {
+  return jwt.sign(payload, SECRET, { expiresIn: "30d" });
+}
+
 // server/routes.ts
+import { createRemoteJWKSet, jwtVerify } from "jose";
+var APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+var MIN_PASSWORD_LENGTH = 8;
+var MAX_MESSAGE_LENGTH = 2e3;
+var ALLOWED_IMAGE_MAGIC = {
+  jpg: Buffer.from([255, 216, 255]),
+  png: Buffer.from([137, 80, 78, 71]),
+  webp: Buffer.from([82, 73, 70, 70]),
+  gif: Buffer.from([71, 73, 70, 56])
+};
+function validateImageMagicBytes(buffer, ext) {
+  const magic = ALLOWED_IMAGE_MAGIC[ext];
+  if (!magic) return false;
+  return buffer.slice(0, magic.length).equals(magic);
+}
+var APP_BASE_URL = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://localhost:5000";
 async function registerRoutes(app2) {
   app2.get("/api/vehicles", async (req, res) => {
     try {
@@ -1871,508 +1902,9 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch vehicle" });
     }
   });
-  app2.post("/api/auth/register", async (req, res) => {
-    try {
-      const { email, name, password } = req.body;
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ error: "Email already registered" });
-      }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await storage.createUser({
-        email,
-        name,
-        password: hashedPassword
-      });
-      const { password: _, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to register user" });
-    }
-  });
-  app2.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to login" });
-    }
-  });
-  app2.post("/api/auth/social", async (req, res) => {
-    try {
-      const { provider, token, name: clientName } = req.body;
-      if (!provider || !token) {
-        return res.status(400).json({ error: "Provider and token are required" });
-      }
-      if (!["apple", "google"].includes(provider)) {
-        return res.status(400).json({ error: "Invalid provider" });
-      }
-      let verifiedEmail = null;
-      let verifiedName = clientName || null;
-      if (provider === "google") {
-        const googleRes = await fetch(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-        if (!googleRes.ok) {
-          return res.status(401).json({ error: "Invalid Google token" });
-        }
-        const googleUser = await googleRes.json();
-        verifiedEmail = googleUser.email || null;
-        verifiedName = verifiedName || googleUser.name || null;
-      } else if (provider === "apple") {
-        try {
-          const parts = token.split(".");
-          if (parts.length !== 3) {
-            return res.status(401).json({ error: "Invalid Apple token format" });
-          }
-          const payload = JSON.parse(
-            Buffer.from(parts[1], "base64").toString()
-          );
-          if (!payload.email || payload.iss !== "https://appleid.apple.com") {
-            return res.status(401).json({ error: "Invalid Apple token" });
-          }
-          verifiedEmail = payload.email;
-        } catch {
-          return res.status(401).json({ error: "Failed to verify Apple token" });
-        }
-      }
-      if (!verifiedEmail) {
-        return res.status(400).json({ error: "Could not verify email from provider" });
-      }
-      let user = await storage.getUserByEmail(verifiedEmail);
-      if (!user) {
-        const randomPassword = await bcrypt.hash(
-          __require("crypto").randomBytes(32).toString("hex"),
-          10
-        );
-        user = await storage.createUser({
-          email: verifiedEmail,
-          name: verifiedName || verifiedEmail.split("@")[0],
-          password: randomPassword
-        });
-      }
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Social auth error:", error);
-      res.status(500).json({ error: "Social authentication failed" });
-    }
-  });
-  app2.get("/api/users/:id/trips", async (req, res) => {
-    try {
-      const trips2 = await storage.getTripsByUser(req.params.id);
-      res.json(trips2);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch trips" });
-    }
-  });
-  app2.post("/api/trips", async (req, res) => {
-    try {
-      const tripData = insertTripSchema.parse(req.body);
-      const trip = await storage.createTrip(tripData);
-      try {
-        const renter = await storage.getUser(trip.userId);
-        const vehicle = await storage.getVehicle(trip.vehicleId);
-        if (renter && vehicle && renter.email) {
-          sendBookingConfirmationEmail(
-            renter.email,
-            renter.name,
-            vehicle.name,
-            trip.startDate.toISOString(),
-            trip.endDate.toISOString(),
-            Number(trip.totalCost)
-          ).catch(
-            (err) => console.error("Failed to send renter confirmation email:", err)
-          );
-          const owner = await getVehicleOwnerUser(vehicle.id);
-          if (owner && owner.email) {
-            sendNewBookingNotificationToOwner(
-              owner.email,
-              owner.name,
-              renter.name,
-              vehicle.name,
-              trip.startDate.toISOString(),
-              trip.endDate.toISOString(),
-              Number(trip.totalCost)
-            ).catch(
-              (err) => console.error("Failed to send owner notification email:", err)
-            );
-          }
-        }
-      } catch (emailError) {
-        console.error("Email notification error (non-blocking):", emailError);
-      }
-      res.status(201).json(trip);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create trip" });
-    }
-  });
-  app2.patch("/api/trips/:id", async (req, res) => {
-    try {
-      const trip = await storage.updateTrip(req.params.id, req.body);
-      if (!trip) {
-        return res.status(404).json({ error: "Trip not found" });
-      }
-      if (req.body.status === "completed") {
-        try {
-          const renter = await storage.getUser(trip.userId);
-          const vehicle = await storage.getVehicle(trip.vehicleId);
-          if (renter && vehicle && renter.email) {
-            let ownerName = "the host";
-            const owner = await getVehicleOwnerUser(vehicle.id);
-            if (owner) {
-              ownerName = owner.name;
-            }
-            sendTripCompletedEmail(
-              renter.email,
-              renter.name,
-              vehicle.name,
-              ownerName
-            ).catch(
-              (err) => console.error("Failed to send trip completed email:", err)
-            );
-          }
-        } catch (emailError) {
-          console.error("Email notification error (non-blocking):", emailError);
-        }
-      }
-      res.json(trip);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update trip" });
-    }
-  });
-  app2.get("/api/users/:id/favorites", async (req, res) => {
-    try {
-      const favorites2 = await storage.getFavoritesByUser(req.params.id);
-      res.json(favorites2);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch favorites" });
-    }
-  });
-  app2.post("/api/favorites", async (req, res) => {
-    try {
-      const { userId, vehicleId } = req.body;
-      const favorite = await storage.addFavorite({ userId, vehicleId });
-      res.status(201).json(favorite);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to add favorite" });
-    }
-  });
-  app2.delete(
-    "/api/favorites/:userId/:vehicleId",
-    async (req, res) => {
-      try {
-        await storage.removeFavorite(req.params.userId, req.params.vehicleId);
-        res.status(204).send();
-      } catch (error) {
-        res.status(500).json({ error: "Failed to remove favorite" });
-      }
-    }
-  );
-  app2.post(
-    "/api/admin/migrate-from-dev",
-    async (req, res) => {
-      try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-          return res.status(401).json({ error: "Admin credentials required" });
-        }
-        const user = await storage.getUserByEmail(email);
-        if (!user || !user.isAdmin) {
-          return res.status(403).json({ error: "Admin access required" });
-        }
-        const passwordValid = await bcrypt.compare(password, user.password);
-        if (!passwordValid) {
-          return res.status(403).json({ error: "Invalid credentials" });
-        }
-        const result = await migrateToDevState();
-        res.json(result);
-      } catch (error) {
-        res.status(500).json({ error: "Migration failed" });
-      }
-    }
-  );
-  app2.post("/api/admin/upload-image", async (req, res) => {
-    try {
-      const { filename, data, mimeType } = req.body;
-      if (!filename || !data || !mimeType) {
-        return res.status(400).json({ error: "filename, data, and mimeType are required" });
-      }
-      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
-      if (!allowedTypes.includes(mimeType)) {
-        return res.status(400).json({ error: "Only image files are allowed" });
-      }
-      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
-      fs.mkdirSync(uploadsDir, { recursive: true });
-      const ext = mimeType.split("/")[1].replace("jpeg", "jpg");
-      const safeName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
-      const filePath = path.join(uploadsDir, safeName);
-      const buffer = Buffer.from(data, "base64");
-      fs.writeFileSync(filePath, buffer);
-      res.json({ url: `/uploads/vehicles/${safeName}` });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to upload image" });
-    }
-  });
-  app2.get("/api/admin/users", async (_req, res) => {
-    try {
-      const users2 = await storage.getAllUsers();
-      const usersWithoutPasswords = users2.map(({ password, ...user }) => user);
-      res.json(usersWithoutPasswords);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
-  app2.post("/api/admin/users", async (req, res) => {
-    try {
-      const { email, name, password, isAdmin } = req.body;
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ error: "Email already registered" });
-      }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await storage.createUser({
-        email,
-        name,
-        password: hashedPassword,
-        isAdmin: isAdmin || false
-      });
-      const { password: _, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create user" });
-    }
-  });
-  app2.patch(
-    "/api/admin/users/:id/password",
-    async (req, res) => {
-      try {
-        const userId = req.params.id;
-        const { password } = req.body;
-        console.log(
-          `[PASSWORD UPDATE] User ID: ${userId}, Password length: ${password?.length || 0}`
-        );
-        if (!password || password.length < 6) {
-          return res.status(400).json({ error: "Password must be at least 6 characters" });
-        }
-        const existingUser = await storage.getUser(userId);
-        console.log(
-          `[PASSWORD UPDATE] User exists: ${existingUser ? existingUser.email : "NOT FOUND"}`
-        );
-        if (!existingUser) {
-          return res.status(404).json({ error: "User not found" });
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        console.log(
-          `[PASSWORD UPDATE] Hashed password: ${hashedPassword.substring(0, 20)}...`
-        );
-        const updatedUser = await storage.updateUser(userId, {
-          password: hashedPassword
-        });
-        console.log(
-          `[PASSWORD UPDATE] Update result: ${updatedUser ? updatedUser.email : "NULL"}`
-        );
-        if (!updatedUser) {
-          return res.status(500).json({ error: "Failed to update user password" });
-        }
-        const { password: _, ...userWithoutPassword } = updatedUser;
-        res.json(userWithoutPassword);
-      } catch (error) {
-        console.error("Password update error:", error);
-        res.status(500).json({ error: "Failed to update password" });
-      }
-    }
-  );
-  app2.post("/api/auth/change-password", async (req, res) => {
-    try {
-      const { email, currentPassword, newPassword } = req.body;
-      if (!email || !currentPassword || !newPassword) {
-        return res.status(400).json({
-          error: "Email, current password, and new password are required"
-        });
-      }
-      if (newPassword.length < 6) {
-        return res.status(400).json({ error: "New password must be at least 6 characters" });
-      }
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      const isValidPassword = await bcrypt.compare(
-        currentPassword,
-        user.password
-      );
-      if (!isValidPassword) {
-        return res.status(401).json({ error: "Current password is incorrect" });
-      }
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(user.id, { password: hashedPassword });
-      res.json({ message: "Password changed successfully" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to change password" });
-    }
-  });
-  app2.get("/api/admin/vehicles", async (_req, res) => {
-    try {
-      const vehicles2 = await storage.getAllVehicles();
-      res.json(vehicles2);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch vehicles" });
-    }
-  });
-  app2.post("/api/admin/vehicles", async (req, res) => {
-    try {
-      const vehicleData = insertVehicleSchema.parse(req.body);
-      const vehicle = await storage.createVehicle(vehicleData);
-      res.status(201).json(vehicle);
-    } catch (error) {
-      console.error("Create vehicle error:", error);
-      res.status(500).json({ error: "Failed to create vehicle" });
-    }
-  });
-  app2.patch("/api/admin/vehicles/:id", async (req, res) => {
-    try {
-      const vehicle = await storage.updateVehicle(req.params.id, req.body);
-      if (!vehicle) {
-        return res.status(404).json({ error: "Vehicle not found" });
-      }
-      res.json(vehicle);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update vehicle" });
-    }
-  });
-  app2.delete("/api/admin/vehicles/:id", async (req, res) => {
-    try {
-      await storage.deleteVehicle(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete vehicle" });
-    }
-  });
-  app2.get("/api/admin/trips", async (_req, res) => {
-    try {
-      const trips2 = await storage.getAllTrips();
-      res.json(trips2);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch trips" });
-    }
-  });
-  app2.get("/api/admin/calendar", async (_req, res) => {
-    try {
-      const [trips2, vehicles2, users2] = await Promise.all([
-        storage.getAllTrips(),
-        storage.getAllVehicles(),
-        storage.getAllUsers()
-      ]);
-      const vehicleMap = new Map(vehicles2.map((v) => [v.id, v]));
-      const userMap = new Map(users2.map((u) => [u.id, u]));
-      const calendarData = trips2.map((trip) => {
-        const vehicle = vehicleMap.get(trip.vehicleId);
-        const user = userMap.get(trip.userId);
-        return {
-          id: trip.id,
-          vehicleId: trip.vehicleId,
-          vehicleName: vehicle?.name || "Unknown Vehicle",
-          vehicleImage: vehicle?.imageUrl || "",
-          userId: trip.userId,
-          userName: user?.name || "Unknown User",
-          userEmail: user?.email || "",
-          startDate: trip.startDate,
-          endDate: trip.endDate,
-          status: trip.status,
-          totalCost: trip.totalCost,
-          pickupLocation: trip.pickupLocation
-        };
-      });
-      res.json(calendarData);
-    } catch (error) {
-      console.error("Calendar data error:", error);
-      res.status(500).json({ error: "Failed to fetch calendar data" });
-    }
-  });
-  app2.patch("/api/admin/users/:id", async (req, res) => {
-    try {
-      const user = await storage.updateUser(req.params.id, req.body);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update user" });
-    }
-  });
-  app2.delete("/api/admin/users/:id", async (req, res) => {
-    try {
-      await storage.deleteUser(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete user" });
-    }
-  });
-  app2.get("/api/admin/stats", async (_req, res) => {
-    try {
-      const [users2, vehicles2, trips2] = await Promise.all([
-        storage.getAllUsers(),
-        storage.getAllVehicles(),
-        storage.getAllTrips()
-      ]);
-      const activeTrips = trips2.filter((t) => t.status === "active").length;
-      const upcomingTrips = trips2.filter((t) => t.status === "upcoming").length;
-      const completedTrips = trips2.filter(
-        (t) => t.status === "completed"
-      ).length;
-      const totalRevenue = trips2.reduce(
-        (sum, t) => sum + parseFloat(t.totalCost || "0"),
-        0
-      );
-      res.json({
-        totalUsers: users2.length,
-        totalVehicles: vehicles2.length,
-        availableVehicles: vehicles2.filter((v) => v.isAvailable).length,
-        totalTrips: trips2.length,
-        activeTrips,
-        upcomingTrips,
-        completedTrips,
-        totalRevenue: totalRevenue.toFixed(2)
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch stats" });
-    }
-  });
   app2.get("/api/vehicles/:id/reviews", async (req, res) => {
     try {
       const reviews2 = await storage.getReviewsByVehicle(req.params.id);
-      res.json(reviews2);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch reviews" });
-    }
-  });
-  app2.post("/api/reviews", async (req, res) => {
-    try {
-      const reviewData = insertReviewSchema.parse(req.body);
-      const review = await storage.createReview(reviewData);
-      res.status(201).json(review);
-    } catch (error) {
-      console.error("Create review error:", error);
-      res.status(500).json({ error: "Failed to create review" });
-    }
-  });
-  app2.get("/api/users/:id/reviews", async (req, res) => {
-    try {
-      const reviews2 = await storage.getReviewsByUser(req.params.id);
       res.json(reviews2);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch reviews" });
@@ -2419,12 +1951,18 @@ async function registerRoutes(app2) {
   app2.post("/api/trips/quote", async (req, res) => {
     try {
       const { vehicleId, startDate, endDate, includeInsurance } = req.body;
+      if (!vehicleId || !startDate || !endDate) {
+        return res.status(400).json({ error: "vehicleId, startDate, and endDate are required" });
+      }
       const vehicle = await storage.getVehicle(vehicleId);
       if (!vehicle) {
         return res.status(404).json({ error: "Vehicle not found" });
       }
       const start = new Date(startDate);
       const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+        return res.status(400).json({ error: "Invalid date range" });
+      }
       const hours = Math.ceil(
         (end.getTime() - start.getTime()) / (1e3 * 60 * 60)
       );
@@ -2434,11 +1972,7 @@ async function registerRoutes(app2) {
       const insuranceCost = includeInsurance ? days * 15 : 0;
       const serviceFee = baseCost * 0.1;
       const totalCost = baseCost + insuranceCost + serviceFee;
-      const isAvailable = await storage.checkAvailability(
-        vehicleId,
-        start,
-        end
-      );
+      const isAvailable = await storage.checkAvailability(vehicleId, start, end);
       res.json({
         available: isAvailable,
         hours,
@@ -2455,25 +1989,422 @@ async function registerRoutes(app2) {
         }
       });
     } catch (error) {
-      console.error("Quote error:", error);
       res.status(500).json({ error: "Failed to generate quote" });
+    }
+  });
+  app2.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, name, password } = req.body;
+      if (!email || !name || !password) {
+        return res.status(400).json({ error: "Email, name, and password are required" });
+      }
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+      }
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const user = await storage.createUser({ email, name, password: hashedPassword });
+      const { password: _, ...userWithoutPassword } = user;
+      const token = signToken({ id: user.id, isAdmin: user.isAdmin ?? false, email: user.email });
+      res.status(201).json({ user: userWithoutPassword, token });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to register user" });
+    }
+  });
+  app2.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        await bcrypt.hash("dummy", 12);
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      const { password: _, ...userWithoutPassword } = user;
+      const token = signToken({ id: user.id, isAdmin: user.isAdmin ?? false, email: user.email });
+      res.json({ user: userWithoutPassword, token });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+  app2.post("/api/auth/social", async (req, res) => {
+    try {
+      const { provider, token, name: clientName } = req.body;
+      if (!provider || !token) {
+        return res.status(400).json({ error: "Provider and token are required" });
+      }
+      if (!["apple", "google"].includes(provider)) {
+        return res.status(400).json({ error: "Invalid provider" });
+      }
+      let verifiedEmail = null;
+      let verifiedName = clientName || null;
+      if (provider === "google") {
+        const googleRes = await fetch(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        if (!googleRes.ok) {
+          return res.status(401).json({ error: "Invalid Google token" });
+        }
+        const googleUser = await googleRes.json();
+        if (!googleUser.sub || !googleUser.email) {
+          return res.status(401).json({ error: "Invalid Google token claims" });
+        }
+        verifiedEmail = googleUser.email;
+        verifiedName = verifiedName || googleUser.name || null;
+      } else if (provider === "apple") {
+        try {
+          const { payload } = await jwtVerify(token, APPLE_JWKS, {
+            issuer: "https://appleid.apple.com"
+          });
+          if (!payload.sub || !payload.email) {
+            return res.status(401).json({ error: "Invalid Apple token claims" });
+          }
+          verifiedEmail = payload.email;
+        } catch {
+          return res.status(401).json({ error: "Failed to verify Apple token" });
+        }
+      }
+      if (!verifiedEmail) {
+        return res.status(400).json({ error: "Could not verify email from provider" });
+      }
+      let user = await storage.getUserByEmail(verifiedEmail);
+      if (!user) {
+        const randomPassword = await bcrypt.hash(
+          crypto.randomBytes(32).toString("hex"),
+          12
+        );
+        user = await storage.createUser({
+          email: verifiedEmail,
+          name: verifiedName || verifiedEmail.split("@")[0],
+          password: randomPassword
+        });
+      }
+      const { password: _, ...userWithoutPassword } = user;
+      const authToken = signToken({ id: user.id, isAdmin: user.isAdmin ?? false, email: user.email });
+      res.json({ user: userWithoutPassword, token: authToken });
+    } catch (error) {
+      res.status(500).json({ error: "Social authentication failed" });
+    }
+  });
+  app2.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user.id;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current password and new password are required" });
+      }
+      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await storage.updateUser(userId, { password: hashedPassword });
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+  app2.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        const token = crypto.randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1e3);
+        await storage.createPasswordResetToken(user.id, token, expiresAt);
+        const baseUrl = process.env.APP_BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+        const resetLink = `${baseUrl}/reset-password?token=${token}`;
+        await sendPasswordResetEmail(user.email, user.name, resetLink, token);
+      }
+      res.json({
+        message: "If an account exists with that email, a password reset link has been sent."
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+  app2.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+      }
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await storage.updateUser(resetToken.userId, { password: hashedPassword });
+      await storage.markTokenUsed(token);
+      res.json({ message: "Password has been reset successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+  app2.get("/api/users/:id/trips", requireAuth, async (req, res) => {
+    try {
+      if (req.user.id !== req.params.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const trips2 = await storage.getTripsByUser(req.params.id);
+      res.json(trips2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trips" });
+    }
+  });
+  app2.post("/api/trips", requireAuth, async (req, res) => {
+    try {
+      const tripData = insertTripSchema.parse(req.body);
+      if (tripData.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const trip = await storage.createTrip(tripData);
+      try {
+        const renter = await storage.getUser(trip.userId);
+        const vehicle = await storage.getVehicle(trip.vehicleId);
+        if (renter && vehicle && renter.email) {
+          sendBookingConfirmationEmail(
+            renter.email,
+            renter.name,
+            vehicle.name,
+            trip.startDate.toISOString(),
+            trip.endDate.toISOString(),
+            Number(trip.totalCost)
+          ).catch(
+            (err) => console.error("Failed to send renter confirmation email:", err)
+          );
+          const owner = await getVehicleOwnerUser(vehicle.id);
+          if (owner && owner.email) {
+            sendNewBookingNotificationToOwner(
+              owner.email,
+              owner.name,
+              renter.name,
+              vehicle.name,
+              trip.startDate.toISOString(),
+              trip.endDate.toISOString(),
+              Number(trip.totalCost)
+            ).catch(
+              (err) => console.error("Failed to send owner notification email:", err)
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error("Email notification error (non-blocking):", emailError);
+      }
+      res.status(201).json(trip);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create trip" });
+    }
+  });
+  app2.patch("/api/trips/:id", requireAuth, async (req, res) => {
+    try {
+      const existingTrip = await storage.getTrip(req.params.id);
+      if (!existingTrip) {
+        return res.status(404).json({ error: "Trip not found" });
+      }
+      if (existingTrip.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const trip = await storage.updateTrip(req.params.id, req.body);
+      if (!trip) {
+        return res.status(404).json({ error: "Trip not found" });
+      }
+      if (req.body.status === "completed") {
+        try {
+          const renter = await storage.getUser(trip.userId);
+          const vehicle = await storage.getVehicle(trip.vehicleId);
+          if (renter && vehicle && renter.email) {
+            let ownerName = "the host";
+            const owner = await getVehicleOwnerUser(vehicle.id);
+            if (owner) {
+              ownerName = owner.name;
+            }
+            sendTripCompletedEmail(
+              renter.email,
+              renter.name,
+              vehicle.name,
+              ownerName
+            ).catch(
+              (err) => console.error("Failed to send trip completed email:", err)
+            );
+          }
+        } catch (emailError) {
+          console.error("Email notification error (non-blocking):", emailError);
+        }
+      }
+      res.json(trip);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update trip" });
+    }
+  });
+  app2.get("/api/users/:id/favorites", requireAuth, async (req, res) => {
+    try {
+      if (req.user.id !== req.params.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const favorites2 = await storage.getFavoritesByUser(req.params.id);
+      res.json(favorites2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+  app2.post("/api/favorites", requireAuth, async (req, res) => {
+    try {
+      const { userId, vehicleId } = req.body;
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const favorite = await storage.addFavorite({ userId, vehicleId });
+      res.status(201).json(favorite);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add favorite" });
+    }
+  });
+  app2.delete(
+    "/api/favorites/:userId/:vehicleId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        if (req.params.userId !== req.user.id && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        await storage.removeFavorite(req.params.userId, req.params.vehicleId);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ error: "Failed to remove favorite" });
+      }
+    }
+  );
+  app2.get("/api/users/:id/reviews", requireAuth, async (req, res) => {
+    try {
+      if (req.user.id !== req.params.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const reviews2 = await storage.getReviewsByUser(req.params.id);
+      res.json(reviews2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+  app2.post("/api/reviews", requireAuth, async (req, res) => {
+    try {
+      const reviewData = insertReviewSchema.parse(req.body);
+      if (reviewData.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const review = await storage.createReview(reviewData);
+      res.status(201).json(review);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+  app2.get(
+    "/api/user/:userId/documents",
+    requireAuth,
+    async (req, res) => {
+      try {
+        if (req.params.userId !== req.user.id && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        const docs = await storage.getUserDocuments(req.params.userId);
+        res.json(docs);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch user documents" });
+      }
+    }
+  );
+  app2.post("/api/user/documents", requireAuth, async (req, res) => {
+    try {
+      const {
+        userId,
+        documentType,
+        documentData,
+        fileName,
+        mimeType,
+        expiryDate
+      } = req.body;
+      if (!userId || !documentType) {
+        return res.status(400).json({ error: "Missing required fields: userId, documentType" });
+      }
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (!["drivers_license", "insurance_card", "proof_of_identity"].includes(documentType)) {
+        return res.status(400).json({
+          error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity"
+        });
+      }
+      const doc = await storage.createUserDocument({
+        userId,
+        documentType,
+        documentData: documentData || null,
+        fileName: fileName || null,
+        mimeType: mimeType || null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        verificationStatus: "pending",
+        submittedAt: /* @__PURE__ */ new Date()
+      });
+      res.status(201).json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload document" });
+    }
+  });
+  app2.delete("/api/user/documents/:id", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getUserDocumentById(req.params.id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      if (doc.userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteUserDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document" });
     }
   });
   app2.post(
     "/api/notifications/register",
+    requireAuth,
     async (req, res) => {
       try {
         const tokenData = insertPushTokenSchema.parse(req.body);
         const token = await storage.registerPushToken(tokenData);
         res.status(201).json(token);
       } catch (error) {
-        console.error("Register token error:", error);
         res.status(500).json({ error: "Failed to register push token" });
       }
     }
   );
   app2.post(
     "/api/notifications/deactivate",
+    requireAuth,
     async (req, res) => {
       try {
         const { token } = req.body;
@@ -2484,11 +2415,11 @@ async function registerRoutes(app2) {
       }
     }
   );
-  app2.get("/api/owner/profile", async (req, res) => {
+  app2.get("/api/owner/profile", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.query;
-      if (!userId) {
-        return res.status(400).json({ error: "User ID is required" });
+      const userId = req.query.userId || req.user.id;
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
       }
       const profile = await storage.getOwnerProfile(userId);
       res.json(profile || null);
@@ -2496,11 +2427,14 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch owner profile" });
     }
   });
-  app2.post("/api/owner/profile", async (req, res) => {
+  app2.post("/api/owner/profile", requireAuth, async (req, res) => {
     try {
       const { userId, bio } = req.body;
       if (!userId) {
         return res.status(400).json({ error: "User ID is required" });
+      }
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
       }
       const existingProfile = await storage.getOwnerProfile(userId);
       if (existingProfile) {
@@ -2509,11 +2443,10 @@ async function registerRoutes(app2) {
       const profile = await storage.createOwnerProfile({ userId, bio });
       res.status(201).json(profile);
     } catch (error) {
-      console.error("Create owner profile error:", error);
       res.status(500).json({ error: "Failed to create owner profile" });
     }
   });
-  app2.patch("/api/owner/profile/:id", async (req, res) => {
+  app2.patch("/api/owner/profile/:id", requireAuth, async (req, res) => {
     try {
       const profile = await storage.updateOwnerProfile(req.params.id, req.body);
       if (!profile) {
@@ -2526,18 +2459,17 @@ async function registerRoutes(app2) {
   });
   app2.get(
     "/api/owner/:ownerId/vehicles",
+    requireAuth,
     async (req, res) => {
       try {
-        const ownerVehicles2 = await storage.getOwnerVehicles(
-          req.params.ownerId
-        );
+        const ownerVehicles2 = await storage.getOwnerVehicles(req.params.ownerId);
         res.json(ownerVehicles2);
       } catch (error) {
         res.status(500).json({ error: "Failed to fetch owner vehicles" });
       }
     }
   );
-  app2.post("/api/owner/vehicles", async (req, res) => {
+  app2.post("/api/owner/vehicles", requireAuth, async (req, res) => {
     try {
       const { ownerId, vehicleData } = req.body;
       const vehicle = await storage.createVehicle({
@@ -2551,11 +2483,10 @@ async function registerRoutes(app2) {
       });
       res.status(201).json({ vehicle, ownerVehicle });
     } catch (error) {
-      console.error("Create owner vehicle error:", error);
       res.status(500).json({ error: "Failed to create vehicle listing" });
     }
   });
-  app2.patch("/api/owner/vehicles/:id", async (req, res) => {
+  app2.patch("/api/owner/vehicles/:id", requireAuth, async (req, res) => {
     try {
       const { vehicleData, ...ownerVehicleUpdates } = req.body;
       const ownerVehicle = await storage.updateOwnerVehicle(
@@ -2578,7 +2509,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to update owner vehicle" });
     }
   });
-  app2.delete("/api/owner/vehicles/:id", async (req, res) => {
+  app2.delete("/api/owner/vehicles/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteOwnerVehicle(req.params.id);
       res.status(204).send();
@@ -2588,6 +2519,7 @@ async function registerRoutes(app2) {
   });
   app2.post(
     "/api/owner/vehicles/:vehicleId/availability",
+    requireAuth,
     async (req, res) => {
       try {
         const { startTime, endTime, isBlocked } = req.body;
@@ -2606,6 +2538,7 @@ async function registerRoutes(app2) {
   );
   app2.delete(
     "/api/owner/availability/:id",
+    requireAuth,
     async (req, res) => {
       try {
         await storage.deleteAvailabilitySlot(req.params.id);
@@ -2615,7 +2548,598 @@ async function registerRoutes(app2) {
       }
     }
   );
-  app2.get("/api/admin/verifications", async (_req, res) => {
+  app2.get(
+    "/api/stripe/publishable-key",
+    async (_req, res) => {
+      try {
+        const publishableKey = await getStripePublishableKey();
+        res.json({ publishableKey });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to get Stripe key" });
+      }
+    }
+  );
+  app2.post(
+    "/api/stripe/create-payment-intent",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { tripId, amount } = req.body;
+        const userId = req.user.id;
+        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 1e5) {
+          return res.status(400).json({ error: "Invalid payment parameters" });
+        }
+        const stripe = await getUncachableStripeClient();
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        let customerId = user.stripeCustomerId;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.name,
+            metadata: { userId: user.id }
+          });
+          customerId = customer.id;
+          await storage.updateUser(userId, {
+            stripeCustomerId: customerId
+          });
+        }
+        const amountCents = Math.round(amount * 100);
+        const platformFeeCents = Math.round(amountCents * 0.1);
+        const ownerPayoutCents = amountCents - platformFeeCents;
+        const idempotencyKey = `pi-${userId}-${tripId}-${amountCents}`;
+        const paymentIntent = await stripe.paymentIntents.create(
+          {
+            amount: amountCents,
+            currency: "usd",
+            customer: customerId,
+            payment_method_types: ["card", "cashapp"],
+            metadata: { tripId, userId }
+          },
+          { idempotencyKey }
+        );
+        const payment = await storage.createPayment({
+          tripId,
+          userId,
+          stripePaymentIntentId: paymentIntent.id,
+          stripeCustomerId: customerId,
+          amount: (amountCents / 100).toFixed(2),
+          platformFee: (platformFeeCents / 100).toFixed(2),
+          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+          status: "pending"
+        });
+        res.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentId: payment.id
+        });
+      } catch (error) {
+        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
+          return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: "Failed to create payment intent" });
+      }
+    }
+  );
+  app2.post(
+    "/api/stripe/payment-sheet",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { tripId, amount } = req.body;
+        const userId = req.user.id;
+        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 1e5) {
+          return res.status(400).json({ error: "Invalid payment parameters" });
+        }
+        const stripe = await getUncachableStripeClient();
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        let customerId = user.stripeCustomerId;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.name,
+            metadata: { userId: user.id }
+          });
+          customerId = customer.id;
+          await storage.updateUser(userId, { stripeCustomerId: customerId });
+        }
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+          { customer: customerId },
+          { apiVersion: "2024-06-20" }
+        );
+        const amountCents = Math.round(amount * 100);
+        const idempotencyKey = `ps-${userId}-${tripId}-${amountCents}`;
+        const paymentIntent = await stripe.paymentIntents.create(
+          {
+            amount: amountCents,
+            currency: "usd",
+            customer: customerId,
+            payment_method_types: ["card", "cashapp"],
+            metadata: { tripId, userId }
+          },
+          { idempotencyKey }
+        );
+        const platformFeeCents = Math.round(amountCents * 0.1);
+        const ownerPayoutCents = amountCents - platformFeeCents;
+        const payment = await storage.createPayment({
+          tripId,
+          userId,
+          stripePaymentIntentId: paymentIntent.id,
+          stripeCustomerId: customerId,
+          amount: (amountCents / 100).toFixed(2),
+          platformFee: (platformFeeCents / 100).toFixed(2),
+          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+          status: "pending"
+        });
+        res.json({
+          paymentIntent: paymentIntent.client_secret,
+          ephemeralKey: ephemeralKey.secret,
+          customer: customerId,
+          paymentId: payment.id,
+          publishableKey: await getStripePublishableKey()
+        });
+      } catch (error) {
+        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
+          return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: "Failed to create payment sheet" });
+      }
+    }
+  );
+  app2.post(
+    "/api/stripe/confirm-payment",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { paymentId, tripId } = req.body;
+        if (!paymentId || !tripId) {
+          return res.status(400).json({ error: "Missing paymentId or tripId" });
+        }
+        const payment = await storage.getPayment(paymentId);
+        if (!payment) {
+          return res.status(404).json({ error: "Payment not found" });
+        }
+        if (payment.userId !== req.user.id && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        await storage.updatePayment(paymentId, { status: "completed" });
+        await storage.updateTrip(tripId, { status: "upcoming" });
+        res.json({ success: true });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to confirm payment" });
+      }
+    }
+  );
+  app2.get("/api/conversations/:userId", requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      if (userId !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const convs = await storage.getConversationsByUser(userId);
+      const enrichedConvs = await Promise.all(
+        convs.map(async (conv) => {
+          const participant1 = await storage.getUser(conv.participant1Id);
+          const participant2 = await storage.getUser(conv.participant2Id);
+          const vehicle = conv.vehicleId ? await storage.getVehicle(conv.vehicleId) : null;
+          const otherParticipant = conv.participant1Id === userId ? participant2 : participant1;
+          const unreadCount = conv.participant1Id === userId ? conv.participant1Unread : conv.participant2Unread;
+          return {
+            ...conv,
+            participant1Name: participant1?.name || "Unknown",
+            participant2Name: participant2?.name || "Unknown",
+            otherParticipantName: otherParticipant?.name || "Unknown",
+            otherParticipantId: otherParticipant?.id,
+            otherParticipantAvatar: otherParticipant?.avatarIndex || 0,
+            vehicleName: vehicle?.name || null,
+            vehicleImage: vehicle?.imageUrl || null,
+            unreadCount: unreadCount || 0
+          };
+        })
+      );
+      res.json(enrichedConvs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+  app2.post("/api/conversations", requireAuth, async (req, res) => {
+    try {
+      const { participant1Id, participant2Id, vehicleId, tripId } = req.body;
+      if (!participant1Id || !participant2Id) {
+        return res.status(400).json({ error: "Both participant IDs are required" });
+      }
+      if (participant1Id === participant2Id) {
+        return res.status(400).json({ error: "Cannot create a conversation with yourself" });
+      }
+      if (participant1Id !== req.user.id && participant2Id !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const [p1, p2] = await Promise.all([
+        storage.getUser(participant1Id),
+        storage.getUser(participant2Id)
+      ]);
+      if (!p1 || !p2) {
+        return res.status(400).json({ error: "One or more participants not found" });
+      }
+      const existingConv = await storage.findExistingConversation(
+        participant1Id,
+        participant2Id,
+        vehicleId
+      );
+      if (existingConv) {
+        return res.json(existingConv);
+      }
+      const conv = await storage.createConversation({
+        participant1Id,
+        participant2Id,
+        vehicleId: vehicleId || null,
+        tripId: tripId || null,
+        lastMessageAt: /* @__PURE__ */ new Date()
+      });
+      res.status(201).json(conv);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+  app2.get(
+    "/api/conversations/:conversationId/messages",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { conversationId } = req.params;
+        const conv = await storage.getConversation(conversationId);
+        if (!conv) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+        if (conv.participant1Id !== req.user.id && conv.participant2Id !== req.user.id && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        const messages2 = await storage.getMessagesByConversation(conversationId);
+        const enrichedMessages = await Promise.all(
+          messages2.map(async (msg) => {
+            const sender = await storage.getUser(msg.senderId);
+            return {
+              ...msg,
+              senderName: sender?.name || "Unknown",
+              senderAvatar: sender?.avatarIndex || 0
+            };
+          })
+        );
+        const userId = req.user.id;
+        await storage.markMessagesAsRead(conversationId, userId);
+        const updates = {};
+        if (conv.participant1Id === userId) {
+          updates.participant1Unread = 0;
+        } else if (conv.participant2Id === userId) {
+          updates.participant2Unread = 0;
+        }
+        await storage.updateConversation(conversationId, updates);
+        res.json(enrichedMessages);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch messages" });
+      }
+    }
+  );
+  app2.post(
+    "/api/conversations/:conversationId/messages",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { conversationId } = req.params;
+        const { content, messageType } = req.body;
+        const senderId = req.user.id;
+        if (!content) {
+          return res.status(400).json({ error: "content is required" });
+        }
+        if (typeof content !== "string" || content.length > MAX_MESSAGE_LENGTH) {
+          return res.status(400).json({ error: `Message must be a string under ${MAX_MESSAGE_LENGTH} characters` });
+        }
+        const conv = await storage.getConversation(conversationId);
+        if (!conv) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+        if (conv.participant1Id !== senderId && conv.participant2Id !== senderId && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        const msg = await storage.createMessage({
+          conversationId,
+          senderId,
+          content,
+          messageType: messageType || "text"
+        });
+        const preview = content.length > 50 ? content.substring(0, 50) + "..." : content;
+        const updates = {
+          lastMessageAt: /* @__PURE__ */ new Date(),
+          lastMessagePreview: preview
+        };
+        if (conv.participant1Id === senderId) {
+          updates.participant2Unread = (conv.participant2Unread || 0) + 1;
+        } else {
+          updates.participant1Unread = (conv.participant1Unread || 0) + 1;
+        }
+        await storage.updateConversation(conversationId, updates);
+        const sender = await storage.getUser(senderId);
+        res.status(201).json({
+          ...msg,
+          senderName: sender?.name || "Unknown",
+          senderAvatar: sender?.avatarIndex || 0
+        });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  );
+  app2.get(
+    "/api/messages/unread/:userId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        if (userId !== req.user.id && !req.user.isAdmin) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        const count = await storage.getUnreadMessageCount(userId);
+        res.json({ unreadCount: count });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to get unread count" });
+      }
+    }
+  );
+  app2.post("/api/insurance", requireAuth, async (req, res) => {
+    try {
+      const { ownerId, vehicleId, providerType } = req.body;
+      if (!ownerId || !vehicleId || !providerType) {
+        return res.status(400).json({
+          error: "Missing required fields: ownerId, vehicleId, providerType"
+        });
+      }
+      if (!["platform", "owner"].includes(providerType)) {
+        return res.status(400).json({ error: "providerType must be 'platform' or 'owner'" });
+      }
+      const policy = await storage.createInsurancePolicy(req.body);
+      res.status(201).json(policy);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create insurance policy" });
+    }
+  });
+  app2.post(
+    "/api/admin/migrate-from-dev",
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const result = await migrateToDevState();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: "Migration failed" });
+      }
+    }
+  );
+  app2.post("/api/admin/upload-image", requireAdmin, async (req, res) => {
+    try {
+      const { filename, data, mimeType } = req.body;
+      if (!filename || !data || !mimeType) {
+        return res.status(400).json({ error: "filename, data, and mimeType are required" });
+      }
+      const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+      if (!allowedMimeTypes.includes(mimeType)) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const buffer = Buffer.from(data, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
+      const extMap = {
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif"
+      };
+      const ext = extMap[mimeType];
+      if (!validateImageMagicBytes(buffer, ext)) {
+        return res.status(400).json({ error: "File content does not match declared type" });
+      }
+      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      const safeName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+      const filePath = path.join(uploadsDir, safeName);
+      await fs.promises.writeFile(filePath, buffer);
+      res.json({ url: `/uploads/vehicles/${safeName}` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
+  app2.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const users2 = await storage.getAllUsers();
+      const usersWithoutPasswords = users2.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  app2.post("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const { email, name, password, isAdmin } = req.body;
+      if (!email || !name || !password) {
+        return res.status(400).json({ error: "Email, name, and password are required" });
+      }
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+      }
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const user = await storage.createUser({
+        email,
+        name,
+        password: hashedPassword,
+        isAdmin: isAdmin || false
+      });
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+  app2.patch(
+    "/api/admin/users/:id/password",
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const userId = req.params.id;
+        const { password } = req.body;
+        if (!password || password.length < MIN_PASSWORD_LENGTH) {
+          return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+        }
+        const existingUser = await storage.getUser(userId);
+        if (!existingUser) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
+        if (!updatedUser) {
+          return res.status(500).json({ error: "Failed to update user password" });
+        }
+        const { password: _, ...userWithoutPassword } = updatedUser;
+        res.json(userWithoutPassword);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to update password" });
+      }
+    }
+  );
+  app2.patch("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const { password, ...safeUpdates } = req.body;
+      const user = await storage.updateUser(req.params.id, safeUpdates);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+  app2.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteUser(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+  app2.get("/api/admin/vehicles", requireAdmin, async (_req, res) => {
+    try {
+      const vehicles2 = await storage.getAllVehicles();
+      res.json(vehicles2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicles" });
+    }
+  });
+  app2.post("/api/admin/vehicles", requireAdmin, async (req, res) => {
+    try {
+      const vehicleData = insertVehicleSchema.parse(req.body);
+      const vehicle = await storage.createVehicle(vehicleData);
+      res.status(201).json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create vehicle" });
+    }
+  });
+  app2.patch("/api/admin/vehicles/:id", requireAdmin, async (req, res) => {
+    try {
+      const vehicle = await storage.updateVehicle(req.params.id, req.body);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      res.json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update vehicle" });
+    }
+  });
+  app2.delete("/api/admin/vehicles/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteVehicle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vehicle" });
+    }
+  });
+  app2.get("/api/admin/trips", requireAdmin, async (_req, res) => {
+    try {
+      const trips2 = await storage.getAllTrips();
+      res.json(trips2);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trips" });
+    }
+  });
+  app2.get("/api/admin/calendar", requireAdmin, async (_req, res) => {
+    try {
+      const [trips2, vehicles2, users2] = await Promise.all([
+        storage.getAllTrips(),
+        storage.getAllVehicles(),
+        storage.getAllUsers()
+      ]);
+      const vehicleMap = new Map(vehicles2.map((v) => [v.id, v]));
+      const userMap = new Map(users2.map((u) => [u.id, u]));
+      const calendarData = trips2.map((trip) => {
+        const vehicle = vehicleMap.get(trip.vehicleId);
+        const user = userMap.get(trip.userId);
+        return {
+          id: trip.id,
+          vehicleId: trip.vehicleId,
+          vehicleName: vehicle?.name || "Unknown Vehicle",
+          vehicleImage: vehicle?.imageUrl || "",
+          userId: trip.userId,
+          userName: user?.name || "Unknown User",
+          userEmail: user?.email || "",
+          startDate: trip.startDate,
+          endDate: trip.endDate,
+          status: trip.status,
+          totalCost: trip.totalCost,
+          pickupLocation: trip.pickupLocation
+        };
+      });
+      res.json(calendarData);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch calendar data" });
+    }
+  });
+  app2.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    try {
+      const [users2, vehicles2, trips2] = await Promise.all([
+        storage.getAllUsers(),
+        storage.getAllVehicles(),
+        storage.getAllTrips()
+      ]);
+      const activeTrips = trips2.filter((t) => t.status === "active").length;
+      const upcomingTrips = trips2.filter((t) => t.status === "upcoming").length;
+      const completedTrips = trips2.filter((t) => t.status === "completed").length;
+      const totalRevenue = trips2.reduce(
+        (sum, t) => sum + parseFloat(t.totalCost || "0"),
+        0
+      );
+      res.json({
+        totalUsers: users2.length,
+        totalVehicles: vehicles2.length,
+        availableVehicles: vehicles2.filter((v) => v.isAvailable).length,
+        totalTrips: trips2.length,
+        activeTrips,
+        upcomingTrips,
+        completedTrips,
+        totalRevenue: totalRevenue.toFixed(2)
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+  app2.get("/api/admin/verifications", requireAdmin, async (_req, res) => {
     try {
       const verifications = await storage.getAllVerifications();
       const enrichedVerifications = await Promise.all(
@@ -2633,12 +3157,12 @@ async function registerRoutes(app2) {
       );
       res.json(enrichedVerifications);
     } catch (error) {
-      console.error("Fetch verifications error:", error);
       res.status(500).json({ error: "Failed to fetch verifications" });
     }
   });
   app2.get(
     "/api/admin/verifications/pending",
+    requireAdmin,
     async (_req, res) => {
       try {
         const verifications = await storage.getPendingVerifications();
@@ -2663,6 +3187,7 @@ async function registerRoutes(app2) {
   );
   app2.patch(
     "/api/admin/verifications/:id/decision",
+    requireAdmin,
     async (req, res) => {
       try {
         const { status, reviewerId, reviewNotes, rejectionReason } = req.body;
@@ -2680,47 +3205,30 @@ async function registerRoutes(app2) {
           return res.status(404).json({ error: "Verification not found" });
         }
         if (status === "approved") {
-          await storage.updateVehicle(verification.vehicleId, {
-            isAvailable: true
-          });
+          await storage.updateVehicle(verification.vehicleId, { isAvailable: true });
           if (verification.ownerId) {
-            const ownerVehicles2 = await storage.getOwnerVehicles(
-              verification.ownerId
-            );
+            const ownerVehicles2 = await storage.getOwnerVehicles(verification.ownerId);
             const ownerVehicle = ownerVehicles2.find(
               (ov) => ov.vehicleId === verification.vehicleId
             );
             if (ownerVehicle) {
-              await storage.updateOwnerVehicle(ownerVehicle.id, {
-                listingStatus: "active"
-              });
+              await storage.updateOwnerVehicle(ownerVehicle.id, { listingStatus: "active" });
             }
           }
         }
         try {
           const vehicle = await storage.getVehicle(verification.vehicleId);
           if (verification.ownerId && vehicle) {
-            const ownerProfile = await db_getOwnerProfileById(
-              verification.ownerId
-            );
+            const ownerProfile = await db_getOwnerProfileById(verification.ownerId);
             if (ownerProfile) {
               const owner = await storage.getUser(ownerProfile.userId);
               if (owner && owner.email) {
                 if (status === "approved") {
-                  sendVehicleVerificationApprovedEmail(
-                    owner.email,
-                    owner.name,
-                    vehicle.name
-                  ).catch(
+                  sendVehicleVerificationApprovedEmail(owner.email, owner.name, vehicle.name).catch(
                     (err) => console.error("Failed to send approval email:", err)
                   );
                 } else {
-                  sendVehicleVerificationRejectedEmail(
-                    owner.email,
-                    owner.name,
-                    vehicle.name,
-                    rejectionReason
-                  ).catch(
+                  sendVehicleVerificationRejectedEmail(owner.email, owner.name, vehicle.name, rejectionReason).catch(
                     (err) => console.error("Failed to send rejection email:", err)
                   );
                 }
@@ -2732,12 +3240,11 @@ async function registerRoutes(app2) {
         }
         res.json(verification);
       } catch (error) {
-        console.error("Verification decision error:", error);
         res.status(500).json({ error: "Failed to update verification" });
       }
     }
   );
-  app2.get("/api/admin/insurance", async (_req, res) => {
+  app2.get("/api/admin/insurance", requireAdmin, async (_req, res) => {
     try {
       const policies = await storage.getInsurancePolicies();
       res.json(policies);
@@ -2745,30 +3252,9 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch insurance policies" });
     }
   });
-  app2.post("/api/insurance", async (req, res) => {
+  app2.patch("/api/admin/insurance/:id", requireAdmin, async (req, res) => {
     try {
-      const { ownerId, vehicleId, providerType } = req.body;
-      if (!ownerId || !vehicleId || !providerType) {
-        return res.status(400).json({
-          error: "Missing required fields: ownerId, vehicleId, providerType"
-        });
-      }
-      if (!["platform", "owner"].includes(providerType)) {
-        return res.status(400).json({ error: "providerType must be 'platform' or 'owner'" });
-      }
-      const policy = await storage.createInsurancePolicy(req.body);
-      res.status(201).json(policy);
-    } catch (error) {
-      console.error("Create insurance error:", error);
-      res.status(500).json({ error: "Failed to create insurance policy" });
-    }
-  });
-  app2.patch("/api/admin/insurance/:id", async (req, res) => {
-    try {
-      const policy = await storage.updateInsurancePolicy(
-        req.params.id,
-        req.body
-      );
+      const policy = await storage.updateInsurancePolicy(req.params.id, req.body);
       if (!policy) {
         return res.status(404).json({ error: "Policy not found" });
       }
@@ -2777,16 +3263,15 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to update insurance policy" });
     }
   });
-  app2.get("/api/admin/analytics", async (_req, res) => {
+  app2.get("/api/admin/analytics", requireAdmin, async (_req, res) => {
     try {
       const analytics = await storage.getAnalytics();
       res.json(analytics);
     } catch (error) {
-      console.error("Analytics error:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
-  app2.get("/api/admin/payments", async (_req, res) => {
+  app2.get("/api/admin/payments", requireAdmin, async (_req, res) => {
     try {
       const payments2 = await storage.getAllPayments();
       res.json(payments2);
@@ -2794,7 +3279,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch payments" });
     }
   });
-  app2.get("/api/admin/payouts", async (_req, res) => {
+  app2.get("/api/admin/payouts", requireAdmin, async (_req, res) => {
     try {
       const payouts2 = await storage.getAllPayouts();
       res.json(payouts2);
@@ -2802,146 +3287,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch payouts" });
     }
   });
-  app2.get(
-    "/api/stripe/publishable-key",
-    async (_req, res) => {
-      try {
-        const publishableKey = await getStripePublishableKey();
-        res.json({ publishableKey });
-      } catch (error) {
-        console.error("Stripe key error:", error);
-        res.status(500).json({ error: "Failed to get Stripe key" });
-      }
-    }
-  );
-  app2.post(
-    "/api/stripe/create-payment-intent",
-    async (req, res) => {
-      try {
-        const { tripId, userId, amount } = req.body;
-        if (!tripId || !userId || typeof amount !== "number" || amount <= 0) {
-          return res.status(400).json({ error: "Invalid payment parameters" });
-        }
-        const stripe = await getUncachableStripeClient();
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
-        let customerId = user.stripeCustomerId;
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-            metadata: { userId: user.id }
-          });
-          customerId = customer.id;
-          await storage.updateUser(userId, {
-            stripeCustomerId: customerId
-          });
-        }
-        const amountCents = Math.round(amount * 100);
-        const platformFeeCents = Math.round(amountCents * 0.1);
-        const ownerPayoutCents = amountCents - platformFeeCents;
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: amountCents,
-          currency: "usd",
-          customer: customerId,
-          metadata: {
-            tripId,
-            userId
-          }
-        });
-        const payment = await storage.createPayment({
-          tripId,
-          userId,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeCustomerId: customerId,
-          amount: (amountCents / 100).toFixed(2),
-          platformFee: (platformFeeCents / 100).toFixed(2),
-          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
-          status: "pending"
-        });
-        res.json({
-          clientSecret: paymentIntent.client_secret,
-          paymentId: payment.id
-        });
-      } catch (error) {
-        console.error("Payment intent error:", error);
-        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: "Failed to create payment intent" });
-      }
-    }
-  );
-  app2.post(
-    "/api/stripe/confirm-payment",
-    async (req, res) => {
-      try {
-        const { paymentId, tripId } = req.body;
-        if (!paymentId || !tripId) {
-          return res.status(400).json({ error: "Missing paymentId or tripId" });
-        }
-        const payment = await storage.getPayment(paymentId);
-        if (!payment) {
-          return res.status(404).json({ error: "Payment not found" });
-        }
-        await storage.updatePayment(paymentId, { status: "completed" });
-        await storage.updateTrip(tripId, { status: "upcoming" });
-        res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to confirm payment" });
-      }
-    }
-  );
-  app2.get(
-    "/api/user/:userId/documents",
-    async (req, res) => {
-      try {
-        const docs = await storage.getUserDocuments(req.params.userId);
-        res.json(docs);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch user documents" });
-      }
-    }
-  );
-  app2.post("/api/user/documents", async (req, res) => {
-    try {
-      const {
-        userId,
-        documentType,
-        documentData,
-        fileName,
-        mimeType,
-        expiryDate
-      } = req.body;
-      if (!userId || !documentType) {
-        return res.status(400).json({ error: "Missing required fields: userId, documentType" });
-      }
-      if (!["drivers_license", "insurance_card", "proof_of_identity"].includes(
-        documentType
-      )) {
-        return res.status(400).json({
-          error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity"
-        });
-      }
-      const doc = await storage.createUserDocument({
-        userId,
-        documentType,
-        documentData: documentData || null,
-        fileName: fileName || null,
-        mimeType: mimeType || null,
-        expiryDate: expiryDate ? new Date(expiryDate) : null,
-        verificationStatus: "pending",
-        submittedAt: /* @__PURE__ */ new Date()
-      });
-      res.status(201).json(doc);
-    } catch (error) {
-      console.error("Create user document error:", error);
-      res.status(500).json({ error: "Failed to upload document" });
-    }
-  });
-  app2.get("/api/admin/user-documents", async (req, res) => {
+  app2.get("/api/admin/user-documents", requireAdmin, async (req, res) => {
     try {
       const status = req.query.status;
       let docs;
@@ -2967,6 +3313,7 @@ async function registerRoutes(app2) {
   });
   app2.patch(
     "/api/admin/user-documents/:id",
+    requireAdmin,
     async (req, res) => {
       try {
         const { verificationStatus, reviewNotes, reviewerId } = req.body;
@@ -2990,197 +3337,6 @@ async function registerRoutes(app2) {
       }
     }
   );
-  app2.delete("/api/user/documents/:id", async (req, res) => {
-    try {
-      await storage.deleteUserDocument(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete document" });
-    }
-  });
-  app2.get("/api/conversations/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const convs = await storage.getConversationsByUser(userId);
-      const enrichedConvs = await Promise.all(
-        convs.map(async (conv) => {
-          const participant1 = await storage.getUser(conv.participant1Id);
-          const participant2 = await storage.getUser(conv.participant2Id);
-          const vehicle = conv.vehicleId ? await storage.getVehicle(conv.vehicleId) : null;
-          const otherParticipant = conv.participant1Id === userId ? participant2 : participant1;
-          const unreadCount = conv.participant1Id === userId ? conv.participant1Unread : conv.participant2Unread;
-          return {
-            ...conv,
-            participant1Name: participant1?.name || "Unknown",
-            participant2Name: participant2?.name || "Unknown",
-            otherParticipantName: otherParticipant?.name || "Unknown",
-            otherParticipantId: otherParticipant?.id,
-            otherParticipantAvatar: otherParticipant?.avatarIndex || 0,
-            vehicleName: vehicle?.name || null,
-            vehicleImage: vehicle?.imageUrl || null,
-            unreadCount: unreadCount || 0
-          };
-        })
-      );
-      res.json(enrichedConvs);
-    } catch (error) {
-      console.error("Get conversations error:", error);
-      res.status(500).json({ error: "Failed to fetch conversations" });
-    }
-  });
-  app2.post("/api/conversations", async (req, res) => {
-    try {
-      const { participant1Id, participant2Id, vehicleId, tripId } = req.body;
-      if (!participant1Id || !participant2Id) {
-        return res.status(400).json({ error: "Both participant IDs are required" });
-      }
-      if (participant1Id === participant2Id) {
-        return res.status(400).json({ error: "Cannot create a conversation with yourself" });
-      }
-      const existingConv = await storage.findExistingConversation(
-        participant1Id,
-        participant2Id,
-        vehicleId
-      );
-      if (existingConv) {
-        return res.json(existingConv);
-      }
-      const conv = await storage.createConversation({
-        participant1Id,
-        participant2Id,
-        vehicleId: vehicleId || null,
-        tripId: tripId || null,
-        lastMessageAt: /* @__PURE__ */ new Date()
-      });
-      res.status(201).json(conv);
-    } catch (error) {
-      console.error("Create conversation error:", error);
-      res.status(500).json({ error: "Failed to create conversation" });
-    }
-  });
-  app2.get(
-    "/api/conversations/:conversationId/messages",
-    async (req, res) => {
-      try {
-        const { conversationId } = req.params;
-        const { userId } = req.query;
-        const messages2 = await storage.getMessagesByConversation(conversationId);
-        const enrichedMessages = await Promise.all(
-          messages2.map(async (msg) => {
-            const sender = await storage.getUser(msg.senderId);
-            return {
-              ...msg,
-              senderName: sender?.name || "Unknown",
-              senderAvatar: sender?.avatarIndex || 0
-            };
-          })
-        );
-        if (userId && typeof userId === "string") {
-          await storage.markMessagesAsRead(conversationId, userId);
-          const conv = await storage.getConversation(conversationId);
-          if (conv) {
-            const updates = {};
-            if (conv.participant1Id === userId) {
-              updates.participant1Unread = 0;
-            } else if (conv.participant2Id === userId) {
-              updates.participant2Unread = 0;
-            }
-            await storage.updateConversation(conversationId, updates);
-          }
-        }
-        res.json(enrichedMessages);
-      } catch (error) {
-        console.error("Get messages error:", error);
-        res.status(500).json({ error: "Failed to fetch messages" });
-      }
-    }
-  );
-  app2.post(
-    "/api/conversations/:conversationId/messages",
-    async (req, res) => {
-      try {
-        const { conversationId } = req.params;
-        const { senderId, content, messageType } = req.body;
-        if (!senderId || !content) {
-          return res.status(400).json({ error: "senderId and content are required" });
-        }
-        const msg = await storage.createMessage({
-          conversationId,
-          senderId,
-          content,
-          messageType: messageType || "text"
-        });
-        const conv = await storage.getConversation(conversationId);
-        if (conv) {
-          const preview = content.length > 50 ? content.substring(0, 50) + "..." : content;
-          const updates = {
-            lastMessageAt: /* @__PURE__ */ new Date(),
-            lastMessagePreview: preview
-          };
-          if (conv.participant1Id === senderId) {
-            updates.participant2Unread = (conv.participant2Unread || 0) + 1;
-          } else {
-            updates.participant1Unread = (conv.participant1Unread || 0) + 1;
-          }
-          await storage.updateConversation(conversationId, updates);
-        }
-        const sender = await storage.getUser(senderId);
-        res.status(201).json({
-          ...msg,
-          senderName: sender?.name || "Unknown",
-          senderAvatar: sender?.avatarIndex || 0
-        });
-      } catch (error) {
-        console.error("Send message error:", error);
-        res.status(500).json({ error: "Failed to send message" });
-      }
-    }
-  );
-  app2.get(
-    "/api/messages/unread/:userId",
-    async (req, res) => {
-      try {
-        const { userId } = req.params;
-        const count = await storage.getUnreadMessageCount(userId);
-        res.json({ unreadCount: count });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to get unread count" });
-      }
-    }
-  );
-  app2.post("/api/auth/forgot-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      const user = await storage.getUserByEmail(email);
-      if (user) {
-        const token = crypto.randomUUID();
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1e3);
-        await storage.createPasswordResetToken(user.id, token, expiresAt);
-        const resetLink = `https://${req.get("host")}/reset-password?token=${token}`;
-        await sendPasswordResetEmail(user.email, user.name, resetLink, token);
-      }
-      res.json({
-        message: "If an account exists with that email, a password reset link has been sent."
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to process password reset request" });
-    }
-  });
-  app2.post("/api/auth/reset-password", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-      const resetToken = await storage.getPasswordResetToken(token);
-      if (!resetToken) {
-        return res.status(400).json({ error: "Invalid or expired reset token" });
-      }
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(resetToken.userId, { password: hashedPassword });
-      await storage.markTokenUsed(token);
-      res.json({ message: "Password has been reset successfully" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to reset password" });
-    }
-  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -3196,13 +3352,9 @@ async function getVehicleOwnerUser(vehicleId) {
   const { ownerVehicles: ownerVehicles2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
   const { eq: eq2 } = await import("drizzle-orm");
   const [ownerVehicle] = await db2.select().from(ownerVehicles2).where(eq2(ownerVehicles2.vehicleId, vehicleId));
-  if (!ownerVehicle) {
-    return null;
-  }
+  if (!ownerVehicle) return null;
   const ownerProfile = await db_getOwnerProfileById(ownerVehicle.ownerId);
-  if (!ownerProfile) {
-    return null;
-  }
+  if (!ownerProfile) return null;
   return storage.getUser(ownerProfile.userId);
 }
 
@@ -3211,6 +3363,25 @@ import * as fs2 from "fs";
 import * as path2 from "path";
 var app = express();
 var log = console.log;
+function setupSecurity(app2) {
+  app2.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'", "https:"],
+          objectSrc: ["'none'"],
+          frameSrc: ["'none'"]
+        }
+      },
+      crossOriginEmbedderPolicy: false
+    })
+  );
+}
 function setupCors(app2) {
   app2.use((req, res, next) => {
     const origins = /* @__PURE__ */ new Set();
@@ -3222,14 +3393,16 @@ function setupCors(app2) {
         origins.add(`https://${d.trim()}`);
       });
     }
+    if (process.env.ALLOWED_ORIGINS) {
+      process.env.ALLOWED_ORIGINS.split(",").forEach((d) => {
+        origins.add(d.trim());
+      });
+    }
     const origin = req.header("origin");
-    if (origin && origins.has(origin)) {
+    if (origin && origins.size > 0 && origins.has(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
-      );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
+      res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
       res.header("Access-Control-Allow-Credentials", "true");
     }
     if (req.method === "OPTIONS") {
@@ -3241,31 +3414,43 @@ function setupCors(app2) {
 function setupBodyParsing(app2) {
   app2.use(
     express.json({
-      limit: "20mb",
+      limit: "5mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       }
     })
   );
-  app2.use(express.urlencoded({ extended: false }));
+  app2.use(express.urlencoded({ extended: false, limit: "5mb" }));
+}
+function setupRateLimiting(app2) {
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1e3,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many attempts, please try again later." }
+  });
+  const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1e3,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many password reset requests, please try again later." }
+  });
+  app2.use("/api/auth/login", authLimiter);
+  app2.use("/api/auth/register", authLimiter);
+  app2.use("/api/auth/social", authLimiter);
+  app2.use("/api/auth/forgot-password", passwordResetLimiter);
+  app2.use("/api/auth/reset-password", passwordResetLimiter);
 }
 function setupRequestLogging(app2) {
   app2.use((req, res, next) => {
     const start = Date.now();
-    const path3 = req.path;
-    let capturedJsonResponse = void 0;
-    const originalResJson = res.json;
-    res.json = function(bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
+    const reqPath = req.path;
     res.on("finish", () => {
-      if (!path3.startsWith("/api")) return;
+      if (!reqPath.startsWith("/api")) return;
       const duration = Date.now() - start;
-      let logLine = `${req.method} ${path3} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+      let logLine = `${req.method} ${reqPath} ${res.statusCode} in ${duration}ms`;
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
@@ -3273,16 +3458,6 @@ function setupRequestLogging(app2) {
     });
     next();
   });
-}
-function getAppName() {
-  try {
-    const appJsonPath = path2.resolve(process.cwd(), "app.json");
-    const appJsonContent = fs2.readFileSync(appJsonPath, "utf-8");
-    const appJson = JSON.parse(appJsonContent);
-    return appJson.expo?.name || "App Landing Page";
-  } catch {
-    return "App Landing Page";
-  }
 }
 function serveExpoManifest(platform, res) {
   const manifestPath = path2.resolve(
@@ -3345,7 +3520,6 @@ function configureExpoAndLanding(app2) {
     "landing-page.html"
   );
   const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
-  const appName = getAppName();
   log("Serving static Expo files with dynamic manifest routing");
   app2.use((req, res, next) => {
     if (req.path.startsWith("/api")) {
@@ -3365,6 +3539,10 @@ function configureExpoAndLanding(app2) {
     }
     if (req.path === "/reset-password") {
       return serveResetPasswordPage(res);
+    }
+    if (req.path === "/status") {
+      res.setHeader("Content-Type", "text/plain");
+      return res.status(200).send("packager-status:running");
     }
     if (req.path !== "/" && req.path !== "/manifest") {
       return next();
@@ -3390,14 +3568,19 @@ function setupErrorHandler(app2) {
   app2.use((err, _req, res, _next) => {
     const error = err;
     const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
+    console.error("Unhandled error:", err);
+    if (status >= 500) {
+      return res.status(status).json({ message: "Internal Server Error" });
+    }
+    const message = error.message || "Request failed";
     res.status(status).json({ message });
-    throw err;
   });
 }
 (async () => {
+  setupSecurity(app);
   setupCors(app);
   setupBodyParsing(app);
+  setupRateLimiting(app);
   setupRequestLogging(app);
   configureExpoAndLanding(app);
   await seedIfEmpty();
@@ -3415,3 +3598,6 @@ function setupErrorHandler(app2) {
     }
   );
 })();
+export {
+  setupRateLimiting
+};

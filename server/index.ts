@@ -246,6 +246,11 @@ function configureExpoAndLanding(app: express.Application) {
       return serveResetPasswordPage(res);
     }
 
+    if (req.path === "/status") {
+      res.setHeader("Content-Type", "text/plain");
+      return res.status(200).send("packager-status:running");
+    }
+
     if (req.path !== "/" && req.path !== "/manifest") {
       return next();
     }
