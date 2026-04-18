@@ -50,5 +50,5 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run server:dev & npm run expo:dev"
+args = "npm run server:dev"
 waitForPort = 5000
