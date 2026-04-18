@@ -71,6 +71,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
+  async function handleAuthResponse(response: Response): Promise<User> {
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Authentication failed");
+    }
+
+    const body = await response.json();
+    const apiUser: ApiUser = body.user ?? body;
+    const token: string | undefined = body.token;
+
+    const transformedUser = transformApiUser(apiUser);
+
+    await Promise.all([
+      storage.setUser(transformedUser),
+      storage.setIsAuthenticated(true),
+      token ? storage.setAuthToken(token) : Promise.resolve(),
+    ]);
+
+    setUser(transformedUser);
+    setIsAuthenticated(true);
+    return transformedUser;
+  }
+
   const register = useCallback(async (email: string, name: string, password: string): Promise<void> => {
     const url = new URL("/api/auth/register", getApiUrl());
     const response = await fetch(url.toString(), {
@@ -78,19 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, name, password }),
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Registration failed");
-    }
-
-    const apiUser: ApiUser = await response.json();
-    const transformedUser = transformApiUser(apiUser);
-
-    await storage.setUser(transformedUser);
-    await storage.setIsAuthenticated(true);
-    setUser(transformedUser);
-    setIsAuthenticated(true);
+    await handleAuthResponse(response);
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<void> => {
@@ -100,19 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Login failed");
-    }
-
-    const apiUser: ApiUser = await response.json();
-    const transformedUser = transformApiUser(apiUser);
-
-    await storage.setUser(transformedUser);
-    await storage.setIsAuthenticated(true);
-    setUser(transformedUser);
-    setIsAuthenticated(true);
+    await handleAuthResponse(response);
   }, []);
 
   const socialLogin = useCallback(async (provider: string, token: string, name?: string): Promise<void> => {
@@ -122,24 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider, token, name }),
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Social authentication failed");
-    }
-
-    const apiUser: ApiUser = await response.json();
-    const transformedUser = transformApiUser(apiUser);
-
-    await storage.setUser(transformedUser);
-    await storage.setIsAuthenticated(true);
-    setUser(transformedUser);
-    setIsAuthenticated(true);
+    await handleAuthResponse(response);
   }, []);
 
   const logout = useCallback(async () => {
-    await storage.clearUser();
-    await storage.setIsAuthenticated(false);
+    await Promise.all([
+      storage.clearUser(),
+      storage.setIsAuthenticated(false),
+      storage.clearAuthToken(),
+    ]);
     setIsAuthenticated(false);
     setUser(null);
   }, []);

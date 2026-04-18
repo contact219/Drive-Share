@@ -1,11 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAuthToken } from "@/lib/storage";
 
-/**
- * Gets the base URL for the Express API server
- * In development: Uses domain with port (works on web/Android, not iOS)
- * In production: Uses the main domain (static build served by Express)
- * @returns {string} The API base URL
- */
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
@@ -13,8 +8,6 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  // If host includes a port, use it directly
-  // Note: iOS Expo Go cannot reach non-standard HTTPS ports - use published app instead
   let url = new URL(`https://${host}`);
   return url.href;
 }
@@ -26,6 +19,15 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function buildAuthHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra };
+  const token = await getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -34,9 +36,13 @@ export async function apiRequest(
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
 
+  const headers = await buildAuthHeaders(
+    data ? { "Content-Type": "application/json" } : undefined,
+  );
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -54,7 +60,10 @@ export const getQueryFn: <T>(options: {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
 
+    const headers = await buildAuthHeaders();
+
     const res = await fetch(url, {
+      headers,
       credentials: "include",
     });
 

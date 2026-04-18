@@ -33,11 +33,11 @@
         <form id="login-form" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" id="login-email" value="admin@rush.com" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
+            <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="username" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" id="login-password" value="admin123" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
+            <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" required>
           </div>
           <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition">
             Sign In
@@ -449,6 +449,15 @@
     let revenueChart = null;
     let tripStatusChart = null;
     const API_BASE = '/api';
+    let authToken = sessionStorage.getItem('rush_admin_token');
+
+    function authFetch(url, options = {}) {
+      const headers = Object.assign({}, options.headers || {});
+      if (authToken) {
+        headers['Authorization'] = 'Bearer ' + authToken;
+      }
+      return fetch(url, Object.assign({}, options, { headers }));
+    }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -464,9 +473,17 @@
 
         if (!res.ok) throw new Error('Invalid credentials');
 
-        currentUser = await res.json();
+        const body = await res.json();
+        currentUser = body.user || body;
+        authToken = body.token || null;
+
         if (!currentUser.isAdmin) {
+          authToken = null;
           throw new Error('Admin access required');
+        }
+
+        if (authToken) {
+          sessionStorage.setItem('rush_admin_token', authToken);
         }
 
         document.getElementById('login-screen').classList.add('hidden');
@@ -481,6 +498,8 @@
 
     function logout() {
       currentUser = null;
+      authToken = null;
+      sessionStorage.removeItem('rush_admin_token');
       document.getElementById('login-screen').classList.remove('hidden');
       document.getElementById('dashboard-screen').classList.add('hidden');
     }
@@ -499,8 +518,8 @@
     async function loadStats() {
       try {
         const [statsRes, analyticsRes] = await Promise.all([
-          fetch(`${API_BASE}/admin/stats`),
-          fetch(`${API_BASE}/admin/analytics`)
+          authFetch(`${API_BASE}/admin/stats`),
+          authFetch(`${API_BASE}/admin/analytics`)
         ]);
         const stats = await statsRes.json();
         const analytics = await analyticsRes.json();
@@ -518,7 +537,7 @@
 
     async function loadAnalytics() {
       try {
-        const res = await fetch(`${API_BASE}/admin/analytics`);
+        const res = await authFetch(`${API_BASE}/admin/analytics`);
         const data = await res.json();
         
         if (revenueChart) revenueChart.destroy();
@@ -582,7 +601,7 @@
 
     async function loadVerifications() {
       try {
-        const res = await fetch(`${API_BASE}/admin/verifications`);
+        const res = await authFetch(`${API_BASE}/admin/verifications`);
         const verifications = await res.json();
         const pending = verifications.filter(v => v.status === 'pending');
         
@@ -622,7 +641,7 @@
 
     async function openVerificationModal(id) {
       try {
-        const res = await fetch(`${API_BASE}/admin/verifications`);
+        const res = await authFetch(`${API_BASE}/admin/verifications`);
         const verifications = await res.json();
         currentVerification = verifications.find(v => v.id === id);
         
@@ -665,7 +684,7 @@
       if (!currentVerification) return;
       
       try {
-        await fetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
+        await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -699,7 +718,7 @@
       if (!currentVerification) return;
       
       try {
-        await fetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
+        await authFetch(`${API_BASE}/admin/verifications/${currentVerification.id}/decision`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -719,7 +738,7 @@
 
     async function loadInsurance() {
       try {
-        const res = await fetch(`${API_BASE}/admin/insurance`);
+        const res = await authFetch(`${API_BASE}/admin/insurance`);
         const policies = await res.json();
         
         const container = document.getElementById('insurance-list');
@@ -762,7 +781,7 @@
 
     async function loadPayments() {
       try {
-        const res = await fetch(`${API_BASE}/admin/payments`);
+        const res = await authFetch(`${API_BASE}/admin/payments`);
         const payments = await res.json();
         
         const container = document.getElementById('payments-list');
@@ -820,7 +839,7 @@
     }
 
     async function loadVehicles() {
-      const res = await fetch(`${API_BASE}/admin/vehicles`);
+      const res = await authFetch(`${API_BASE}/admin/vehicles`);
       const vehicles = await res.json();
       const container = document.getElementById('vehicles-list');
       container.innerHTML = vehicles.map(v => `
@@ -843,7 +862,7 @@
     }
 
     async function loadUsers() {
-      const res = await fetch(`${API_BASE}/admin/users`);
+      const res = await authFetch(`${API_BASE}/admin/users`);
       const users = await res.json();
       const container = document.getElementById('users-list');
       container.innerHTML = users.map(u => `
@@ -869,7 +888,7 @@
     }
 
     async function loadTrips() {
-      const res = await fetch(`${API_BASE}/admin/trips`);
+      const res = await authFetch(`${API_BASE}/admin/trips`);
       const trips = await res.json();
       const container = document.getElementById('trips-list');
       container.innerHTML = trips.map(t => `
@@ -923,7 +942,7 @@
     }
 
     async function editUser(id) {
-      const res = await fetch(`${API_BASE}/admin/users`);
+      const res = await authFetch(`${API_BASE}/admin/users`);
       const users = await res.json();
       const user = users.find(u => u.id === id);
       if (user) openUserModal(user);
@@ -935,7 +954,7 @@
         return;
       }
       if (!confirm(`Are you sure you want to delete user ${email}?`)) return;
-      await fetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
+      await authFetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
       loadUsers();
       loadStats();
     }
@@ -966,7 +985,7 @@
             name: document.getElementById('user-name').value,
             isAdmin: document.getElementById('user-is-admin').checked
           };
-          await fetch(`${API_BASE}/admin/users/${id}`, {
+          await authFetch(`${API_BASE}/admin/users/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -978,7 +997,7 @@
             errorEl.classList.remove('hidden');
             return;
           }
-          const res = await fetch(`${API_BASE}/admin/users`, {
+          const res = await authFetch(`${API_BASE}/admin/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1023,7 +1042,7 @@
       }
 
       try {
-        const res = await fetch(`${API_BASE}/admin/users/${id}/password`, {
+        const res = await authFetch(`${API_BASE}/admin/users/${id}/password`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: newPassword })
@@ -1073,7 +1092,7 @@
           reader.readAsDataURL(file);
         });
 
-        const res = await fetch(`${API_BASE}/admin/upload-image`, {
+        const res = await authFetch(`${API_BASE}/admin/upload-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: file.name, data: base64, mimeType: file.type })
@@ -1147,7 +1166,7 @@
     }
 
     async function editVehicle(id) {
-      const res = await fetch(`${API_BASE}/admin/vehicles`);
+      const res = await authFetch(`${API_BASE}/admin/vehicles`);
       const vehicles = await res.json();
       const vehicle = vehicles.find(v => v.id === id);
       if (vehicle) openVehicleModal(vehicle);
@@ -1155,7 +1174,7 @@
 
     async function deleteVehicle(id) {
       if (!confirm('Are you sure you want to delete this vehicle?')) return;
-      await fetch(`${API_BASE}/admin/vehicles/${id}`, { method: 'DELETE' });
+      await authFetch(`${API_BASE}/admin/vehicles/${id}`, { method: 'DELETE' });
       loadVehicles();
       loadStats();
     }
@@ -1185,13 +1204,13 @@
       };
 
       if (id) {
-        await fetch(`${API_BASE}/admin/vehicles/${id}`, {
+        await authFetch(`${API_BASE}/admin/vehicles/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
       } else {
-        await fetch(`${API_BASE}/admin/vehicles`, {
+        await authFetch(`${API_BASE}/admin/vehicles`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -1335,7 +1354,7 @@
       
       try {
         const notes = document.getElementById('document-notes').value;
-        const res = await fetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+        const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1368,7 +1387,7 @@
       }
       
       try {
-        const res = await fetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
+        const res = await authFetch(`${API_BASE}/admin/user-documents/${currentDocumentId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1398,8 +1417,8 @@
     async function loadCalendarData() {
       try {
         const [tripsRes, vehiclesRes] = await Promise.all([
-          fetch(`${API_BASE}/admin/calendar`),
-          fetch(`${API_BASE}/admin/vehicles`)
+          authFetch(`${API_BASE}/admin/calendar`),
+          authFetch(`${API_BASE}/admin/vehicles`)
         ]);
         calendarData = await tripsRes.json();
         calendarVehicles = await vehiclesRes.json();

@@ -6,15 +6,16 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useStripe } from "@stripe/stripe-react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
-import { useTrips } from "@/hooks/useTrips";
+import { useAuth } from "@/contexts/AuthContext";
 import { useVehicle } from "@/hooks/useVehicles";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
-import { Trip } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { apiRequest } from "@/lib/query-client";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, "BookingConfirmation">;
@@ -24,8 +25,9 @@ export default function BookingConfirmationScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { theme } = useTheme();
-  const { addTrip } = useTrips();
+  const { user } = useAuth();
   const { data: vehicle, isLoading: isLoadingVehicle } = useVehicle(route.params.vehicleId);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -58,25 +60,74 @@ export default function BookingConfirmationScreen() {
       Alert.alert("Terms Required", "Please agree to the terms and conditions to continue.");
       return;
     }
-
-    if (!vehicle) return;
+    if (!vehicle || !user) return;
 
     setIsLoading(true);
 
     try {
-      const newTrip: Trip = {
-        id: `trip_${Date.now()}`,
+      // 1. Create a trip record first (status: pending payment)
+      const tripRes = await apiRequest("POST", "/api/trips", {
         vehicleId: vehicle.id,
-        vehicle,
+        userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        status: "upcoming",
-        totalCost,
-        pickupLocation: vehicle.location.address,
-        createdAt: new Date().toISOString(),
-      };
+        status: "pending",
+        totalCost: totalCost.toFixed(2),
+        pickupLocation: vehicle.location?.address ?? "",
+      });
+      const trip = await tripRes.json();
 
-      await addTrip(newTrip);
+      // 2. Create Stripe PaymentSheet (supports Card + Cash App Pay)
+      const sheetRes = await apiRequest("POST", "/api/stripe/payment-sheet", {
+        tripId: trip.id,
+        amount: totalCost,
+      });
+      const {
+        paymentIntent,
+        ephemeralKey,
+        customer,
+        paymentId,
+        publishableKey,
+      } = await sheetRes.json();
+
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "Rush Car Rental",
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey,
+        paymentIntentClientSecret: paymentIntent,
+        allowsDelayedPaymentMethods: false,
+        defaultBillingDetails: {
+          name: user.name,
+          email: user.email,
+        },
+        appearance: {
+          colors: {
+            primary: Colors.light.primary,
+          },
+        },
+      });
+
+      if (initError) {
+        Alert.alert("Payment Error", initError.message);
+        return;
+      }
+
+      // 3. Present the payment sheet (user picks Card or Cash App Pay)
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code !== "Canceled") {
+          Alert.alert("Payment Failed", presentError.message);
+        }
+        return;
+      }
+
+      // 4. Confirm payment on server — moves trip to upcoming
+      await apiRequest("POST", "/api/stripe/confirm-payment", {
+        paymentId,
+        tripId: trip.id,
+      });
+
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       Alert.alert(
@@ -105,11 +156,11 @@ export default function BookingConfirmationScreen() {
         ]
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to create booking. Please try again.");
+      Alert.alert("Error", "Failed to complete booking. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [agreedToTerms, vehicle, startDate, endDate, totalCost, addTrip, navigation]);
+  }, [agreedToTerms, vehicle, user, startDate, endDate, totalCost, initPaymentSheet, presentPaymentSheet, navigation]);
 
   if (isLoadingVehicle) {
     return (
@@ -188,7 +239,7 @@ export default function BookingConfirmationScreen() {
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 Pickup Location
               </ThemedText>
-              <ThemedText type="body">{vehicle.location.address}</ThemedText>
+              <ThemedText type="body">{vehicle.location?.address}</ThemedText>
             </View>
           </View>
         </View>
@@ -220,12 +271,16 @@ export default function BookingConfirmationScreen() {
         </View>
 
         <View style={[styles.paymentCard, { backgroundColor: theme.backgroundDefault }]}>
-          <Feather name="credit-card" size={24} color={Colors.light.primary} />
-          <View style={styles.paymentContent}>
-            <ThemedText type="body">Pay at Pickup</ThemedText>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              Payment will be collected when you start your trip
-            </ThemedText>
+          <View style={styles.paymentMethodRow}>
+            <Feather name="credit-card" size={20} color={Colors.light.primary} />
+            <ThemedText type="small" style={styles.paymentMethodLabel}>Card</ThemedText>
+          </View>
+          <ThemedText type="small" style={styles.paymentSeparator}>or</ThemedText>
+          <View style={styles.paymentMethodRow}>
+            <View style={styles.cashAppBadge}>
+              <ThemedText type="small" style={styles.cashAppText}>$</ThemedText>
+            </View>
+            <ThemedText type="small" style={styles.paymentMethodLabel}>Cash App Pay</ThemedText>
           </View>
         </View>
 
@@ -237,12 +292,8 @@ export default function BookingConfirmationScreen() {
             style={[
               styles.checkbox,
               {
-                backgroundColor: agreedToTerms
-                  ? Colors.light.primary
-                  : "transparent",
-                borderColor: agreedToTerms
-                  ? Colors.light.primary
-                  : theme.textSecondary,
+                backgroundColor: agreedToTerms ? Colors.light.primary : "transparent",
+                borderColor: agreedToTerms ? Colors.light.primary : theme.textSecondary,
               },
             ]}
           >
@@ -271,7 +322,7 @@ export default function BookingConfirmationScreen() {
           style={styles.confirmButton}
           disabled={isLoading}
         >
-          {isLoading ? "Processing..." : `Confirm & Book - $${totalCost.toFixed(2)}`}
+          {isLoading ? "Processing..." : `Pay $${totalCost.toFixed(2)}`}
         </Button>
       </View>
     </View>
@@ -345,13 +396,35 @@ const styles = StyleSheet.create({
   paymentCard: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.xl,
-    gap: Spacing.md,
+    gap: Spacing.lg,
   },
-  paymentContent: {
-    flex: 1,
+  paymentMethodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  paymentMethodLabel: {
+    fontWeight: "600",
+  },
+  paymentSeparator: {
+    color: "#999",
+  },
+  cashAppBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: "#00D632",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cashAppText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
   },
   termsRow: {
     flexDirection: "row",

@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   TRIPS: "@rush_trips",
   FILTERS: "@rush_filters",
   IS_AUTHENTICATED: "@rush_is_authenticated",
+  AUTH_TOKEN: "@rush_auth_token",
 };
 
 export async function getUser(): Promise<User | null> {
@@ -147,6 +148,30 @@ export async function setIsAuthenticated(value: boolean): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, value ? "true" : "false");
   } catch (error) {
     console.error("Error setting auth status:", error);
+  }
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  } catch {
+    return null;
+  }
+}
+
+export async function setAuthToken(token: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+  } catch (error) {
+    console.error("Error setting auth token:", error);
+  }
+}
+
+export async function clearAuthToken(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+  } catch (error) {
+    console.error("Error clearing auth token:", error);
   }
 }
 
