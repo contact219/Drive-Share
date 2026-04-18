@@ -98,8 +98,9 @@
     .toast-info    { background: #3b82f6; }
     @keyframes slideIn { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
 
-    /* Modal overlay */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
+    /* Modal overlay — hidden by default via CSS so Tailwind's hidden class is not needed */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-overlay.is-open { display: flex; }
 
     /* Section labels in sidebar */
     .nav-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; padding: 8px 16px 4px; }
@@ -454,7 +455,7 @@
 </div>
 
 <!-- DOCUMENT MODAL -->
-<div id="document-modal" class="modal-overlay fixed hidden">
+<div id="document-modal" class="modal-overlay">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h3 class="text-lg font-semibold text-gray-900">Review Document</h3>
@@ -481,7 +482,7 @@
 </div>
 
 <!-- VERIFICATION MODAL -->
-<div id="verification-modal" class="modal-overlay fixed hidden">
+<div id="verification-modal" class="modal-overlay">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h3 class="text-lg font-semibold text-gray-900">Review Vehicle Listing</h3>
@@ -509,7 +510,7 @@
 </div>
 
 <!-- USER MODAL -->
-<div id="user-modal" class="modal-overlay fixed hidden">
+<div id="user-modal" class="modal-overlay">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h3 id="user-modal-title" class="text-lg font-semibold text-gray-900">Add User</h3>
@@ -539,7 +540,7 @@
 </div>
 
 <!-- PASSWORD MODAL -->
-<div id="password-modal" class="modal-overlay fixed hidden">
+<div id="password-modal" class="modal-overlay">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md m-4">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h3 class="text-lg font-semibold text-gray-900">Change Password</h3>
@@ -565,7 +566,7 @@
 </div>
 
 <!-- VEHICLE MODAL -->
-<div id="vehicle-modal" class="modal-overlay fixed hidden">
+<div id="vehicle-modal" class="modal-overlay">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Add Vehicle</h3>
@@ -692,6 +693,7 @@
       const initial = currentUser.name.charAt(0).toUpperCase();
       document.getElementById('admin-name').textContent = currentUser.name;
       document.getElementById('admin-avatar').textContent = initial;
+      showTab('analytics');
       loadDashboard();
     } catch (err) {
       errEl.textContent = err.message;
@@ -736,11 +738,11 @@
   function showTab(tab) {
     const tabs = ['analytics','calendar','verifications','vehicles','users','trips','insurance','payments','user-documents'];
     tabs.forEach(t => {
-      document.getElementById(`content-${t}`).classList.add('hidden');
+      document.getElementById(`content-${t}`).style.display = 'none';
       const nav = document.getElementById(`nav-${t}`);
       if (nav) { nav.classList.remove('active'); }
     });
-    document.getElementById(`content-${tab}`).classList.remove('hidden');
+    document.getElementById(`content-${tab}`).style.display = '';
     const activeNav = document.getElementById(`nav-${tab}`);
     if (activeNav) activeNav.classList.add('active');
     currentTab = tab;
@@ -852,13 +854,13 @@
       document.getElementById('rejection-reason-field').classList.add('hidden');
       document.getElementById('reject-btn').textContent = 'Reject';
       const modal = document.getElementById('verification-modal');
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      modal.classList.add('is-open');
     } catch {}
   }
 
   function closeVerificationModal() {
     const modal = document.getElementById('verification-modal');
-    modal.classList.add('hidden'); modal.classList.remove('flex');
+    modal.classList.remove('is-open');
     currentVerification = null; _verCache = [];
   }
 
@@ -1092,7 +1094,7 @@
     const doc = userDocumentsCache.find(d => d.id === docId);
     if (!doc) return;
     const modal = document.getElementById('document-modal');
-    modal.classList.remove('hidden'); modal.classList.add('flex');
+    modal.classList.add('is-open');
     document.getElementById('document-details').innerHTML = `
       <div class="grid grid-cols-2 gap-3 text-sm p-4 bg-gray-50 rounded-xl">
         <div><p class="text-xs text-gray-500">Document Type</p><p class="font-medium text-gray-900">${formatDocumentType(doc.documentType)}</p></div>
@@ -1110,7 +1112,7 @@
 
   function closeDocumentModal() {
     const modal = document.getElementById('document-modal');
-    modal.classList.add('hidden'); modal.classList.remove('flex');
+    modal.classList.remove('is-open');
     currentDocumentId = null;
   }
 
@@ -1161,12 +1163,12 @@
       document.getElementById('user-password-field').classList.remove('hidden');
     }
     const modal = document.getElementById('user-modal');
-    modal.classList.remove('hidden'); modal.classList.add('flex');
+    modal.classList.add('is-open');
   }
 
   function closeUserModal() {
     const modal = document.getElementById('user-modal');
-    modal.classList.add('hidden'); modal.classList.remove('flex');
+    modal.classList.remove('is-open');
   }
 
   async function editUser(id) {
@@ -1190,12 +1192,12 @@
     document.getElementById('password-error').classList.add('hidden');
     document.getElementById('password-form').reset();
     const modal = document.getElementById('password-modal');
-    modal.classList.remove('hidden'); modal.classList.add('flex');
+    modal.classList.add('is-open');
   }
 
   function closePasswordModal() {
     const modal = document.getElementById('password-modal');
-    modal.classList.add('hidden'); modal.classList.remove('flex');
+    modal.classList.remove('is-open');
   }
 
   document.getElementById('user-form').addEventListener('submit', async (e) => {
@@ -1309,12 +1311,12 @@
       pc.classList.add('hidden'); pi.src = '';
     }
     const modal = document.getElementById('vehicle-modal');
-    modal.classList.remove('hidden'); modal.classList.add('flex');
+    modal.classList.add('is-open');
   }
 
   function closeVehicleModal() {
     const modal = document.getElementById('vehicle-modal');
-    modal.classList.add('hidden'); modal.classList.remove('flex');
+    modal.classList.remove('is-open');
   }
 
   async function editVehicle(id) {
