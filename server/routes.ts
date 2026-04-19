@@ -781,12 +781,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: Request, res: Response) => {
       try {
         const ownerVehicles = await storage.getOwnerVehicles(req.params.ownerId);
-        res.json(ownerVehicles);
+        const enriched = await Promise.all(
+          ownerVehicles.map(async (ov) => {
+            const vehicle = await storage.getVehicle(ov.vehicleId);
+            const verification = vehicle
+              ? (await storage.getAllVerifications()).find(
+                  (v) => v.vehicleId === vehicle.id && v.ownerId === ov.ownerId,
+                )
+              : null;
+            return {
+              ...ov,
+              vehicle: vehicle || null,
+              verificationStatus: verification?.status || null,
+              verificationNotes: verification?.reviewNotes || null,
+            };
+          }),
+        );
+        res.json(enriched);
       } catch (error) {
         res.status(500).json({ error: "Failed to fetch owner vehicles" });
       }
     },
   );
+
+  app.post("/api/upload/vehicle-image", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { filename, data, mimeType } = req.body;
+      if (!filename || !data || !mimeType) {
+        return res.status(400).json({ error: "filename, data, and mimeType are required" });
+      }
+      const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      if (!allowedMimeTypes.includes(mimeType)) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const buffer = Buffer.from(data, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
+      const extMap: Record<string, string> = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const ext = extMap[mimeType];
+      if (!validateImageMagicBytes(buffer, ext)) {
+        return res.status(400).json({ error: "File content does not match declared type" });
+      }
+      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      const safeName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+      const filePath = path.join(uploadsDir, safeName);
+      await fs.promises.writeFile(filePath, buffer);
+      res.json({ url: `/uploads/vehicles/${safeName}` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
 
   app.post("/api/owner/vehicles", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -801,6 +847,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId,
         vehicleId: vehicle.id,
         listingStatus: "pending",
+      });
+
+      await storage.createVerification({
+        vehicleId: vehicle.id,
+        ownerId,
+        status: "pending",
       });
 
       res.status(201).json({ vehicle, ownerVehicle });

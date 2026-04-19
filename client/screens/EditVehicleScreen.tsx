@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Pressable, Alert, ActivityIndicator, TextInput } from "react-native";
+import { StyleSheet, View, Pressable, Alert, Image, Platform, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -72,8 +73,93 @@ export default function EditVehicleScreen() {
   const [seats, setSeats] = useState(String(vehicle.seats));
   const [pricePerHour, setPricePerHour] = useState(String(parseFloat(vehicle.pricePerHour)));
   const [locationAddress, setLocationAddress] = useState(vehicle.locationAddress || "");
-  const [imageUrl, setImageUrl] = useState(vehicle.imageUrl || "");
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(vehicle.features || []);
+  const [pickedImageUri, setPickedImageUri] = useState<string | null>(null);
+  const [pickedImageBase64, setPickedImageBase64] = useState<string | null>(null);
+  const [pickedImageMime, setPickedImageMime] = useState<string>("image/jpeg");
+
+  const displayImageUri = pickedImageUri || vehicle.imageUrl || null;
+
+  const pickImage = useCallback(async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Photo Upload", "Photo upload from device works best in Expo Go on iOS or Android.");
+      return;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow access to your photo library to upload a vehicle image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setPickedImageUri(asset.uri);
+      setPickedImageBase64(asset.base64 || null);
+      setPickedImageMime(asset.mimeType || "image/jpeg");
+    }
+  }, []);
+
+  const takePhoto = useCallback(async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Camera", "Camera access works best in Expo Go on iOS or Android.");
+      return;
+    }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow camera access to take a vehicle photo.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setPickedImageUri(asset.uri);
+      setPickedImageBase64(asset.base64 || null);
+      setPickedImageMime(asset.mimeType || "image/jpeg");
+    }
+  }, []);
+
+  const showImageOptions = useCallback(() => {
+    Alert.alert("Change Vehicle Photo", "Choose how to update the photo", [
+      { text: "Take Photo", onPress: takePhoto },
+      { text: "Choose from Library", onPress: pickImage },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [pickImage, takePhoto]);
+
+  const uploadImage = useCallback(async (): Promise<string | null> => {
+    if (!pickedImageBase64) return null;
+    try {
+      const filename = `vehicle-${Date.now()}.jpg`;
+      const response = await fetch(
+        new URL("/api/upload/vehicle-image", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename,
+            data: pickedImageBase64,
+            mimeType: pickedImageMime,
+          }),
+        }
+      );
+      if (!response.ok) return null;
+      const { url } = await response.json();
+      return new URL(url, getApiUrl()).toString();
+    } catch {
+      return null;
+    }
+  }, [pickedImageBase64, pickedImageMime]);
 
   const toggleFeature = useCallback((feature: string) => {
     setSelectedFeatures(prev =>
@@ -103,6 +189,12 @@ export default function EditVehicleScreen() {
 
     setIsSubmitting(true);
     try {
+      let finalImageUrl = vehicle.imageUrl;
+      if (pickedImageBase64) {
+        const uploaded = await uploadImage();
+        if (uploaded) finalImageUrl = uploaded;
+      }
+
       const response = await fetch(
         new URL(`/api/owner/vehicles/${ownerVehicleId}`, getApiUrl()).toString(),
         {
@@ -116,7 +208,7 @@ export default function EditVehicleScreen() {
               year: yearNum,
               type: VEHICLE_TYPE_OPTIONS.find(o => o.label === vehicleType)?.value ?? vehicleType.toLowerCase(),
               pricePerHour: priceNum.toFixed(2),
-              imageUrl: imageUrl || vehicle.imageUrl,
+              imageUrl: finalImageUrl,
               seats: parseInt(seats) || 5,
               fuelType: FUEL_TYPE_OPTIONS.find(o => o.label === fuelType)?.value ?? fuelType.toLowerCase(),
               transmission: TRANSMISSION_OPTIONS.find(o => o.label === transmission)?.value ?? transmission.toLowerCase(),
@@ -141,7 +233,7 @@ export default function EditVehicleScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [ownerVehicleId, ownerId, brand, model, year, vehicleType, fuelType, transmission, seats, pricePerHour, locationAddress, imageUrl, selectedFeatures, queryClient, navigation, vehicle.imageUrl]);
+  }, [ownerVehicleId, ownerId, brand, model, year, vehicleType, fuelType, transmission, seats, pricePerHour, locationAddress, pickedImageBase64, uploadImage, selectedFeatures, queryClient, navigation, vehicle.imageUrl]);
 
   const renderSelector = (
     label: string,
@@ -274,19 +366,39 @@ export default function EditVehicleScreen() {
               placeholderTextColor={theme.textSecondary}
             />
           </View>
+        </Card>
 
-          <View style={styles.inputGroup}>
-            <ThemedText type="body" style={styles.label}>Vehicle Image URL (optional)</ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              placeholder="https://example.com/car-image.jpg"
-              placeholderTextColor={theme.textSecondary}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-          </View>
+        <Card style={styles.formCard}>
+          <ThemedText type="h4" style={styles.sectionTitle}>Vehicle Photo</ThemedText>
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+            {pickedImageUri ? "New photo selected — will be saved on update" : "Current vehicle photo"}
+          </ThemedText>
+
+          {displayImageUri ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: displayImageUri }} style={styles.imagePreview} resizeMode="cover" />
+              <Pressable
+                style={[styles.changePhotoButton, { borderColor: theme.border, backgroundColor: theme.backgroundDefault }]}
+                onPress={showImageOptions}
+              >
+                <Feather name="camera" size={16} color={theme.primary} />
+                <ThemedText type="small" style={{ color: theme.primary, marginLeft: Spacing.xs }}>Change Photo</ThemedText>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.photoPickerButton, { borderColor: theme.border, backgroundColor: theme.backgroundDefault }]}
+              onPress={showImageOptions}
+            >
+              <Feather name="camera" size={32} color={theme.textSecondary} />
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+                Tap to add a photo
+              </ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                Camera or Photo Library
+              </ThemedText>
+            </Pressable>
+          )}
         </Card>
 
         <Card style={styles.formCard}>
@@ -381,6 +493,30 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+  },
+  photoPickerButton: {
+    height: 160,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePreviewContainer: {
+    gap: Spacing.md,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: BorderRadius.md,
+  },
+  changePhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
   },
   submitButton: { marginBottom: Spacing.xl },
 });
