@@ -6,7 +6,8 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useStripe } from "@stripe/stripe-react-native";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -27,7 +28,6 @@ export default function BookingConfirmationScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { data: vehicle, isLoading: isLoadingVehicle } = useVehicle(route.params.vehicleId);
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -65,7 +65,7 @@ export default function BookingConfirmationScreen() {
     setIsLoading(true);
 
     try {
-      // 1. Create a trip record first (status: pending payment)
+      // 1. Create trip record (status: pending payment)
       const tripRes = await apiRequest("POST", "/api/trips", {
         vehicleId: vehicle.id,
         userId: user.id,
@@ -77,56 +77,49 @@ export default function BookingConfirmationScreen() {
       });
       const trip = await tripRes.json();
 
-      // 2. Create Stripe PaymentSheet (supports Card + Cash App Pay)
-      const sheetRes = await apiRequest("POST", "/api/stripe/payment-sheet", {
+      // 2. Create PayPal order on server
+      const orderRes = await apiRequest("POST", "/api/paypal/create-order", {
         tripId: trip.id,
         amount: totalCost,
       });
-      const {
-        paymentIntent,
-        ephemeralKey,
-        customer,
-        paymentId,
-        publishableKey,
-      } = await sheetRes.json();
+      const { orderId, approvalUrl, paymentId } = await orderRes.json();
 
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: "Rush Car Rental",
-        customerId: customer,
-        customerEphemeralKeySecret: ephemeralKey,
-        paymentIntentClientSecret: paymentIntent,
-        allowsDelayedPaymentMethods: false,
-        defaultBillingDetails: {
-          name: user.name,
-          email: user.email,
-        },
-        appearance: {
-          colors: {
-            primary: Colors.light.primary,
-          },
-        },
-      });
+      // 3. Open PayPal approval in browser
+      const result = await WebBrowser.openAuthSessionAsync(approvalUrl, "rush://");
 
-      if (initError) {
-        Alert.alert("Payment Error", initError.message);
+      if (result.type !== "success") {
+        // User cancelled or browser closed without approval
+        Alert.alert("Payment Cancelled", "The payment was not completed.");
         return;
       }
 
-      // 3. Present the payment sheet (user picks Card or Cash App Pay)
-      const { error: presentError } = await presentPaymentSheet();
+      // 4. Parse orderId from the deep link return URL
+      const returnedUrl = result.url;
+      const parsed = Linking.parse(returnedUrl);
 
-      if (presentError) {
-        if (presentError.code !== "Canceled") {
-          Alert.alert("Payment Failed", presentError.message);
-        }
+      if (parsed.path !== "payment/success") {
+        Alert.alert("Payment Cancelled", "The payment was not completed.");
         return;
       }
 
-      // 4. Confirm payment on server — moves trip to upcoming
-      await apiRequest("POST", "/api/stripe/confirm-payment", {
+      const returnedOrderId = parsed.queryParams?.orderId as string | undefined;
+      if (!returnedOrderId || returnedOrderId !== orderId) {
+        Alert.alert("Payment Error", "Order ID mismatch. Please try again.");
+        return;
+      }
+
+      // 5. Capture payment on server — moves trip to upcoming
+      const captureRes = await apiRequest("POST", "/api/paypal/capture-order", {
+        orderId,
         paymentId,
         tripId: trip.id,
       });
+
+      if (!captureRes.ok) {
+        const err = await captureRes.json();
+        Alert.alert("Payment Failed", err.error || "Could not capture payment.");
+        return;
+      }
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -149,18 +142,18 @@ export default function BookingConfirmationScreen() {
                       },
                     },
                   ],
-                })
+                }),
               );
             },
           },
-        ]
+        ],
       );
     } catch (error) {
       Alert.alert("Error", "Failed to complete booking. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [agreedToTerms, vehicle, user, startDate, endDate, totalCost, initPaymentSheet, presentPaymentSheet, navigation]);
+  }, [agreedToTerms, vehicle, user, startDate, endDate, totalCost, navigation]);
 
   if (isLoadingVehicle) {
     return (
@@ -277,10 +270,10 @@ export default function BookingConfirmationScreen() {
           </View>
           <ThemedText type="small" style={styles.paymentSeparator}>or</ThemedText>
           <View style={styles.paymentMethodRow}>
-            <View style={styles.cashAppBadge}>
-              <ThemedText type="small" style={styles.cashAppText}>$</ThemedText>
+            <View style={styles.paypalBadge}>
+              <ThemedText type="small" style={styles.paypalText}>PP</ThemedText>
             </View>
-            <ThemedText type="small" style={styles.paymentMethodLabel}>Cash App Pay</ThemedText>
+            <ThemedText type="small" style={styles.paymentMethodLabel}>PayPal</ThemedText>
           </View>
         </View>
 
@@ -322,7 +315,7 @@ export default function BookingConfirmationScreen() {
           style={styles.confirmButton}
           disabled={isLoading}
         >
-          {isLoading ? "Processing..." : `Pay $${totalCost.toFixed(2)}`}
+          {isLoading ? "Processing..." : `Pay $${totalCost.toFixed(2)} with PayPal`}
         </Button>
       </View>
     </View>
@@ -413,18 +406,18 @@ const styles = StyleSheet.create({
   paymentSeparator: {
     color: "#999",
   },
-  cashAppBadge: {
+  paypalBadge: {
     width: 20,
     height: 20,
     borderRadius: 4,
-    backgroundColor: "#00D632",
+    backgroundColor: "#003087",
     alignItems: "center",
     justifyContent: "center",
   },
-  cashAppText: {
+  paypalText: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 9,
   },
   termsRow: {
     flexDirection: "row",

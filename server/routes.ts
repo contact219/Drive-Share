@@ -14,9 +14,10 @@ import {
 import * as bcrypt from "bcryptjs";
 import { migrateToDevState } from "./seedIfEmpty";
 import {
-  getUncachableStripeClient,
-  getStripePublishableKey,
-} from "./stripeClient";
+  createPayPalOrder,
+  capturePayPalOrder,
+  getPayPalClientId,
+} from "./paypalClient";
 import {
   sendBookingConfirmationEmail,
   sendNewBookingNotificationToOwner,
@@ -881,22 +882,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // ==================== STRIPE ROUTES ====================
+  // ==================== PAYPAL ROUTES ====================
 
-  app.get(
-    "/api/stripe/publishable-key",
-    async (_req: Request, res: Response) => {
-      try {
-        const publishableKey = await getStripePublishableKey();
-        res.json({ publishableKey });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to get Stripe key" });
-      }
-    },
-  );
+  app.get("/api/paypal/client-id", (_req: Request, res: Response) => {
+    try {
+      const clientId = getPayPalClientId();
+      res.json({ clientId });
+    } catch (error) {
+      res.status(500).json({ error: "PayPal client ID not configured" });
+    }
+  });
 
   app.post(
-    "/api/stripe/create-payment-intent",
+    "/api/paypal/create-order",
     requireAuth,
     async (req: AuthenticatedRequest, res: Response) => {
       try {
@@ -907,155 +905,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Invalid payment parameters" });
         }
 
-        const stripe = await getUncachableStripeClient();
-        const user = await storage.getUser(userId);
+        const domain =
+          process.env.REPLIT_DEV_DOMAIN ||
+          (process.env.REPLIT_DOMAINS || "").split(",")[0] ||
+          "localhost:5000";
+        const baseUrl = `https://${domain}`;
 
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
+        const amountStr = amount.toFixed(2);
+        const platformFee = (amount * 0.1).toFixed(2);
+        const ownerPayout = (amount * 0.9).toFixed(2);
 
-        let customerId = user.stripeCustomerId;
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-            metadata: { userId: user.id },
-          });
-          customerId = customer.id;
-          await storage.updateUser(userId, {
-            stripeCustomerId: customerId,
-          } as any);
-        }
-
-        const amountCents = Math.round(amount * 100);
-        const platformFeeCents = Math.round(amountCents * 0.1);
-        const ownerPayoutCents = amountCents - platformFeeCents;
-
-        const idempotencyKey = `pi-${userId}-${tripId}-${amountCents}`;
-        const paymentIntent = await stripe.paymentIntents.create(
-          {
-            amount: amountCents,
-            currency: "usd",
-            customer: customerId,
-            payment_method_types: ["card", "cashapp"],
-            metadata: { tripId, userId },
-          },
-          { idempotencyKey },
+        const { id: orderId, approvalUrl } = await createPayPalOrder(
+          amountStr,
+          `${baseUrl}/api/paypal/return`,
+          `${baseUrl}/api/paypal/cancel`,
+          { tripId, userId },
         );
 
         const payment = await storage.createPayment({
           tripId,
           userId,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeCustomerId: customerId,
-          amount: (amountCents / 100).toFixed(2),
-          platformFee: (platformFeeCents / 100).toFixed(2),
-          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+          paypalOrderId: orderId,
+          amount: amountStr,
+          platformFee,
+          ownerPayout,
           status: "pending",
         });
 
-        res.json({
-          clientSecret: paymentIntent.client_secret,
-          paymentId: payment.id,
-        });
+        res.json({ orderId, approvalUrl, paymentId: payment.id });
       } catch (error: any) {
-        if (
-          error.type === "StripeCardError" ||
-          error.type === "StripeInvalidRequestError"
-        ) {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: "Failed to create payment intent" });
+        res.status(500).json({ error: error.message || "Failed to create PayPal order" });
       }
     },
   );
 
+  // PayPal redirects here after user approves — bridge to app deep link
+  app.get("/api/paypal/return", (req: Request, res: Response) => {
+    const orderId = (req.query.token as string) || "";
+    res.redirect(`rush://payment/success?orderId=${encodeURIComponent(orderId)}`);
+  });
+
+  // PayPal redirects here if user cancels
+  app.get("/api/paypal/cancel", (_req: Request, res: Response) => {
+    res.redirect("rush://payment/cancel");
+  });
+
   app.post(
-    "/api/stripe/payment-sheet",
+    "/api/paypal/capture-order",
     requireAuth,
     async (req: AuthenticatedRequest, res: Response) => {
       try {
-        const { tripId, amount } = req.body;
-        const userId = req.user!.id;
+        const { orderId, paymentId, tripId } = req.body;
 
-        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 100000) {
-          return res.status(400).json({ error: "Invalid payment parameters" });
-        }
-
-        const stripe = await getUncachableStripeClient();
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
-
-        let customerId = user.stripeCustomerId;
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-            metadata: { userId: user.id },
-          });
-          customerId = customer.id;
-          await storage.updateUser(userId, { stripeCustomerId: customerId } as any);
-        }
-
-        const ephemeralKey = await stripe.ephemeralKeys.create(
-          { customer: customerId },
-          { apiVersion: "2024-06-20" },
-        );
-
-        const amountCents = Math.round(amount * 100);
-        const idempotencyKey = `ps-${userId}-${tripId}-${amountCents}`;
-        const paymentIntent = await stripe.paymentIntents.create(
-          {
-            amount: amountCents,
-            currency: "usd",
-            customer: customerId,
-            payment_method_types: ["card", "cashapp"],
-            metadata: { tripId, userId },
-          },
-          { idempotencyKey },
-        );
-
-        const platformFeeCents = Math.round(amountCents * 0.1);
-        const ownerPayoutCents = amountCents - platformFeeCents;
-
-        const payment = await storage.createPayment({
-          tripId,
-          userId,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeCustomerId: customerId,
-          amount: (amountCents / 100).toFixed(2),
-          platformFee: (platformFeeCents / 100).toFixed(2),
-          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
-          status: "pending",
-        });
-
-        res.json({
-          paymentIntent: paymentIntent.client_secret,
-          ephemeralKey: ephemeralKey.secret,
-          customer: customerId,
-          paymentId: payment.id,
-          publishableKey: await getStripePublishableKey(),
-        });
-      } catch (error: any) {
-        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: "Failed to create payment sheet" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/stripe/confirm-payment",
-    requireAuth,
-    async (req: AuthenticatedRequest, res: Response) => {
-      try {
-        const { paymentId, tripId } = req.body;
-
-        if (!paymentId || !tripId) {
-          return res.status(400).json({ error: "Missing paymentId or tripId" });
+        if (!orderId || !paymentId || !tripId) {
+          return res.status(400).json({ error: "Missing orderId, paymentId, or tripId" });
         }
 
         const payment = await storage.getPayment(paymentId);
@@ -1067,12 +970,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ error: "Access denied" });
         }
 
+        const capture = await capturePayPalOrder(orderId);
+        const captureStatus = capture.purchase_units?.[0]?.payments?.captures?.[0]?.status;
+
+        if (capture.status !== "COMPLETED" && captureStatus !== "COMPLETED") {
+          return res.status(400).json({ error: `Payment capture status: ${capture.status}` });
+        }
+
         await storage.updatePayment(paymentId, { status: "completed" });
         await storage.updateTrip(tripId, { status: "upcoming" });
 
         res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to confirm payment" });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message || "Failed to capture payment" });
       }
     },
   );
