@@ -23,12 +23,16 @@ function setupSecurity(app: express.Application) {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'"],
           fontSrc: ["'self'", "https:"],
           objectSrc: ["'none'"],
           frameSrc: ["'none'"],
+          // Disabled until TLS fronts this server: with it on, browsers
+          // upgrade same-origin fetches to https:// and they fail on the
+          // plain-HTTP IP with "Failed to fetch".
+          upgradeInsecureRequests: null,
         },
       },
       crossOriginEmbedderPolicy: false,
