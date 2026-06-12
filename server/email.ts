@@ -12,6 +12,11 @@ const RUSH_CONFIG = {
 let connectionSettings: any;
 
 async function getCredentials() {
+  // VPS deployment: plain env vars take precedence over Replit connectors
+  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+    return { apiKey: process.env.SENDGRID_API_KEY, email: process.env.SENDGRID_FROM_EMAIL };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
