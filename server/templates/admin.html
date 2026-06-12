@@ -110,6 +110,103 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
   </style>
+
+<!-- Rush admin dark theme override (injected 2026-06-12) -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="rush-admin-theme">
+  :root {
+    --r-bg: #07090f; --r-bg2: #0c1018; --r-panel: rgba(255,255,255,.045);
+    --r-line: rgba(255,255,255,.09); --r-text: #eef1f6; --r-muted: #98a2b3;
+    --r-cyan: #22d3ee; --r-grad: linear-gradient(95deg,#22d3ee,#60a5fa 55%,#a78bfa);
+  }
+  html { color-scheme: dark; }
+  body, body.bg-slate-50 {
+    background: radial-gradient(900px 400px at 85% -10%, rgba(34,211,238,.10), transparent 60%), var(--r-bg) !important;
+    color: var(--r-text) !important; font-family: 'Outfit', system-ui, sans-serif !important;
+  }
+
+  /* surfaces */
+  .bg-white { background: var(--r-panel) !important; border-color: var(--r-line) !important; backdrop-filter: blur(8px); }
+  .bg-slate-50, .bg-gray-50, .bg-gray-100, .bg-slate-100 { background: var(--r-bg2) !important; }
+  [class*="shadow"] { box-shadow: 0 14px 40px rgba(0,0,0,.45) !important; }
+  .rounded-2xl, .rounded-xl, .rounded-lg { border: 1px solid var(--r-line); }
+
+  /* text */
+  .text-gray-900, .text-gray-800, .text-slate-900, .text-slate-800, .text-black { color: var(--r-text) !important; }
+  .text-gray-700, .text-gray-600, .text-slate-700, .text-slate-600 { color: #c4ccd9 !important; }
+  .text-gray-500, .text-gray-400, .text-slate-500, .text-slate-400 { color: var(--r-muted) !important; }
+
+  /* borders */
+  .border, .border-b, .border-t, .border-r, .border-l,
+  .border-gray-200, .border-gray-100, .border-slate-200, .divide-y > * { border-color: var(--r-line) !important; }
+  .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--r-line) !important; }
+
+  /* inputs */
+  input, select, textarea {
+    background: rgba(255,255,255,.05) !important; color: var(--r-text) !important;
+    border: 1px solid var(--r-line) !important; border-radius: 10px;
+  }
+  input::placeholder, textarea::placeholder { color: #5b6472 !important; }
+  input:focus, select:focus, textarea:focus {
+    outline: none !important; border-color: rgba(34,211,238,.6) !important;
+    box-shadow: 0 0 0 3px rgba(34,211,238,.15) !important;
+  }
+  select option { background: var(--r-bg2); color: var(--r-text); }
+
+  /* tables */
+  table { border-color: var(--r-line) !important; }
+  thead, thead tr, th, .bg-gray-50 th { background: rgba(255,255,255,.04) !important; color: var(--r-muted) !important; }
+  tbody tr { border-color: var(--r-line) !important; }
+  tbody tr:hover, .hover\:bg-gray-50:hover, .hover\:bg-slate-50:hover, .hover\:bg-gray-100:hover {
+    background: rgba(34,211,238,.06) !important;
+  }
+
+  /* primary actions keep brand gradient */
+  .bg-primary, .bg-blue-600, .bg-blue-500, .bg-indigo-600 {
+    background: var(--r-grad) !important; color: #061018 !important; border: 0 !important; font-weight: 700;
+  }
+  .bg-primary:hover, .bg-blue-600:hover, .bg-blue-500:hover { filter: brightness(1.1); }
+  .text-primary, .text-blue-600, .text-blue-500, .text-indigo-600 { color: var(--r-cyan) !important; }
+  .bg-red-600, .bg-red-500 { background: #dc2626 !important; color: #fff !important; }
+  .bg-green-600, .bg-green-500 { background: #059669 !important; color: #fff !important; }
+
+  /* status chips: translucent on dark */
+  .bg-green-100  { background: rgba(16,185,129,.14) !important; }  .text-green-800, .text-green-700, .text-green-600  { color: #6ee7b7 !important; }
+  .bg-red-100    { background: rgba(239,68,68,.14)  !important; }  .text-red-800, .text-red-700, .text-red-600        { color: #fca5a5 !important; }
+  .bg-yellow-100 { background: rgba(251,191,36,.14) !important; }  .text-yellow-800, .text-yellow-700                  { color: #fcd34d !important; }
+  .bg-amber-100  { background: rgba(251,191,36,.14) !important; }  .text-amber-800, .text-amber-700                    { color: #fcd34d !important; }
+  .bg-blue-100   { background: rgba(96,165,250,.14) !important; }  .text-blue-800, .text-blue-700                      { color: #93c5fd !important; }
+  .bg-purple-100 { background: rgba(167,139,250,.14)!important; }  .text-purple-800, .text-purple-700                  { color: #c4b5fd !important; }
+  .bg-orange-100 { background: rgba(251,146,60,.14) !important; }  .text-orange-800, .text-orange-700                  { color: #fdba74 !important; }
+  .bg-gray-200   { background: rgba(255,255,255,.10) !important; } .text-gray-800 { color: #d4dae3 !important; }
+
+  /* sidebar / nav: active + hover states */
+  aside, nav.sidebar, #sidebar { background: var(--r-bg2) !important; border-color: var(--r-line) !important; }
+  aside a, #sidebar a { color: var(--r-muted) !important; border-radius: 10px; }
+  aside a:hover, #sidebar a:hover { color: var(--r-text) !important; background: rgba(255,255,255,.05) !important; }
+  aside a.active, aside .bg-blue-50, aside .bg-primary\/10, #sidebar a.active {
+    background: rgba(34,211,238,.12) !important; color: #a5f3fc !important;
+  }
+  .nav-section-label { color: #5b6472 !important; }
+
+  /* login screen card */
+  #login-screen { background: radial-gradient(700px 400px at 70% 20%, rgba(34,211,238,.12), transparent 60%), linear-gradient(160deg, #0a0e16, #07090f) !important; }
+  #login-screen .bg-white { background: rgba(255,255,255,.05) !important; border: 1px solid var(--r-line) !important; backdrop-filter: blur(14px); }
+  #login-screen h1, #login-screen h2 { color: var(--r-text) !important; }
+
+  /* modal */
+  .modal-overlay { background: rgba(3,5,9,.75) !important; backdrop-filter: blur(4px); }
+  .modal-overlay .bg-white, .modal-overlay > div { background: #0d1320 !important; border: 1px solid var(--r-line) !important; color: var(--r-text); }
+
+  /* stat cards pop */
+  .text-3xl, .text-2xl { letter-spacing: -.5px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--r-bg) !important; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14) !important; border-radius: 6px; }
+</style>
+
 </head>
 <body class="bg-slate-50 min-h-screen">
 <div id="toast-container"></div>
