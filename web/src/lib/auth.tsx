@@ -5,10 +5,11 @@ interface AuthCtx {
   user: AuthUser | null;
   signedIn: boolean;
   applyAuth: (user: AuthUser, token: string) => void;
+  patchUser: (fields: Partial<AuthUser>) => void;
   signOut: () => void;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, signedIn: false, applyAuth: () => {}, signOut: () => {} });
+const Ctx = createContext<AuthCtx>({ user: null, signedIn: false, applyAuth: () => {}, patchUser: () => {}, signOut: () => {} });
 
 function loadStoredUser(): AuthUser | null {
   try {
@@ -28,13 +29,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("rush_user", JSON.stringify(u));
     setUser(u);
   };
+  const patchUser = (fields: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...fields };
+      localStorage.setItem("rush_user", JSON.stringify(next));
+      return next;
+    });
+  };
   const signOut = () => {
     clearToken();
     localStorage.removeItem("rush_user");
     setUser(null);
   };
 
-  return <Ctx.Provider value={{ user, signedIn: !!user, applyAuth, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, signedIn: !!user, applyAuth, patchUser, signOut }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

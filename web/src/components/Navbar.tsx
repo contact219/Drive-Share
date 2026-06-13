@@ -1,7 +1,27 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, Heart, MessageSquare, LogOut } from "lucide-react";
 import { useAuth } from "../lib/auth";
+
+const AVATAR_COLORS = [
+  "bg-brand-cyan/20 text-brand-cyan",
+  "bg-brand-amber/20 text-brand-amber",
+  "bg-emerald-500/20 text-emerald-400",
+  "bg-purple-500/20 text-purple-400",
+  "bg-rose-500/20 text-rose-400",
+  "bg-blue-500/20 text-blue-400",
+  "bg-orange-500/20 text-orange-400",
+  "bg-green-500/20 text-green-400",
+];
+
+function AvatarChip({ name, avatarIndex }: { name: string; avatarIndex?: number }) {
+  const color = AVATAR_COLORS[(avatarIndex ?? 0) % AVATAR_COLORS.length];
+  return (
+    <Link to="/profile" className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black transition hover:ring-2 hover:ring-brand-cyan/50 ${color}`}>
+      {(name || "?")[0].toUpperCase()}
+    </Link>
+  );
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -34,9 +54,13 @@ export default function Navbar() {
             <>
               <Link to="/trips" className="text-sm font-semibold text-slate-200 hover:text-white">Trips</Link>
               <Link to="/host/dashboard" className="text-sm font-semibold text-slate-200 hover:text-white">Host dashboard</Link>
-              <span className="flex items-center gap-2 text-sm text-slate-300">
-                <User className="h-4 w-4 text-brand-cyan" /> {user?.name?.split(" ")[0]}
-              </span>
+              <Link to="/favorites" title="Saved cars" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white">
+                <Heart className="h-4 w-4" />
+              </Link>
+              <Link to="/messages" title="Messages" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white">
+                <MessageSquare className="h-4 w-4" />
+              </Link>
+              <AvatarChip name={user?.name || ""} avatarIndex={user?.avatarIndex} />
               <button onClick={() => { signOut(); nav("/"); }} className="btn-ghost px-4 py-2 text-xs">
                 <LogOut className="h-3.5 w-3.5" /> Sign out
               </button>
@@ -65,7 +89,9 @@ export default function Navbar() {
             {signedIn ? (
               <>
                 <Link to="/trips" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Trips</Link>
-                <Link to="/host/dashboard" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Host</Link>
+                <Link to="/favorites" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm"><Heart className="h-3.5 w-3.5" /></Link>
+                <Link to="/messages" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm"><MessageSquare className="h-3.5 w-3.5" /></Link>
+                <Link to="/profile" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Profile</Link>
                 <button onClick={() => { signOut(); setOpen(false); nav("/"); }} className="btn-ghost flex-1 py-2.5 text-sm">Out</button>
               </>
             ) : (

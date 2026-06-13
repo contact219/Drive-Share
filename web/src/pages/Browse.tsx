@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SlidersHorizontal, X } from "lucide-react";
-import { fetchVehicles, VehicleFilters } from "../lib/api";
+import { fetchVehicles, VehicleFilters, getFavorites, addFavorite, removeFavorite } from "../lib/api";
 import VehicleCard from "../components/VehicleCard";
 import { titleCase } from "../lib/format";
+import { useAuth } from "../lib/auth";
 
 const TYPES = ["sedan", "suv", "sports", "van"];
 const FUELS = ["electric", "gas", "hybrid"];
@@ -14,6 +15,23 @@ export default function Browse() {
   const [params, setParams] = useSearchParams();
   const [drawer, setDrawer] = useState(false);
   const [sort, setSort] = useState("recommended");
+  const { user, signedIn } = useAuth();
+  const qc = useQueryClient();
+
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["favorites", user?.id],
+    queryFn: () => getFavorites(user!.id),
+    enabled: signedIn,
+  });
+  const favSet = useMemo(() => new Set(favorites.map((f) => f.vehicleId)), [favorites]);
+
+  const toggleFav = useMutation({
+    mutationFn: (vehicleId: string) =>
+      favSet.has(vehicleId)
+        ? removeFavorite(user!.id, vehicleId)
+        : addFavorite(user!.id, vehicleId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["favorites", user?.id] }),
+  });
 
   const filters: VehicleFilters = useMemo(() => ({
     type: params.get("type") || undefined,
@@ -119,7 +137,18 @@ export default function Browse() {
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {vehicles.map((v) => <VehicleCard key={v.id} v={v} />)}
+              {vehicles.map((v) => (
+                <VehicleCard
+                  key={v.id}
+                  v={v}
+                  isFavorited={favSet.has(v.id)}
+                  onToggleFavorite={signedIn ? (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFav.mutate(v.id);
+                  } : undefined}
+                />
+              ))}
             </div>
           )}
         </div>

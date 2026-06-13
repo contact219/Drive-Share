@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Star, Users, Fuel, Cog, Calendar, MapPin, ShieldCheck, Check, ChevronLeft, BadgeCheck, Loader2 } from "lucide-react";
-import { fetchVehicle, fetchReviews, quoteTrip, createTrip } from "../lib/api";
+import { Star, Users, Fuel, Cog, Calendar, MapPin, ShieldCheck, Check, ChevronLeft, BadgeCheck } from "lucide-react";
+import { fetchVehicle, fetchReviews, quoteTrip } from "../lib/api";
 import { money, titleCase, cityFrom } from "../lib/format";
 import { useAuth } from "../lib/auth";
 
@@ -26,14 +26,13 @@ export default function VehicleDetail() {
     enabled: datesValid,
   });
 
-  const booking = useMutation({
-    mutationFn: () => createTrip({
-      userId: user!.id, vehicleId: id, startDate: toISO(start), endDate: toISO(end),
-      totalCost: quote!.totalCost, baseCost: quote!.baseCost, insuranceCost: quote!.insuranceCost,
-      serviceFee: quote!.serviceFee, pickupLocation: v!.locationAddress,
-    }),
-    onSuccess: () => nav("/trips?booked=1"),
-  });
+  // booking now goes to checkout page; createTrip is called there
+  const goToCheckout = () => {
+    if (!signedIn) { nav("/login?next=" + encodeURIComponent(`/cars/${id}`)); return; }
+    nav(`/checkout/${id}`, {
+      state: { quote, start: toISO(start), end: toISO(end), vehicle: v, insurance },
+    });
+  };
 
   if (isLoading || !v) {
     return <div className="container-rush py-20"><div className="panel h-96 animate-pulse bg-white/[0.03]" /></div>;
@@ -41,10 +40,7 @@ export default function VehicleDetail() {
 
   const rate = Number(v.pricePerHour);
 
-  const book = () => {
-    if (!signedIn) { nav("/login?next=" + encodeURIComponent(`/cars/${id}`)); return; }
-    if (datesValid && quote?.available) booking.mutate();
-  };
+  const book = goToCheckout;
 
   return (
     <div className="container-rush py-8">
@@ -167,15 +163,12 @@ export default function VehicleDetail() {
               </div>
             )}
 
-            {booking.isError && <p className="mt-4 text-sm text-red-300">Couldn't complete the booking. Please try again.</p>}
-
-            <button onClick={book} disabled={(signedIn && (!datesValid || quoting || !quote?.available)) || booking.isPending}
+            <button onClick={book} disabled={signedIn && (!datesValid || quoting || !quote?.available)}
               className="btn-primary mt-5 w-full py-3.5 disabled:opacity-50 disabled:hover:translate-y-0">
-              {booking.isPending ? <Loader2 className="h-4 w-4 animate-spin" />
-                : !signedIn ? "Sign in to book"
+              {!signedIn ? "Sign in to book"
                 : !datesValid ? "Select your dates"
                 : quoting ? "Checking…"
-                : "Reserve this car"}
+                : "Continue to checkout"}
             </button>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-brand-cyan" /> You won't be charged yet — payment is the final step at checkout

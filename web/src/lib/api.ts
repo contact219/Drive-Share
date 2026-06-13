@@ -65,7 +65,7 @@ export function fetchVehicles(filters: VehicleFilters = {}): Promise<Vehicle[]> 
 export const fetchVehicle = (id: string) => http<Vehicle>(`/vehicles/${id}`);
 export const fetchReviews = (id: string) => http<Review[]>(`/vehicles/${id}/reviews`);
 
-export interface AuthUser { id: string; email: string; name: string; isAdmin?: boolean; isOwner?: boolean; }
+export interface AuthUser { id: string; email: string; name: string; phone?: string | null; avatarIndex?: number; isAdmin?: boolean; isOwner?: boolean; }
 export interface AuthResult { user: AuthUser; token: string; }
 
 export const login = (email: string, password: string) =>
@@ -164,6 +164,54 @@ export const cancelTrip = (id: string) =>
 export const setTripStatus = (id: string, status: string) =>
   http<Trip>(`/trips/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
 export const getOwnerBookings = (ownerId: string) => http<HostBooking[]>(`/owner/${ownerId}/bookings`);
+
+// ── Favorites ─────────────────────────────────────────────────────────────
+export interface Favorite { id: string; userId: string; vehicleId: string; }
+export const getFavorites = (userId: string) => http<Favorite[]>(`/users/${userId}/favorites`);
+export const addFavorite = (userId: string, vehicleId: string) =>
+  http<Favorite>("/favorites", { method: "POST", body: JSON.stringify({ userId, vehicleId }) });
+export const removeFavorite = (userId: string, vehicleId: string) =>
+  fetch(`/api/favorites/${userId}/${vehicleId}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
+
+// ── Profile ───────────────────────────────────────────────────────────────
+export const updateProfile = (userId: string, fields: { name?: string; phone?: string }) =>
+  http<AuthUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(fields) });
+
+// ── Messaging ─────────────────────────────────────────────────────────────
+export interface Conversation {
+  id: string;
+  participant1Id: string;
+  participant2Id: string;
+  vehicleId?: string | null;
+  tripId?: string | null;
+  lastMessageAt?: string;
+  lastMessagePreview?: string | null;
+  otherParticipantName: string;
+  otherParticipantId: string;
+  otherParticipantAvatar: number;
+  vehicleName?: string | null;
+  vehicleImage?: string | null;
+  unreadCount: number;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  messageType: string;
+  createdAt: string;
+  senderName: string;
+  senderAvatar: number;
+}
+
+export const getConversations = (userId: string) => http<Conversation[]>(`/conversations/${userId}`);
+export const getMessages = (conversationId: string) => http<Message[]>(`/conversations/${conversationId}/messages`);
+export const sendMessage = (conversationId: string, content: string) =>
+  http<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content }) });
+export const getOrCreateConversation = (p1: string, p2: string, vehicleId?: string) =>
+  http<{ id: string }>("/conversations", { method: "POST", body: JSON.stringify({ participant1Id: p1, participant2Id: p2, vehicleId }) });
+export const getUnreadCount = (userId: string) => http<{ unreadCount: number }>(`/messages/unread/${userId}`);
 
 export async function uploadVehicleImage(file: File): Promise<string> {
   const data: string = await new Promise((resolve, reject) => {

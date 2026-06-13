@@ -602,6 +602,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Self profile update (renter editing their own account)
+  app.patch("/api/users/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (req.params.id !== req.user!.id && !req.user!.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updates: Record<string, any> = {};
+      for (const k of ["name", "phone", "avatarIndex"]) {
+        if (k in req.body) updates[k] = req.body[k];
+      }
+      const updated = await storage.updateUser(req.params.id, updates);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      const { password, ...safe } = updated as any;
+      res.json(safe);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   app.get("/api/users/:id/favorites", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
       if (req.user!.id !== req.params.id && !req.user!.isAdmin) {
