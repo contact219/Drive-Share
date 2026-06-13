@@ -32,6 +32,7 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {signedIn ? (
             <>
+              <Link to="/host/dashboard" className="text-sm font-semibold text-slate-200 hover:text-white">Host dashboard</Link>
               <span className="flex items-center gap-2 text-sm text-slate-300">
                 <User className="h-4 w-4 text-brand-cyan" /> {user?.name?.split(" ")[0]}
               </span>
@@ -42,7 +43,7 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/login" className="text-sm font-semibold text-slate-200 hover:text-white">Sign in</Link>
-              <Link to="/host" className="btn-primary px-5 py-2.5 text-sm">List your car</Link>
+              <Link to="/host/dashboard" className="btn-primary px-5 py-2.5 text-sm">List your car</Link>
             </>
           )}
         </div>
@@ -61,11 +62,14 @@ export default function Navbar() {
           ))}
           <div className="mt-3 flex gap-3">
             {signedIn ? (
-              <button onClick={() => { signOut(); setOpen(false); nav("/"); }} className="btn-ghost flex-1 py-2.5 text-sm">Sign out</button>
+              <>
+                <Link to="/host/dashboard" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Dashboard</Link>
+                <button onClick={() => { signOut(); setOpen(false); nav("/"); }} className="btn-ghost flex-1 py-2.5 text-sm">Sign out</button>
+              </>
             ) : (
               <>
                 <Link to="/login" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Sign in</Link>
-                <Link to="/host" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2.5 text-sm">List your car</Link>
+                <Link to="/host/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2.5 text-sm">List your car</Link>
               </>
             )}
           </div>

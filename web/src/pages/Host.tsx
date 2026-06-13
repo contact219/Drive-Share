@@ -16,7 +16,7 @@ export default function Host() {
               in control of pricing, availability, and who drives — Rush handles the rest.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/login?next=/host" className="btn-amber px-7 py-3">Get started</Link>
+              <Link to="/host/dashboard" className="btn-amber px-7 py-3">Get started</Link>
               <a href="#how-host" className="btn-ghost px-7 py-3">How it works</a>
             </div>
           </div>

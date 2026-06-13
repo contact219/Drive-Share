@@ -1,0 +1,181 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Car, DollarSign, TrendingUp, Loader2, Play, Pause, Trash2, Clock, BadgeCheck, XCircle } from "lucide-react";
+import {
+  getOwnerProfile, createOwnerProfile, getOwnerListings,
+  updateListingStatus, deleteListing, OwnerListing,
+} from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { money, titleCase, cityFrom } from "../lib/format";
+
+export default function HostDashboard() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useQuery({ queryKey: ["owner-profile"], queryFn: getOwnerProfile });
+
+  if (isLoading) return <Loading />;
+  if (!profile) return <Onboard userId={user!.id} onDone={() => qc.invalidateQueries({ queryKey: ["owner-profile"] })} />;
+
+  return <Dashboard profileId={profile.id} earnings={profile.totalEarnings} responseRate={profile.responseRate} />;
+}
+
+function Loading() {
+  return <div className="container-rush py-20"><div className="panel h-64 animate-pulse bg-white/[0.03]" /></div>;
+}
+
+function Onboard({ userId, onDone }: { userId: string; onDone: () => void }) {
+  const [bio, setBio] = useState("");
+  const m = useMutation({
+    mutationFn: () => createOwnerProfile(userId, bio),
+    onSuccess: onDone,
+  });
+  return (
+    <div className="container-rush flex min-h-[70vh] items-center justify-center py-12">
+      <div className="w-full max-w-lg panel p-8 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-grad text-ink-900"><Car className="h-7 w-7" /></div>
+        <h1 className="mt-5 text-2xl font-extrabold">Become a Rush host</h1>
+        <p className="mt-2 text-sm text-slate-400">Tell renters a bit about yourself. You can list your first car right after.</p>
+        <textarea
+          value={bio} onChange={(e) => setBio(e.target.value)} rows={4}
+          placeholder="e.g. Austin local, I keep my cars spotless and reply fast."
+          className="field mt-6 resize-none text-left"
+        />
+        {m.isError && <p className="mt-3 text-sm text-red-300">Couldn't create your host profile. Try again.</p>}
+        <button onClick={() => m.mutate()} disabled={m.isPending} className="btn-primary mt-5 w-full py-3.5 disabled:opacity-60">
+          {m.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create host profile"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ profileId, earnings, responseRate }: { profileId: string; earnings?: string; responseRate?: string }) {
+  const qc = useQueryClient();
+  const { data: listings = [], isLoading } = useQuery({
+    queryKey: ["owner-listings", profileId],
+    queryFn: () => getOwnerListings(profileId),
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["owner-listings", profileId] });
+  const statusMut = useMutation({ mutationFn: (a: { id: string; status: string }) => updateListingStatus(a.id, a.status), onSuccess: refresh });
+  const delMut = useMutation({ mutationFn: (id: string) => deleteListing(id), onSuccess: refresh });
+
+  const active = listings.filter((l) => l.listingStatus === "active").length;
+
+  return (
+    <div className="container-rush py-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-sm font-bold uppercase tracking-widest text-brand-cyan">Host dashboard</div>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Your cars</h1>
+        </div>
+        <Link to="/host/new" className="btn-primary px-5 py-2.5 text-sm"><Plus className="h-4 w-4" /> Add a car</Link>
+      </div>
+
+      <div className="mt-7 grid gap-4 sm:grid-cols-3">
+        <Stat icon={Car} label="Listings" value={String(listings.length)} sub={`${active} live`} />
+        <Stat icon={DollarSign} label="Total earnings" value={money(earnings || 0)} sub="paid out" />
+        <Stat icon={TrendingUp} label="Response rate" value={`${Math.round(Number(responseRate || 100))}%`} sub="last 30 days" />
+      </div>
+
+      <div className="mt-9">
+        {isLoading ? (
+          <div className="grid gap-5 md:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => <div key={i} className="panel h-40 animate-pulse bg-white/[0.03]" />)}
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="panel flex flex-col items-center justify-center py-20 text-center">
+            <Car className="h-10 w-10 text-slate-500" />
+            <p className="mt-4 text-lg font-semibold">No cars listed yet</p>
+            <p className="mt-1 text-sm text-slate-400">List your first car and start earning.</p>
+            <Link to="/host/new" className="btn-primary mt-5 px-5 py-2.5 text-sm"><Plus className="h-4 w-4" /> Add a car</Link>
+          </div>
+        ) : (
+          <div className="grid gap-5 md:grid-cols-2">
+            {listings.map((l) => (
+              <ListingRow key={l.id} l={l}
+                busy={statusMut.isPending || delMut.isPending}
+                onActivate={() => statusMut.mutate({ id: l.id, status: "active" })}
+                onPause={() => statusMut.mutate({ id: l.id, status: "paused" })}
+                onDelete={() => { if (confirm("Delete this listing?")) delMut.mutate(l.id); }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub: string }) {
+  return (
+    <div className="panel p-5">
+      <Icon className="h-5 w-5 text-brand-cyan" />
+      <div className="mt-3 text-2xl font-black">{value}</div>
+      <div className="text-xs text-slate-400">{label} · {sub}</div>
+    </div>
+  );
+}
+
+function ListingRow({ l, busy, onActivate, onPause, onDelete }: {
+  l: OwnerListing; busy: boolean; onActivate: () => void; onPause: () => void; onDelete: () => void;
+}) {
+  const v = l.vehicle;
+  const verified = l.verificationStatus === "approved";
+  const rejected = l.verificationStatus === "rejected";
+  const live = l.listingStatus === "active";
+
+  return (
+    <div className="panel flex gap-4 overflow-hidden p-4">
+      <img src={v?.imageUrl} alt={v?.name} className="h-28 w-36 shrink-0 rounded-xl object-cover" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="truncate font-bold">{v?.name || "Vehicle"}</h3>
+            <p className="text-xs text-slate-400">{v ? `${titleCase(v.type)} · ${cityFrom(v.locationAddress)}` : ""}</p>
+          </div>
+          <span className="shrink-0 text-sm font-extrabold text-brand-cyan">{v ? `${money(v.pricePerHour)}/hr` : ""}</span>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          {live ? <Badge tone="green" icon={BadgeCheck}>Live</Badge> : <Badge tone="slate" icon={Pause}>{titleCase(l.listingStatus)}</Badge>}
+          {l.verificationStatus === "pending" && <Badge tone="amber" icon={Clock}>In review</Badge>}
+          {verified && <Badge tone="cyan" icon={BadgeCheck}>Verified</Badge>}
+          {rejected && <Badge tone="red" icon={XCircle}>Not approved</Badge>}
+        </div>
+        {rejected && l.verificationNotes && <p className="mt-1.5 text-xs text-red-300">{l.verificationNotes}</p>}
+        {l.verificationStatus === "pending" && <p className="mt-1.5 text-xs text-slate-400">We're reviewing your car. You can publish once it's approved.</p>}
+
+        <div className="mt-auto flex items-center gap-2 pt-3">
+          {live ? (
+            <button onClick={onPause} disabled={busy} className="btn-ghost px-3 py-1.5 text-xs"><Pause className="h-3.5 w-3.5" /> Pause</button>
+          ) : (
+            <button onClick={onActivate} disabled={busy || !verified}
+              className="btn-ghost px-3 py-1.5 text-xs disabled:opacity-40" title={verified ? "" : "Available after verification"}>
+              <Play className="h-3.5 w-3.5" /> {verified ? "Publish" : "Awaiting review"}
+            </button>
+          )}
+          <button onClick={onDelete} disabled={busy} className="ml-auto inline-flex items-center gap-1 rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20">
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Badge({ tone, icon: Icon, children }: { tone: "green" | "amber" | "cyan" | "red" | "slate"; icon: any; children: React.ReactNode }) {
+  const tones: Record<string, string> = {
+    green: "bg-emerald-500/15 text-emerald-300 ring-emerald-400/30",
+    amber: "bg-amber-500/15 text-amber-300 ring-amber-400/30",
+    cyan: "bg-brand-cyan/15 text-brand-cyan ring-brand-cyan/30",
+    red: "bg-red-500/15 text-red-300 ring-red-400/30",
+    slate: "bg-white/5 text-slate-300 ring-white/15",
+  };
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${tones[tone]}`}>
+      <Icon className="h-3 w-3" /> {children}
+    </span>
+  );
+}

@@ -72,3 +72,65 @@ export const login = (email: string, password: string) =>
   http<AuthResult>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 export const register = (name: string, email: string, password: string) =>
   http<AuthResult>("/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+
+// ── Host / owner ──────────────────────────────────────────────────────────
+export interface OwnerProfile {
+  id: string;
+  userId: string;
+  bio?: string;
+  verificationStatus?: string;
+  responseRate?: string;
+  totalEarnings?: string;
+}
+
+export interface VehicleInput {
+  name: string;
+  brand: string;
+  model: string;
+  year: number;
+  type: string;
+  pricePerHour: string;
+  imageUrl: string;
+  seats: number;
+  fuelType: string;
+  transmission: string;
+  features: string[];
+  locationAddress: string;
+  locationLat?: string;
+  locationLng?: string;
+}
+
+export interface OwnerListing {
+  id: string;            // ownerVehicle id
+  ownerId: string;
+  vehicleId: string;
+  listingStatus: string; // pending | active | paused
+  vehicle: Vehicle | null;
+  verificationStatus: string | null; // pending | approved | rejected
+  verificationNotes: string | null;
+}
+
+export const getOwnerProfile = () => http<OwnerProfile | null>("/owner/profile");
+export const createOwnerProfile = (userId: string, bio: string) =>
+  http<OwnerProfile>("/owner/profile", { method: "POST", body: JSON.stringify({ userId, bio }) });
+export const getOwnerListings = (ownerId: string) => http<OwnerListing[]>(`/owner/${ownerId}/vehicles`);
+export const createListing = (ownerId: string, vehicleData: VehicleInput) =>
+  http<{ vehicle: Vehicle }>("/owner/vehicles", { method: "POST", body: JSON.stringify({ ownerId, vehicleData }) });
+export const updateListingStatus = (ownerVehicleId: string, listingStatus: string) =>
+  http<OwnerListing>(`/owner/vehicles/${ownerVehicleId}`, { method: "PATCH", body: JSON.stringify({ listingStatus }) });
+export const deleteListing = (ownerVehicleId: string) =>
+  fetch(`/api/owner/vehicles/${ownerVehicleId}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
+
+export async function uploadVehicleImage(file: File): Promise<string> {
+  const data: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const res = await http<{ url: string }>("/upload/vehicle-image", {
+    method: "POST",
+    body: JSON.stringify({ filename: file.name, data, mimeType: file.type }),
+  });
+  return res.url;
+}
