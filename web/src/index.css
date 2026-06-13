@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+* { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: #07090f;
+  color: #eef1f6;
+  font-family: "Outfit", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #07090f; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 6px; }
+
+@layer components {
+  .container-rush { @apply mx-auto w-full max-w-6xl px-5 sm:px-6; }
+  .gradient-text { @apply bg-brand-grad bg-clip-text text-transparent; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition active:scale-[.98]; }
+  .btn-primary { @apply btn bg-brand-grad text-ink-900 shadow-glow hover:-translate-y-0.5; }
+  .btn-ghost { @apply btn border border-white/10 bg-white/5 text-white hover:border-brand-cyan/50; }
+  .btn-amber { @apply btn text-ink-900 hover:-translate-y-0.5; background: linear-gradient(135deg,#fbbf24,#f59e0b); }
+  .panel { @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300; }
+  .field { @apply w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-brand-cyan/60 focus:ring-2 focus:ring-brand-cyan/15; }
+}
