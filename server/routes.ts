@@ -1765,6 +1765,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/payments/:id/refund", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const payment = await storage.updatePayment(req.params.id, { status: "refunded" });
+      if (!payment) return res.status(404).json({ error: "Payment not found" });
+      if ((payment as any).tripId) {
+        await storage.updateTrip((payment as any).tripId, { status: "cancelled" });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process refund" });
+    }
+  });
+
+  app.post("/api/admin/trips/:id/send-confirmation", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ error: "Trip not found" });
+      const [user, vehicle] = await Promise.all([storage.getUser(trip.userId), storage.getVehicle(trip.vehicleId)]);
+      if (user && user.email && vehicle) {
+        await sendBookingConfirmationEmail(user.email, user.name, vehicle.name, trip.startDate.toISOString(), trip.endDate.toISOString(), Number(trip.totalCost));
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
   app.get("/api/admin/payouts", requireAdmin, async (_req: Request, res: Response) => {
     try {
       const payouts = await storage.getAllPayouts();

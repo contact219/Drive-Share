@@ -177,6 +177,59 @@ export const removeFavorite = (userId: string, vehicleId: string) =>
 export const updateProfile = (userId: string, fields: { name?: string; phone?: string }) =>
   http<AuthUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(fields) });
 
+// ── Admin ─────────────────────────────────────────────────────────────────
+export interface AdminStats {
+  totalUsers: number; totalVehicles: number; availableVehicles: number;
+  totalTrips: number; activeTrips: number; upcomingTrips: number; completedTrips: number;
+  totalRevenue: string;
+}
+export interface AdminUser {
+  id: string; email: string; name: string; phone?: string | null;
+  isAdmin: boolean; isOwner?: boolean; avatarIndex?: number; createdAt?: string;
+}
+export interface Verification {
+  id: string; vehicleId: string; ownerId?: string; status: string;
+  reviewNotes?: string | null; rejectionReason?: string | null; decidedAt?: string | null;
+  vehicle?: Vehicle | null; ownerName: string; ownerEmail: string;
+}
+export interface Payment {
+  id: string; tripId: string; userId: string; paypalOrderId?: string;
+  amount: string; platformFee?: string; ownerPayout?: string; status: string; createdAt?: string;
+}
+export interface UserDocument {
+  id: string; userId: string; documentType: string; documentUrl?: string;
+  verificationStatus: string; reviewNotes?: string | null; createdAt?: string;
+  userName: string; userEmail: string;
+}
+
+export const adminGetStats = () => http<AdminStats>('/admin/stats');
+export const adminGetUsers = () => http<AdminUser[]>('/admin/users');
+export const adminCreateUser = (data: { email: string; name: string; password: string; isAdmin?: boolean }) =>
+  http<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) });
+export const adminUpdateUser = (id: string, data: Partial<AdminUser>) =>
+  http<AdminUser>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const adminResetPassword = (id: string, password: string) =>
+  http(`/admin/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) });
+export const adminDeleteUser = (id: string) =>
+  fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
+export const adminGetVehicles = () => http<Vehicle[]>('/admin/vehicles');
+export const adminUpdateVehicle = (id: string, data: Partial<Vehicle>) =>
+  http<Vehicle>(`/admin/vehicles/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const adminDeleteVehicle = (id: string) =>
+  fetch(`/api/admin/vehicles/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
+export const adminGetTrips = () => http<Trip[]>('/admin/trips');
+export const adminSendBookingEmail = (tripId: string) =>
+  http(`/admin/trips/${tripId}/send-confirmation`, { method: 'POST' });
+export const adminGetVerifications = () => http<Verification[]>('/admin/verifications');
+export const adminVerifyDecision = (id: string, status: string, reviewerId: string, reviewNotes?: string, rejectionReason?: string) =>
+  http(`/admin/verifications/${id}/decision`, { method: 'POST', body: JSON.stringify({ status, reviewerId, reviewNotes, rejectionReason }) });
+export const adminGetPayments = () => http<Payment[]>('/admin/payments');
+export const adminRefundPayment = (id: string) =>
+  http(`/admin/payments/${id}/refund`, { method: 'POST' });
+export const adminGetDocuments = () => http<UserDocument[]>('/admin/user-documents');
+export const adminReviewDocument = (id: string, verificationStatus: string, reviewerId: string, reviewNotes?: string) =>
+  http(`/admin/user-documents/${id}`, { method: 'PATCH', body: JSON.stringify({ verificationStatus, reviewerId, reviewNotes }) });
+
 // ── PayPal ────────────────────────────────────────────────────────────────
 export const getPayPalClientId = () => http<{ clientId: string }>("/paypal/client-id");
 export const createPayPalOrder = (tripId: string, amount: number) =>
