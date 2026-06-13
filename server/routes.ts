@@ -516,7 +516,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!existingTrip) {
         return res.status(404).json({ error: "Trip not found" });
       }
-      if (existingTrip.userId !== req.user!.id && !req.user!.isAdmin) {
+      // Allowed: the renter who booked it, an admin, or the host who owns the car.
+      const isRenter = existingTrip.userId === req.user!.id;
+      let isHost = false;
+      if (!isRenter && !req.user!.isAdmin) {
+        const owner = await getVehicleOwnerUser(existingTrip.vehicleId);
+        isHost = !!owner && owner.id === req.user!.id;
+      }
+      if (!isRenter && !req.user!.isAdmin && !isHost) {
         return res.status(403).json({ error: "Access denied" });
       }
 

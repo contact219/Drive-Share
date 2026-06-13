@@ -5,7 +5,7 @@ import { Plus, Car, DollarSign, TrendingUp, Loader2, Play, Pause, Trash2, Clock,
 import {
   getOwnerProfile, createOwnerProfile, getOwnerListings,
   updateListingStatus, deleteListing, OwnerListing,
-  getOwnerBookings, HostBooking,
+  getOwnerBookings, HostBooking, setTripStatus,
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { money, titleCase, cityFrom } from "../lib/format";
@@ -62,6 +62,10 @@ function Dashboard({ profileId, earnings, responseRate }: { profileId: string; e
     queryKey: ["owner-bookings", profileId],
     queryFn: () => getOwnerBookings(profileId),
   });
+  const bookingMut = useMutation({
+    mutationFn: (a: { id: string; status: string }) => setTripStatus(a.id, a.status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["owner-bookings", profileId] }),
+  });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["owner-listings", profileId] });
   const statusMut = useMutation({ mutationFn: (a: { id: string; status: string }) => updateListingStatus(a.id, a.status), onSuccess: refresh });
@@ -117,7 +121,12 @@ function Dashboard({ profileId, earnings, responseRate }: { profileId: string; e
           <div className="mt-4 panel p-6 text-sm text-slate-400">No bookings yet. They'll appear here when renters reserve your cars.</div>
         ) : (
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {bookings.map((b) => <BookingRow key={b.id} b={b} />)}
+            {bookings.map((b) => (
+              <BookingRow key={b.id} b={b} busy={bookingMut.isPending}
+                onAccept={() => bookingMut.mutate({ id: b.id, status: "upcoming" })}
+                onDecline={() => { if (confirm("Decline this booking?")) bookingMut.mutate({ id: b.id, status: "cancelled" }); }}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -125,7 +134,9 @@ function Dashboard({ profileId, earnings, responseRate }: { profileId: string; e
   );
 }
 
-function BookingRow({ b }: { b: HostBooking }) {
+function BookingRow({ b, busy, onAccept, onDecline }: {
+  b: HostBooking; busy: boolean; onAccept: () => void; onDecline: () => void;
+}) {
   const fmt = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const tones: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-300 ring-amber-400/30",
@@ -133,17 +144,30 @@ function BookingRow({ b }: { b: HostBooking }) {
     completed: "bg-emerald-500/15 text-emerald-300 ring-emerald-400/30",
     cancelled: "bg-white/5 text-slate-400 ring-white/15",
   };
+  const label = b.status === "upcoming" ? "Accepted" : titleCase(b.status);
   return (
     <div className="panel p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="font-bold">{b.vehicle?.name || "Vehicle"}</div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${tones[b.status] || tones.upcoming}`}>{titleCase(b.status)}</span>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${tones[b.status] || tones.upcoming}`}>{label}</span>
       </div>
       <div className="mt-2 space-y-1 text-xs text-slate-400">
         <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> {b.renterName}</div>
         <div className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> {fmt(b.startDate)} → {fmt(b.endDate)}</div>
       </div>
-      <div className="mt-3 border-t border-white/10 pt-2 text-sm"><span className="text-slate-400">Payout total </span><span className="font-extrabold text-brand-cyan">{money(b.totalCost)}</span></div>
+      <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+        <span className="text-sm"><span className="text-slate-400">Payout </span><span className="font-extrabold text-brand-cyan">{money(b.totalCost)}</span></span>
+        {b.status === "pending" && (
+          <div className="flex items-center gap-2">
+            <button onClick={onDecline} disabled={busy} className="inline-flex items-center gap-1 rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50">
+              <XCircle className="h-3.5 w-3.5" /> Decline
+            </button>
+            <button onClick={onAccept} disabled={busy} className="inline-flex items-center gap-1 rounded-full bg-brand-grad px-3 py-1.5 text-xs font-bold text-ink-900 hover:opacity-90 disabled:opacity-50">
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BadgeCheck className="h-3.5 w-3.5" />} Accept
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

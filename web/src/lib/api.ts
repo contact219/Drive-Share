@@ -161,6 +161,8 @@ export const createTrip = (input: CreateTripInput) =>
 export const getMyTrips = () => http<Trip[]>("/trips");
 export const cancelTrip = (id: string) =>
   http<Trip>(`/trips/${id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
+export const setTripStatus = (id: string, status: string) =>
+  http<Trip>(`/trips/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
 export const getOwnerBookings = (ownerId: string) => http<HostBooking[]>(`/owner/${ownerId}/bookings`);
 
 export async function uploadVehicleImage(file: File): Promise<string> {
