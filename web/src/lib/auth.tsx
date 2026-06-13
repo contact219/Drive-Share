@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import { AuthUser, getToken, setToken, clearToken } from "./api";
 
 interface AuthCtx {
@@ -10,15 +10,18 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx>({ user: null, signedIn: false, applyAuth: () => {}, signOut: () => {} });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
+function loadStoredUser(): AuthUser | null {
+  try {
     const raw = localStorage.getItem("rush_user");
-    if (raw && getToken()) {
-      try { setUser(JSON.parse(raw)); } catch {}
-    }
-  }, []);
+    if (raw && getToken()) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Initialise synchronously so protected routes see the signed-in state on the
+  // very first render (avoids bouncing a logged-in user back to /login).
+  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
 
   const applyAuth = (u: AuthUser, token: string) => {
     setToken(token);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { login, register } from "../lib/api";
@@ -11,10 +11,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const { applyAuth } = useAuth();
+  const { applyAuth, signedIn } = useAuth();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const next = params.get("next") || "/";
+
+  // Navigate reactively once auth state is set — avoids racing the redirect
+  // against the state update, and redirects away if already signed in.
+  useEffect(() => {
+    if (signedIn) nav(next, { replace: true });
+  }, [signedIn, next, nav]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +28,8 @@ export default function Login() {
     try {
       const res = mode === "login" ? await login(email, password) : await register(name, email, password);
       applyAuth(res.user, res.token);
-      nav(next);
     } catch (e: any) {
       setErr(e.message || "Something went wrong");
-    } finally {
       setBusy(false);
     }
   };
