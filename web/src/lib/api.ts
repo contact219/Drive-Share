@@ -177,6 +177,19 @@ export const removeFavorite = (userId: string, vehicleId: string) =>
 export const updateProfile = (userId: string, fields: { name?: string; phone?: string }) =>
   http<AuthUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(fields) });
 
+// ── PayPal ────────────────────────────────────────────────────────────────
+export const getPayPalClientId = () => http<{ clientId: string }>("/paypal/client-id");
+export const createPayPalOrder = (tripId: string, amount: number) =>
+  http<{ orderId: string; approvalUrl: string; paymentId: string }>("/paypal/create-order", {
+    method: "POST",
+    body: JSON.stringify({ tripId, amount }),
+  });
+export const capturePayPalOrder = (orderId: string, paymentId: string, tripId: string) =>
+  http<{ success: boolean }>("/paypal/capture-order", {
+    method: "POST",
+    body: JSON.stringify({ orderId, paymentId, tripId }),
+  });
+
 // ── Messaging ─────────────────────────────────────────────────────────────
 export interface Conversation {
   id: string;

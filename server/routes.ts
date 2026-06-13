@@ -1024,11 +1024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Invalid payment parameters" });
         }
 
-        const domain =
-          process.env.REPLIT_DEV_DOMAIN ||
-          (process.env.REPLIT_DOMAINS || "").split(",")[0] ||
-          "localhost:5000";
-        const baseUrl = `https://${domain}`;
+        const baseUrl = process.env.APP_BASE_URL || "https://rush-enterprise.com";
 
         const amountStr = amount.toFixed(2);
         const platformFee = (amount * 0.1).toFixed(2);
