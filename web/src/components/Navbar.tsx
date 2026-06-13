@@ -32,6 +32,7 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {signedIn ? (
             <>
+              <Link to="/trips" className="text-sm font-semibold text-slate-200 hover:text-white">Trips</Link>
               <Link to="/host/dashboard" className="text-sm font-semibold text-slate-200 hover:text-white">Host dashboard</Link>
               <span className="flex items-center gap-2 text-sm text-slate-300">
                 <User className="h-4 w-4 text-brand-cyan" /> {user?.name?.split(" ")[0]}
@@ -63,8 +64,9 @@ export default function Navbar() {
           <div className="mt-3 flex gap-3">
             {signedIn ? (
               <>
-                <Link to="/host/dashboard" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Dashboard</Link>
-                <button onClick={() => { signOut(); setOpen(false); nav("/"); }} className="btn-ghost flex-1 py-2.5 text-sm">Sign out</button>
+                <Link to="/trips" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Trips</Link>
+                <Link to="/host/dashboard" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2.5 text-sm">Host</Link>
+                <button onClick={() => { signOut(); setOpen(false); nav("/"); }} className="btn-ghost flex-1 py-2.5 text-sm">Out</button>
               </>
             ) : (
               <>

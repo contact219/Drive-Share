@@ -458,7 +458,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trips", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const tripData = insertTripSchema.parse(req.body);
+      const rawBody = { ...req.body };
+      if (typeof rawBody.startDate === "string") rawBody.startDate = new Date(rawBody.startDate);
+      if (typeof rawBody.endDate === "string") rawBody.endDate = new Date(rawBody.endDate);
+      const tripData = insertTripSchema.parse(rawBody);
 
       if (tripData.userId !== req.user!.id && !req.user!.isAdmin) {
         return res.status(403).json({ error: "Access denied" });
@@ -551,6 +554,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(trip);
     } catch (error) {
       res.status(500).json({ error: "Failed to update trip" });
+    }
+  });
+
+  // Current user's trips (renter), newest first, enriched with the vehicle
+  app.get("/api/trips", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const trips = await storage.getTripsByUser(req.user!.id);
+      const enriched = await Promise.all(
+        trips.map(async (t) => ({ ...t, vehicle: (await storage.getVehicle(t.vehicleId)) || null })),
+      );
+      enriched.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trips" });
+    }
+  });
+
+  // Incoming bookings for a host's vehicles (read view)
+  app.get("/api/owner/:ownerId/bookings", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const owned = await storage.getOwnerVehicles(req.params.ownerId);
+      const vehicleIds = new Set(owned.map((o) => o.vehicleId));
+      const all = await storage.getAllTrips();
+      const mine = all.filter((t) => vehicleIds.has(t.vehicleId));
+      const enriched = await Promise.all(
+        mine.map(async (t) => {
+          const renter = await storage.getUser(t.userId);
+          return {
+            ...t,
+            vehicle: (await storage.getVehicle(t.vehicleId)) || null,
+            renterName: renter?.name || "Renter",
+          };
+        }),
+      );
+      enriched.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bookings" });
     }
   });
 

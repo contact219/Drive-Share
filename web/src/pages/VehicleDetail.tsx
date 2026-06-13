@@ -1,39 +1,49 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Star, Users, Fuel, Cog, Calendar, MapPin, ShieldCheck, Check, ChevronLeft, BadgeCheck } from "lucide-react";
-import { fetchVehicle, fetchReviews } from "../lib/api";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Star, Users, Fuel, Cog, Calendar, MapPin, ShieldCheck, Check, ChevronLeft, BadgeCheck, Loader2 } from "lucide-react";
+import { fetchVehicle, fetchReviews, quoteTrip, createTrip } from "../lib/api";
 import { money, titleCase, cityFrom } from "../lib/format";
 import { useAuth } from "../lib/auth";
 
 export default function VehicleDetail() {
   const { id = "" } = useParams();
   const nav = useNavigate();
-  const { signedIn } = useAuth();
+  const { signedIn, user } = useAuth();
   const { data: v, isLoading } = useQuery({ queryKey: ["vehicle", id], queryFn: () => fetchVehicle(id) });
   const { data: reviews = [] } = useQuery({ queryKey: ["reviews", id], queryFn: () => fetchReviews(id) });
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [insurance, setInsurance] = useState(true);
 
-  const hours = useMemo(() => {
-    if (!start || !end) return 0;
-    const ms = new Date(end).getTime() - new Date(start).getTime();
-    return ms > 0 ? Math.ceil(ms / 3.6e6) : 0;
-  }, [start, end]);
+  const datesValid = !!start && !!end && new Date(end) > new Date(start);
+  const toISO = (s: string) => new Date(s).toISOString();
+
+  const { data: quote, isFetching: quoting } = useQuery({
+    queryKey: ["quote", id, start, end, insurance],
+    queryFn: () => quoteTrip(id, toISO(start), toISO(end), insurance),
+    enabled: datesValid,
+  });
+
+  const booking = useMutation({
+    mutationFn: () => createTrip({
+      userId: user!.id, vehicleId: id, startDate: toISO(start), endDate: toISO(end),
+      totalCost: quote!.totalCost, baseCost: quote!.baseCost, insuranceCost: quote!.insuranceCost,
+      serviceFee: quote!.serviceFee, pickupLocation: v!.locationAddress,
+    }),
+    onSuccess: () => nav("/trips?booked=1"),
+  });
 
   if (isLoading || !v) {
     return <div className="container-rush py-20"><div className="panel h-96 animate-pulse bg-white/[0.03]" /></div>;
   }
 
   const rate = Number(v.pricePerHour);
-  const subtotal = hours * rate;
-  const serviceFee = Math.round(subtotal * 0.1 * 100) / 100;
-  const total = subtotal + serviceFee;
 
   const book = () => {
     if (!signedIn) { nav("/login?next=" + encodeURIComponent(`/cars/${id}`)); return; }
-    alert("Booking & payment flow is coming in the next release. Your selection is saved.");
+    if (datesValid && quote?.available) booking.mutate();
   };
 
   return (
@@ -136,23 +146,39 @@ export default function VehicleDetail() {
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400">Trip end</span>
                 <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="field [color-scheme:dark]" />
               </label>
+              <label className="flex items-center gap-2.5 rounded-xl bg-white/5 px-4 py-3 text-sm">
+                <input type="checkbox" checked={insurance} onChange={(e) => setInsurance(e.target.checked)} className="h-4 w-4 accent-cyan-400" />
+                <span className="text-slate-200">Add insurance protection</span>
+              </label>
             </div>
 
-            {hours > 0 && (
+            {datesValid && quote?.available === false && (
+              <p className="mt-4 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Not available for those dates. Try a different window.</p>
+            )}
+
+            {datesValid && quote && quote.available && (
               <div className="mt-5 space-y-2 border-t border-white/10 pt-4 text-sm">
-                <Row label={`${money(rate)} × ${hours} hr`} value={money(subtotal)} />
-                <Row label="Service fee" value={money(serviceFee)} />
+                <Row label={`Trip (${quote.hours} hr)`} value={money(quote.baseCost)} />
+                {Number(quote.insuranceCost) > 0 && <Row label="Insurance" value={money(quote.insuranceCost)} />}
+                <Row label="Service fee" value={money(quote.serviceFee)} />
                 <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-3 text-base font-bold">
-                  <span>Total</span><span className="text-brand-cyan">{money(total)}</span>
+                  <span>Total</span><span className="text-brand-cyan">{money(quote.totalCost)}</span>
                 </div>
               </div>
             )}
 
-            <button onClick={book} disabled={hours === 0} className="btn-primary mt-5 w-full py-3.5 disabled:opacity-50 disabled:hover:translate-y-0">
-              {hours === 0 ? "Select your dates" : "Continue to book"}
+            {booking.isError && <p className="mt-4 text-sm text-red-300">Couldn't complete the booking. Please try again.</p>}
+
+            <button onClick={book} disabled={(signedIn && (!datesValid || quoting || !quote?.available)) || booking.isPending}
+              className="btn-primary mt-5 w-full py-3.5 disabled:opacity-50 disabled:hover:translate-y-0">
+              {booking.isPending ? <Loader2 className="h-4 w-4 animate-spin" />
+                : !signedIn ? "Sign in to book"
+                : !datesValid ? "Select your dates"
+                : quoting ? "Checking…"
+                : "Reserve this car"}
             </button>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-400">
-              <ShieldCheck className="h-3.5 w-3.5 text-brand-cyan" /> Insurance included · You won't be charged yet
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-brand-cyan" /> You won't be charged yet — payment is the final step at checkout
             </p>
           </div>
         </aside>

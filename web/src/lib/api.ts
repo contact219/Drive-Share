@@ -121,6 +121,48 @@ export const updateListingStatus = (ownerVehicleId: string, listingStatus: strin
 export const deleteListing = (ownerVehicleId: string) =>
   fetch(`/api/owner/vehicles/${ownerVehicleId}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
 
+// ── Trips / bookings ──────────────────────────────────────────────────────
+export interface TripQuote {
+  available: boolean;
+  hours: number;
+  days: number;
+  baseCost: string;
+  insuranceCost: string;
+  serviceFee: string;
+  totalCost: string;
+}
+export interface Trip {
+  id: string;
+  userId: string;
+  vehicleId: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  totalCost: string;
+  baseCost?: string;
+  insuranceCost?: string;
+  serviceFee?: string;
+  pickupLocation: string;
+  createdAt: string;
+  vehicle?: Vehicle | null;
+}
+export interface HostBooking extends Trip { renterName: string; }
+
+export const quoteTrip = (vehicleId: string, startDate: string, endDate: string, includeInsurance: boolean) =>
+  http<TripQuote>("/trips/quote", { method: "POST", body: JSON.stringify({ vehicleId, startDate, endDate, includeInsurance }) });
+
+export interface CreateTripInput {
+  userId: string; vehicleId: string; startDate: string; endDate: string;
+  totalCost: string; baseCost: string; insuranceCost: string; serviceFee: string;
+  pickupLocation: string; status?: string;
+}
+export const createTrip = (input: CreateTripInput) =>
+  http<Trip>("/trips", { method: "POST", body: JSON.stringify({ status: "pending", ...input }) });
+export const getMyTrips = () => http<Trip[]>("/trips");
+export const cancelTrip = (id: string) =>
+  http<Trip>(`/trips/${id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
+export const getOwnerBookings = (ownerId: string) => http<HostBooking[]>(`/owner/${ownerId}/bookings`);
+
 export async function uploadVehicleImage(file: File): Promise<string> {
   const data: string = await new Promise((resolve, reject) => {
     const r = new FileReader();

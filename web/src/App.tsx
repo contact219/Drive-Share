@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Host from "./pages/Host";
 import HostDashboard from "./pages/HostDashboard";
 import AddListing from "./pages/AddListing";
+import Trips from "./pages/Trips";
 import RequireAuth from "./components/RequireAuth";
 
 function ScrollTop() {
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/host" element={<Host />} />
             <Route path="/host/dashboard" element={<RequireAuth><HostDashboard /></RequireAuth>} />
             <Route path="/host/new" element={<RequireAuth><AddListing /></RequireAuth>} />
+            <Route path="/trips" element={<RequireAuth><Trips /></RequireAuth>} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<Home />} />
           </Routes>
