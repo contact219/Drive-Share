@@ -203,9 +203,16 @@ export interface Payment {
   amount: string; platformFee?: string; ownerPayout?: string; status: string; createdAt?: string;
 }
 export interface UserDocument {
-  id: string; userId: string; documentType: string; documentUrl?: string;
+  id: string; userId: string; documentType: string; documentUrl?: string | null;
+  fileName?: string | null; mimeType?: string | null;
   verificationStatus: string; reviewNotes?: string | null; createdAt?: string;
   userName: string; userEmail: string;
+}
+
+export interface UserOwnDocument {
+  id: string; userId: string; documentType: string; documentUrl?: string | null;
+  fileName?: string | null; mimeType?: string | null;
+  verificationStatus: string; reviewNotes?: string | null; createdAt?: string;
 }
 
 export const adminGetStats = () => http<AdminStats>('/admin/stats');
@@ -312,6 +319,24 @@ export const sendMessage = (conversationId: string, content: string) =>
 export const getOrCreateConversation = (p1: string, p2: string, vehicleId?: string) =>
   http<{ id: string }>("/conversations", { method: "POST", body: JSON.stringify({ participant1Id: p1, participant2Id: p2, vehicleId }) });
 export const getUnreadCount = (userId: string) => http<{ unreadCount: number }>(`/messages/unread/${userId}`);
+
+// -- User documents
+export const getUserDocuments = (userId: string) => http<UserOwnDocument[]>(`/user/${userId}/documents`);
+export const deleteUserDocument = (docId: string) =>
+  http<{ success: boolean }>(`/user/documents/${docId}`, { method: 'DELETE' });
+
+export async function uploadUserDocument(userId: string, documentType: string, file: File): Promise<UserOwnDocument> {
+  const data: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  return http<UserOwnDocument>('/user/documents', {
+    method: 'POST',
+    body: JSON.stringify({ userId, documentType, documentData: data, fileName: file.name, mimeType: file.type }),
+  });
+}
 
 export async function uploadVehicleImage(file: File): Promise<string> {
   const data: string = await new Promise((resolve, reject) => {

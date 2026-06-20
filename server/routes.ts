@@ -191,11 +191,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hours = Math.ceil(
         (end.getTime() - start.getTime()) / (1000 * 60 * 60),
       );
-      const days = Math.ceil(hours / 24);
+      const days = Math.max(1, Math.ceil(hours / 24));
 
-      const pricePerHour = parseFloat(vehicle.pricePerHour);
-      const baseCost =
-        hours <= 24 ? hours * pricePerHour : days * pricePerHour * 20;
+      const pricePerDay = parseFloat(vehicle.pricePerHour);
+      const baseCost = days * pricePerDay;
       const insuranceCost = includeInsurance ? days * 15 : 0;
       const serviceFee = baseCost * 0.1;
       const totalCost = baseCost + insuranceCost + serviceFee;
@@ -210,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         insuranceCost: insuranceCost.toFixed(2),
         serviceFee: serviceFee.toFixed(2),
         totalCost: totalCost.toFixed(2),
-        pricePerHour: pricePerHour.toFixed(2),
+        pricePerDay: pricePerDay.toFixed(2),
         vehicle: {
           id: vehicle.id,
           name: vehicle.name,
@@ -730,10 +729,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      let documentUrl: string | null = null;
+      if (documentData) {
+        const buffer = Buffer.from(documentData, "base64");
+        const extMap: Record<string, string> = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+        const ext = extMap[mimeType] || "bin";
+        const safeName = `doc_${Date.now()}_${crypto.randomBytes(6).toString("hex")}.${ext}`;
+        const docsDir = path.resolve(process.cwd(), "uploads", "documents");
+        fs.mkdirSync(docsDir, { recursive: true });
+        await fs.promises.writeFile(path.join(docsDir, safeName), buffer);
+        documentUrl = `/uploads/documents/${safeName}`;
+      }
+
       const doc = await storage.createUserDocument({
         userId,
         documentType,
-        documentData: documentData || null,
+        documentUrl,
+        documentData: null,
         fileName: fileName || null,
         mimeType: mimeType || null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
@@ -1017,11 +1029,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: AuthenticatedRequest, res: Response) => {
       try {
-        const { tripId, amount } = req.body;
+        const { tripId } = req.body;
         const userId = req.user!.id;
 
-        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 100000) {
-          return res.status(400).json({ error: "Invalid payment parameters" });
+        if (!tripId) {
+          return res.status(400).json({ error: "tripId is required" });
+        }
+
+        // Pull authoritative amount from DB — never trust client-provided price
+        const trip = await storage.getTrip(tripId);
+        if (!trip) {
+          return res.status(404).json({ error: "Trip not found" });
+        }
+        if (trip.userId !== userId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+
+        const amount = parseFloat(trip.totalCost);
+        if (isNaN(amount) || amount <= 0) {
+          return res.status(400).json({ error: "Invalid trip amount" });
         }
 
         const baseUrl = process.env.APP_BASE_URL || "https://rush-enterprise.com";
@@ -1489,9 +1515,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ error: "User not found" });
       await storage.deleteUser(req.params.id);
-      res.status(204).send();
-    } catch (error) {
+      res.json({ success: true });
+    } catch (error: any) {
+      const msg: string = error?.message || error?.detail || "";
+      const isFk = error?.code === "23503" || (error?.cause as any)?.code === "23503" || msg.includes("foreign key") || msg.includes("violates");
+      if (isFk) {
+        return res.status(409).json({ error: "Cannot delete this user — they have existing trips, bookings, or other records. Remove those first." });
+      }
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
@@ -1861,6 +1894,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+
+  // ── Platform config (file-backed) ─────────────────────────────────────────
+  const CONFIG_PATH = path.join(process.cwd(), "platform-config.json");
+  const AUDIT_PATH = path.join(process.cwd(), "audit-log.json");
+
+  function readConfig(): Record<string, any> {
+    try { return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")); } catch { return {}; }
+  }
+  function writeConfig(cfg: Record<string, any>) {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), "utf8");
+  }
+  function appendAudit(entry: { adminId: string; adminEmail: string; action: string; detail: string }) {
+    let log: any[] = [];
+    try { log = JSON.parse(fs.readFileSync(AUDIT_PATH, "utf8")); } catch { log = []; }
+    log.unshift({ ts: new Date().toISOString(), ...entry });
+    if (log.length > 1000) log = log.slice(0, 1000);
+    fs.writeFileSync(AUDIT_PATH, JSON.stringify(log, null, 2), "utf8");
+  }
+
+  // ── Service Areas ──────────────────────────────────────────────────────────
+  const AREAS_KEY = "serviceAreas";
+  function readAreas(): any[] {
+    return readConfig()[AREAS_KEY] || [];
+  }
+
+  // Public: active areas only
+  app.get("/api/service-areas", async (_req: Request, res: Response) => {
+    res.json(readAreas().filter((a: any) => a.active));
+  });
+
+  // Admin: all areas
+  app.get("/api/admin/service-areas", requireAdmin, async (_req: Request, res: Response) => {
+    res.json(readAreas());
+  });
+
+  app.put("/api/admin/service-areas", requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    const { areas } = req.body;
+    if (!Array.isArray(areas)) return res.status(400).json({ error: "areas must be an array" });
+    const cfg = { ...readConfig(), [AREAS_KEY]: areas };
+    writeConfig(cfg);
+    appendAudit({ adminId: req.user!.id, adminEmail: req.user!.email, action: "service_areas_updated", detail: `Updated service areas: ${areas.map((a: any) => `${a.city}, ${a.stateCode}`).join(", ")}` });
+    res.json(areas);
+  });
+
+  app.get("/api/admin/config", requireAdmin, async (_req: Request, res: Response) => {
+    res.json({ platformFeePercent: 12, insuranceRatePerDay: 15, minBookingHours: 2, ...readConfig() });
+  });
+
+  app.put("/api/admin/config", requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    const cfg = { ...readConfig(), ...req.body };
+    writeConfig(cfg);
+    appendAudit({ adminId: req.user!.id, adminEmail: req.user!.email, action: "config_update", detail: `Updated platform config: ${Object.keys(req.body).join(", ")}` });
+    res.json(cfg);
+  });
+
+  app.get("/api/admin/audit-log", requireAdmin, async (_req: Request, res: Response) => {
+    try { res.json(JSON.parse(fs.readFileSync(AUDIT_PATH, "utf8"))); } catch { res.json([]); }
+  });
+
+  // ── Admin: per-user documents ──────────────────────────────────────────────
+  app.get("/api/admin/users/:id/documents", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const docs = await storage.getUserDocuments(req.params.id);
+      const user = await storage.getUser(req.params.id);
+      const enriched = docs.map((d) => ({ ...d, userName: user?.name || "Unknown", userEmail: user?.email || "" }));
+      res.json(enriched);
+    } catch { res.status(500).json({ error: "Failed to fetch user documents" }); }
+  });
+
+  app.post("/api/admin/user-documents", requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, documentType, notes } = req.body;
+      if (!userId || !documentType) return res.status(400).json({ error: "userId and documentType required" });
+      const doc = await storage.createUserDocument({
+        userId,
+        documentType,
+        documentData: null,
+        fileName: null,
+        mimeType: null,
+        expiryDate: null,
+        verificationStatus: "pending",
+        submittedAt: new Date(),
+        reviewNotes: notes || null,
+      });
+      appendAudit({ adminId: req.user!.id, adminEmail: req.user!.email, action: "document_created", detail: `Created ${documentType} record for user ${userId}` });
+      res.status(201).json(doc);
+    } catch { res.status(500).json({ error: "Failed to create document" }); }
+  });
+
+  // ── Manual payment (file-ledger — payments table requires real tripId FK) ──
+  const MANUAL_PAYMENTS_PATH = path.join(process.cwd(), "manual-payments.json");
+  function readManualPayments(): any[] {
+    try { return JSON.parse(fs.readFileSync(MANUAL_PAYMENTS_PATH, "utf8")); } catch { return []; }
+  }
+
+  app.post("/api/admin/payments/manual", requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { userId, amount, description } = req.body;
+      if (!userId || !amount) return res.status(400).json({ error: "userId and amount required" });
+      const amountStr = Number(amount).toFixed(2);
+      const fee = (Number(amount) * 0.12).toFixed(2);
+      const payout = (Number(amount) - Number(fee)).toFixed(2);
+      const entry = {
+        id: `MANUAL-${Date.now()}`,
+        tripId: null, userId,
+        paypalOrderId: `MANUAL-${Date.now()}`,
+        amount: amountStr, platformFee: fee, ownerPayout: payout,
+        status: "completed", description,
+        createdAt: new Date().toISOString(),
+      };
+      const ledger = readManualPayments();
+      ledger.unshift(entry);
+      fs.writeFileSync(MANUAL_PAYMENTS_PATH, JSON.stringify(ledger, null, 2), "utf8");
+      appendAudit({ adminId: req.user!.id, adminEmail: req.user!.email, action: "manual_charge", detail: `Manual charge $${amountStr} for user ${userId}: ${description}` });
+      res.status(201).json(entry);
+    } catch { res.status(500).json({ error: "Failed to create manual payment" }); }
+  });
+
+  // Include manual payments in admin payments list
+  app.get("/api/admin/payments/manual-ledger", requireAdmin, async (_req: Request, res: Response) => {
+    res.json(readManualPayments());
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -345,6 +345,7 @@ export const userDocuments = pgTable("user_documents", {
     .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   documentType: text("document_type").notNull(),
+  documentUrl: text("document_url"),
   documentData: text("document_data"),
   fileName: text("file_name"),
   mimeType: text("mime_type"),
