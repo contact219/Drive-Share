@@ -83,7 +83,7 @@ function Dashboard({ profileId, earnings, responseRate }: { profileId: string; e
         <Link to="/host/new" className="btn-primary px-5 py-2.5 text-sm"><Plus className="h-4 w-4" /> Add a car</Link>
       </div>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-3">
+      <div className="mt-7 grid grid-cols-3 gap-3 sm:gap-4">
         <Stat icon={Car} label="Listings" value={String(listings.length)} sub={`${active} live`} />
         <Stat icon={DollarSign} label="Total earnings" value={money(earnings || 0)} sub="paid out" />
         <Stat icon={TrendingUp} label="Response rate" value={`${Math.round(Number(responseRate || 100))}%`} sub="last 30 days" />
@@ -116,7 +116,15 @@ function Dashboard({ profileId, earnings, responseRate }: { profileId: string; e
       </div>
 
       <div className="mt-12">
-        <h2 className="text-lg font-bold text-slate-200">Incoming bookings <span className="text-sm font-normal text-slate-500">({bookings.length})</span></h2>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-bold text-slate-200">Incoming bookings <span className="text-sm font-normal text-slate-500">({bookings.length})</span></h2>
+          <Link to="/host/bookings" className="flex items-center gap-1.5 text-sm font-semibold text-brand-cyan hover:opacity-80 transition">
+            {bookings.filter(b => b.status === "pending").length > 0 && (
+              <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-black">{bookings.filter(b => b.status === "pending").length} new</span>
+            )}
+            Manage all →
+          </Link>
+        </div>
         {bookings.length === 0 ? (
           <div className="mt-4 panel p-6 text-sm text-slate-400">No bookings yet. They'll appear here when renters reserve your cars.</div>
         ) : (
@@ -153,7 +161,7 @@ function BookingRow({ b, busy, onAccept, onDecline }: {
       </div>
       <div className="mt-2 space-y-1 text-xs text-slate-400">
         <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> {b.renterName}</div>
-        <div className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> {fmt(b.startDate)} → {fmt(b.endDate)}</div>
+        <div className="flex items-start gap-1.5"><CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" /><div><div>{fmt(b.startDate)}</div><div>{fmt(b.endDate)}</div></div></div>
       </div>
       <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
         <span className="text-sm"><span className="text-slate-400">Payout </span><span className="font-extrabold text-brand-cyan">{money(b.totalCost)}</span></span>
@@ -174,10 +182,10 @@ function BookingRow({ b, busy, onAccept, onDecline }: {
 
 function Stat({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub: string }) {
   return (
-    <div className="panel p-5">
-      <Icon className="h-5 w-5 text-brand-cyan" />
-      <div className="mt-3 text-2xl font-black">{value}</div>
-      <div className="text-xs text-slate-400">{label} · {sub}</div>
+    <div className="panel p-3 sm:p-5">
+      <Icon className="h-4 w-4 text-brand-cyan sm:h-5 sm:w-5" />
+      <div className="mt-2 text-lg font-black sm:mt-3 sm:text-2xl">{value}</div>
+      <div className="text-[10px] leading-tight text-slate-400 sm:text-xs">{label}<br className="sm:hidden" /><span className="hidden sm:inline"> · </span>{sub}</div>
     </div>
   );
 }
@@ -192,14 +200,14 @@ function ListingRow({ l, busy, onActivate, onPause, onDelete }: {
 
   return (
     <div className="panel flex gap-4 overflow-hidden p-4">
-      <img src={v?.imageUrl} alt={v?.name} className="h-28 w-36 shrink-0 rounded-xl object-cover" />
+      <img src={v?.imageUrl} alt={v?.name} className="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-28 sm:w-36" />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate font-bold">{v?.name || "Vehicle"}</h3>
             <p className="text-xs text-slate-400">{v ? `${titleCase(v.type)} · ${cityFrom(v.locationAddress)}` : ""}</p>
           </div>
-          <span className="shrink-0 text-sm font-extrabold text-brand-cyan">{v ? `${money(v.pricePerHour)}/hr` : ""}</span>
+          <span className="shrink-0 text-sm font-extrabold text-brand-cyan">{v ? `${money(v.pricePerHour)}/day` : ""}</span>
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2">

@@ -10,6 +10,7 @@ import VehicleDetail from "./pages/VehicleDetail";
 import Login from "./pages/Login";
 import Host from "./pages/Host";
 import HostDashboard from "./pages/HostDashboard";
+import HostBookings from "./pages/HostBookings";
 import AddListing from "./pages/AddListing";
 import Trips from "./pages/Trips";
 import Profile from "./pages/Profile";
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/host" element={<Host />} />
               <Route path="/host/dashboard" element={<RequireAuth><HostDashboard /></RequireAuth>} />
               <Route path="/host/new" element={<RequireAuth><AddListing /></RequireAuth>} />
+              <Route path="/host/bookings" element={<RequireAuth><HostBookings /></RequireAuth>} />
               <Route path="/trips" element={<RequireAuth><Trips /></RequireAuth>} />
               <Route path="/favorites" element={<RequireAuth><Favorites /></RequireAuth>} />
               <Route path="/messages" element={<RequireAuth><Conversations /></RequireAuth>} />
