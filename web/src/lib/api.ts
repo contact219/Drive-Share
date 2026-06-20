@@ -70,6 +70,10 @@ export interface AuthResult { user: AuthUser; token: string; }
 
 export const login = (email: string, password: string) =>
   http<AuthResult>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+export const forgotPassword = (email: string) =>
+  http<{ message: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+export const resetPassword = (token: string, newPassword: string) =>
+  http<{ message: string }>("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, newPassword }) });
 export const socialAuth = (provider: string, token: string, name?: string) =>
   http<AuthResult>("/auth/social", { method: "POST", body: JSON.stringify({ provider, token, ...(name ? { name } : {}) }) });
 export const register = (name: string, email: string, password: string) =>

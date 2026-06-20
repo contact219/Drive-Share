@@ -95,6 +95,11 @@ export default function Login() {
             )}
             <input className="field" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input className="field" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            {mode === "login" && (
+              <div className="text-right -mt-1">
+                <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-brand-cyan transition">Forgot password?</Link>
+              </div>
+            )}
             {err && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{err}</p>}
             <button disabled={busy || googleBusy} className="btn-primary w-full py-3.5 disabled:opacity-60">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "login" ? "Sign in" : "Create account"}

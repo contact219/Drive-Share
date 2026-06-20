@@ -17,6 +17,8 @@ import Favorites from "./pages/Favorites";
 import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
 import Checkout from "./pages/Checkout";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import RequireAuth from "./components/RequireAuth";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
@@ -25,6 +27,9 @@ import AdminTrips from "./pages/admin/Trips";
 import AdminVerifications from "./pages/admin/Verifications";
 import AdminPayments from "./pages/admin/Payments";
 import AdminDocuments from "./pages/admin/Documents";
+import AdminConfig from "./pages/admin/Config";
+import AdminAuditLog from "./pages/admin/AuditLog";
+import AdminServiceAreas from "./pages/admin/ServiceAreas";
 
 function ScrollTop() {
   const { pathname } = useLocation();
@@ -56,6 +61,9 @@ export default function App() {
           <Route path="verifications" element={<AdminVerifications />} />
           <Route path="payments" element={<AdminPayments />} />
           <Route path="documents" element={<AdminDocuments />} />
+          <Route path="config" element={<AdminConfig />} />
+          <Route path="audit-log" element={<AdminAuditLog />} />
+          <Route path="service-areas" element={<AdminServiceAreas />} />
         </Route>
 
         {/* Public + auth routes */}
@@ -75,6 +83,8 @@ export default function App() {
               <Route path="/messages/:id" element={<RequireAuth><Messages /></RequireAuth>} />
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<Home />} />
             </Routes>
           </PublicLayout>
