@@ -18,6 +18,7 @@ import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
 import Checkout from "./pages/Checkout";
 import Support from "./pages/Support";
+import Notifications from "./pages/Notifications";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import RequireAuth from "./components/RequireAuth";
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/login" element={<Login />} />
               <Route path="/support" element={<Support />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<Home />} />

@@ -369,3 +369,19 @@ export async function uploadVehicleImage(file: File): Promise<string> {
   });
   return res.url;
 }
+
+// -- Notifications
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  link?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+export const getNotifications = () => http<AppNotification[]>('/notifications');
+export const getUnreadNotificationCount = () => http<{ count: number }>('/notifications/unread-count');
+export const markNotificationRead = (id: string) => http<{ success: boolean }>(`/notifications/${id}/read`, { method: 'PATCH' });
+export const markAllNotificationsRead = () => http<{ success: boolean }>('/notifications/read-all', { method: 'PATCH' });

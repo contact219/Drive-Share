@@ -498,6 +498,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ).catch((err) =>
               console.error("Failed to send owner notification email:", err),
             );
+            storage.createNotification({
+              userId: owner.id,
+              type: "booking_request",
+              title: "New booking request",
+              body: renter.name + " requested to rent " + vehicle.name + ".",
+              link: "/host/bookings",
+            }).catch(() => {});
           }
         }
       } catch (emailError) {
@@ -532,30 +539,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Trip not found" });
       }
 
-      if (req.body.status === "completed") {
-        try {
+      try {
+        const tripStatus = req.body.status;
+        if (tripStatus === "completed" || tripStatus === "accepted" || tripStatus === "declined" || tripStatus === "cancelled") {
           const renter = await storage.getUser(trip.userId);
           const vehicle = await storage.getVehicle(trip.vehicleId);
-
-          if (renter && vehicle && renter.email) {
-            let ownerName = "the host";
-            const owner = await getVehicleOwnerUser(vehicle.id);
-            if (owner) {
-              ownerName = owner.name;
-            }
-
-            sendTripCompletedEmail(
-              renter.email,
-              renter.name,
-              vehicle.name,
-              ownerName,
-            ).catch((err) =>
-              console.error("Failed to send trip completed email:", err),
-            );
+          const owner = vehicle ? await getVehicleOwnerUser(vehicle.id) : null;
+          const vName = vehicle?.name || "the vehicle";
+          if (tripStatus === "completed") {
+            storage.createNotification({ userId: trip.userId, type: "trip_completed", title: "Trip completed", body: "Your trip with " + vName + " has ended. Leave a review!", link: "/trips" }).catch(() => {});
+            if (renter?.email) sendTripCompletedEmail(renter.email, renter.name, vName, owner?.name || "the host").catch(() => {});
+          } else if (tripStatus === "accepted") {
+            storage.createNotification({ userId: trip.userId, type: "booking_accepted", title: "Booking confirmed", body: "Your booking for " + vName + " was accepted.", link: "/trips" }).catch(() => {});
+          } else if (tripStatus === "declined") {
+            storage.createNotification({ userId: trip.userId, type: "booking_declined", title: "Booking declined", body: "Your booking for " + vName + " was declined.", link: "/trips" }).catch(() => {});
+          } else if (tripStatus === "cancelled" && owner) {
+            storage.createNotification({ userId: owner.id, type: "booking_cancelled", title: "Booking cancelled", body: (renter?.name || "A renter") + " cancelled their booking for " + vName + ".", link: "/host/bookings" }).catch(() => {});
           }
-        } catch (emailError) {
-          console.error("Email notification error (non-blocking):", emailError);
         }
+      } catch (notifErr) {
+        console.error("Notification error (non-blocking):", notifErr);
       }
 
       res.json(trip);
@@ -777,6 +780,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== PUSH NOTIFICATIONS ====================
+
+
+  // -- Notifications --
+  app.get("/api/notifications", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const items = await storage.getNotifications(req.user!.id);
+      res.json(items);
+    } catch { res.status(500).json({ error: "Failed to fetch notifications" }); }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch { res.status(500).json({ error: "Failed to fetch count" }); }
+  });
+
+  app.patch("/api/notifications/read-all", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      await storage.markAllNotificationsRead(req.user!.id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to mark read" }); }
+  });
+
+  app.patch("/api/notifications/:id/read", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      await storage.markNotificationRead(req.params.id, req.user!.id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to mark read" }); }
+  });
 
   app.post(
     "/api/notifications/register",
@@ -1333,6 +1366,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         await storage.updateConversation(conversationId, updates);
+
+        try {
+          const recipientId = conv.participant1Id === senderId ? conv.participant2Id : conv.participant1Id;
+          const senderUser = await storage.getUser(senderId);
+          await storage.createNotification({ userId: recipientId, type: "new_message", title: "New message", body: (senderUser ? senderUser.name + ": " : "") + content.slice(0, 80), link: "/messages/" + conversationId });
+        } catch {}
 
         const sender = await storage.getUser(senderId);
 
@@ -1967,6 +2006,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!doc) {
           return res.status(404).json({ error: "Document not found" });
         }
+
+        try {
+          const notifTitle = verificationStatus === "approved" ? "Document approved" : "Document rejected";
+          const docLabel = doc.documentType.replace(/_/g, " ");
+          const notifBody = verificationStatus === "approved" ? "Your " + docLabel + " was approved." : "Your " + docLabel + " was rejected. Please re-upload a clearer copy.";
+          await storage.createNotification({ userId: doc.userId, type: "document_" + verificationStatus, title: notifTitle, body: notifBody, link: "/profile" });
+        } catch {}
 
         res.json(doc);
       } catch (error) {

@@ -1,7 +1,7 @@
 import { 
   users, vehicles, trips, favorites, reviews, pushTokens, availabilitySlots, ownerProfiles, ownerVehicles,
   vehicleVerifications, insurancePolicies, payments, payouts, userDocuments, conversations, messages,
-  passwordResetTokens,
+  passwordResetTokens, notifications,
   type User, type InsertUser,
   type Vehicle, type InsertVehicle,
   type Trip, type InsertTrip,
@@ -676,6 +676,37 @@ export class DatabaseStorage implements IStorage {
     await db.update(passwordResetTokens)
       .set({ used: true })
       .where(eq(passwordResetTokens.token, token));
+  }
+
+  async createNotification(data: { userId: string; type: string; title: string; body: string; link?: string }): Promise<any> {
+    const [result] = await db.insert(notifications).values(data).returning();
+    return result;
+  }
+
+  async getNotifications(userId: string, limit = 50): Promise<any[]> {
+    return db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return Number(result[0]?.count ?? 0);
+  }
+
+  async markNotificationRead(id: string, userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
   }
 }
 

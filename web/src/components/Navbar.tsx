@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Heart, MessageSquare, LogOut, Car, Route, LayoutDashboard, User, Info, Home } from "lucide-react";
+import { Menu, X, Heart, MessageSquare, LogOut, Car, Route, LayoutDashboard, User, Info, Home, Bell } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/auth";
+import { getUnreadNotificationCount } from "../lib/api";
 
 const AVATAR_COLORS = [
   "bg-brand-cyan/20 text-brand-cyan",
@@ -31,6 +33,22 @@ function AvatarChip({ name, avatarIndex, avatarUrl, size = "sm" }: { name: strin
   );
 }
 
+function NavBell() {
+  const { signedIn } = useAuth();
+  const { data } = useQuery({ queryKey: ["notif-count"], queryFn: getUnreadNotificationCount, enabled: signedIn, refetchInterval: 30_000 });
+  const count = data?.count ?? 0;
+  return (
+    <Link to="/notifications" title="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white">
+      <Bell className="h-4 w-4" />
+      {count > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-cyan text-[9px] font-black text-black">
+          {count > 9 ? "9+" : count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { signedIn, user, signOut } = useAuth();
@@ -53,6 +71,7 @@ export default function Navbar() {
     { to: "/trips", label: "My Trips", icon: Route },
     { to: "/favorites", label: "Saved Cars", icon: Heart },
     { to: "/messages", label: "Messages", icon: MessageSquare },
+    { to: "/notifications", label: "Notifications", icon: Bell },
     { to: "/host/dashboard", label: "Host Dashboard", icon: LayoutDashboard },
     { to: "/profile", label: "Profile", icon: User },
   ] : [];
@@ -76,6 +95,7 @@ export default function Navbar() {
                 <Link to="/host/dashboard" className="text-sm font-semibold text-slate-200 hover:text-white">Host</Link>
                 <Link to="/favorites" title="Saved cars" className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white"><Heart className="h-4 w-4" /></Link>
                 <Link to="/messages" title="Messages" className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white"><MessageSquare className="h-4 w-4" /></Link>
+                <NavBell />
                 <AvatarChip name={user?.name || ""} avatarIndex={user?.avatarIndex} avatarUrl={user?.avatarUrl} />
                 <button onClick={() => { signOut(); nav("/"); }} className="btn-ghost px-4 py-2 text-xs"><LogOut className="h-3.5 w-3.5" /> Sign out</button>
               </>
@@ -88,6 +108,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
+            {signedIn && <NavBell />}
             {signedIn && <AvatarChip name={user?.name || ""} avatarIndex={user?.avatarIndex} avatarUrl={user?.avatarUrl} />}
             <button onClick={() => setOpen((v) => !v)} aria-label={open ? "Close menu" : "Open menu"}
               className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-slate-300 active:bg-white/10">

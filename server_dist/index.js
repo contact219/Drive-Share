@@ -22,6 +22,7 @@ __export(schema_exports, {
   insertFavoriteSchema: () => insertFavoriteSchema,
   insertInsurancePolicySchema: () => insertInsurancePolicySchema,
   insertMessageSchema: () => insertMessageSchema,
+  insertNotificationSchema: () => insertNotificationSchema,
   insertOwnerProfileSchema: () => insertOwnerProfileSchema,
   insertOwnerVehicleSchema: () => insertOwnerVehicleSchema,
   insertPasswordResetTokenSchema: () => insertPasswordResetTokenSchema,
@@ -38,6 +39,7 @@ __export(schema_exports, {
   insurancePoliciesRelations: () => insurancePoliciesRelations,
   messages: () => messages,
   messagesRelations: () => messagesRelations,
+  notifications: () => notifications,
   ownerProfiles: () => ownerProfiles,
   ownerProfilesRelations: () => ownerProfilesRelations,
   ownerVehicles: () => ownerVehicles,
@@ -66,7 +68,7 @@ __export(schema_exports, {
 import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, decimal, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-var users, usersRelations, vehicles, vehiclesRelations, trips, tripsRelations, favorites, favoritesRelations, reviews, reviewsRelations, pushTokens, pushTokensRelations, availabilitySlots, availabilitySlotsRelations, ownerProfiles, ownerProfilesRelations, ownerVehicles, ownerVehiclesRelations, vehicleVerifications, vehicleVerificationsRelations, insurancePolicies, insurancePoliciesRelations, payments, paymentsRelations, payouts, payoutsRelations, userDocuments, userDocumentsRelations, insertUserSchema, insertVehicleSchema, insertTripSchema, insertFavoriteSchema, insertReviewSchema, insertPushTokenSchema, insertAvailabilitySlotSchema, insertOwnerProfileSchema, insertOwnerVehicleSchema, insertVehicleVerificationSchema, insertInsurancePolicySchema, insertPaymentSchema, insertPayoutSchema, insertUserDocumentSchema, conversations, conversationsRelations, messages, messagesRelations, insertConversationSchema, insertMessageSchema, passwordResetTokens, passwordResetTokensRelations, insertPasswordResetTokenSchema;
+var users, usersRelations, vehicles, vehiclesRelations, trips, tripsRelations, favorites, favoritesRelations, reviews, reviewsRelations, pushTokens, pushTokensRelations, availabilitySlots, availabilitySlotsRelations, ownerProfiles, ownerProfilesRelations, ownerVehicles, ownerVehiclesRelations, vehicleVerifications, vehicleVerificationsRelations, insurancePolicies, insurancePoliciesRelations, payments, paymentsRelations, payouts, payoutsRelations, userDocuments, userDocumentsRelations, insertUserSchema, insertVehicleSchema, insertTripSchema, insertFavoriteSchema, insertReviewSchema, insertPushTokenSchema, insertAvailabilitySlotSchema, insertOwnerProfileSchema, insertOwnerVehicleSchema, insertVehicleVerificationSchema, insertInsurancePolicySchema, insertPaymentSchema, insertPayoutSchema, insertUserDocumentSchema, conversations, conversationsRelations, messages, messagesRelations, insertConversationSchema, insertMessageSchema, passwordResetTokens, passwordResetTokensRelations, insertPasswordResetTokenSchema, notifications, insertNotificationSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -77,13 +79,13 @@ var init_schema = __esm({
       password: text("password").notNull(),
       phone: text("phone"),
       avatarIndex: integer("avatar_index").default(0),
+      avatarUrl: text("avatar_url"),
       rating: decimal("rating", { precision: 2, scale: 1 }).default("5.0"),
       tripsCompleted: integer("trips_completed").default(0),
       isAdmin: boolean("is_admin").default(false),
       isOwner: boolean("is_owner").default(false),
       notificationPrefs: jsonb("notification_prefs").$type().default({ push: true, email: true, sms: false }),
       defaultLocation: jsonb("default_location").$type(),
-      stripeCustomerId: text("stripe_customer_id"),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
     });
@@ -316,8 +318,7 @@ var init_schema = __esm({
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       tripId: varchar("trip_id").notNull().references(() => trips.id),
       userId: varchar("user_id").notNull().references(() => users.id),
-      stripePaymentIntentId: text("stripe_payment_intent_id"),
-      stripeCustomerId: text("stripe_customer_id"),
+      paypalOrderId: text("paypal_order_id"),
       amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
       platformFee: decimal("platform_fee", { precision: 10, scale: 2 }),
       ownerPayout: decimal("owner_payout", { precision: 10, scale: 2 }),
@@ -340,7 +341,7 @@ var init_schema = __esm({
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       ownerId: varchar("owner_id").notNull().references(() => ownerProfiles.id),
       paymentId: varchar("payment_id").references(() => payments.id),
-      stripeTransferId: text("stripe_transfer_id"),
+      paypalPayoutId: text("paypal_payout_id"),
       amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
       status: text("status").notNull().default("pending"),
       createdAt: timestamp("created_at").defaultNow(),
@@ -360,6 +361,7 @@ var init_schema = __esm({
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       userId: varchar("user_id").notNull().references(() => users.id),
       documentType: text("document_type").notNull(),
+      documentUrl: text("document_url"),
       documentData: text("document_data"),
       fileName: text("file_name"),
       mimeType: text("mime_type"),
@@ -533,6 +535,17 @@ var init_schema = __esm({
       id: true,
       createdAt: true
     });
+    notifications = pgTable("notifications", {
+      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+      userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+      type: text("type").notNull(),
+      title: text("title").notNull(),
+      body: text("body").notNull(),
+      link: text("link"),
+      isRead: boolean("is_read").default(false),
+      createdAt: timestamp("created_at").defaultNow()
+    });
+    insertNotificationSchema = createInsertSchema(notifications);
   }
 });
 
@@ -568,8 +581,8 @@ import rateLimit from "express-rate-limit";
 // server/routes.ts
 import { createServer } from "node:http";
 import * as crypto from "node:crypto";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import * as fs2 from "node:fs";
+import * as path2 from "node:path";
 
 // server/storage.ts
 init_schema();
@@ -1018,6 +1031,23 @@ var DatabaseStorage = class {
   async markTokenUsed(token) {
     await db.update(passwordResetTokens).set({ used: true }).where(eq(passwordResetTokens.token, token));
   }
+  async createNotification(data) {
+    const [result] = await db.insert(notifications).values(data).returning();
+    return result;
+  }
+  async getNotifications(userId, limit = 50) {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(limit);
+  }
+  async getUnreadNotificationCount(userId) {
+    const result = await db.select({ count: sql2`count(*)` }).from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return Number(result[0]?.count ?? 0);
+  }
+  async markNotificationRead(id, userId) {
+    await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+  async markAllNotificationsRead(userId) {
+    await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
 };
 var storage = new DatabaseStorage();
 
@@ -1429,378 +1459,216 @@ async function migrateToDevState() {
   }
 }
 
-// server/stripeClient.ts
-import Stripe from "stripe";
-var connectionSettings;
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY ? "repl " + process.env.REPL_IDENTITY : process.env.WEB_REPL_RENEWAL ? "depl " + process.env.WEB_REPL_RENEWAL : null;
-  if (!xReplitToken) {
-    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
+// server/paypalClient.ts
+var PAYPAL_BASE_URL = process.env.PAYPAL_MODE === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+async function getAccessToken() {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set");
   }
-  const connectorName = "stripe";
-  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
-  const targetEnvironment = isProduction ? "production" : "development";
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", connectorName);
-  url.searchParams.set("environment", targetEnvironment);
-  const response = await fetch(url.toString(), {
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
+    method: "POST",
     headers: {
-      "Accept": "application/json",
-      "X_REPLIT_TOKEN": xReplitToken
-    }
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials"
   });
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
-  if (!connectionSettings || (!connectionSettings.settings.publishable || !connectionSettings.settings.secret)) {
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+  if (!response.ok) {
+    throw new Error(`PayPal auth failed: ${response.statusText}`);
   }
-  return {
-    publishableKey: connectionSettings.settings.publishable,
-    secretKey: connectionSettings.settings.secret
-  };
+  const data = await response.json();
+  return data.access_token;
 }
-async function getUncachableStripeClient() {
-  const { secretKey } = await getCredentials();
-  return new Stripe(secretKey);
+async function createPayPalOrder(amountUSD, returnUrl, cancelUrl, metadata) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: { currency_code: "USD", value: amountUSD },
+          custom_id: JSON.stringify(metadata)
+        }
+      ],
+      application_context: {
+        return_url: returnUrl,
+        cancel_url: cancelUrl,
+        brand_name: "Rush Car Rentals",
+        user_action: "PAY_NOW"
+      }
+    })
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`PayPal create order failed: ${err}`);
+  }
+  const order = await response.json();
+  const approvalLink = order.links.find((l) => l.rel === "approve");
+  if (!approvalLink) {
+    throw new Error("PayPal approval URL not found in order response");
+  }
+  return { id: order.id, approvalUrl: approvalLink.href };
 }
-async function getStripePublishableKey() {
-  const { publishableKey } = await getCredentials();
-  return publishableKey;
+async function capturePayPalOrder(orderId) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(
+    `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`PayPal capture failed: ${err}`);
+  }
+  return response.json();
+}
+function getPayPalClientId() {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  if (!clientId) throw new Error("PAYPAL_CLIENT_ID is not set");
+  return clientId;
 }
 
 // server/email.ts
-import sgMail from "@sendgrid/mail";
-var RUSH_CONFIG = {
-  appName: "Rush",
-  domain: "rush-enterprise.com",
-  supportEmail: "support@rush-enterprise.com",
-  contactEmail: "contact@rush-enterprise.com"
-};
-var connectionSettings2;
-async function getCredentials2() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY ? "repl " + process.env.REPL_IDENTITY : process.env.WEB_REPL_RENEWAL ? "depl " + process.env.WEB_REPL_RENEWAL : null;
-  if (!xReplitToken) {
-    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
-  }
-  connectionSettings2 = await fetch(
-    "https://" + hostname + "/api/v2/connection?include_secrets=true&connector_names=sendgrid",
-    {
-      headers: {
-        "Accept": "application/json",
-        "X_REPLIT_TOKEN": xReplitToken
-      }
-    }
-  ).then((res) => res.json()).then((data) => data.items?.[0]);
-  if (!connectionSettings2 || (!connectionSettings2.settings.api_key || !connectionSettings2.settings.from_email)) {
-    throw new Error("SendGrid not connected");
-  }
-  return { apiKey: connectionSettings2.settings.api_key, email: connectionSettings2.settings.from_email };
-}
-async function getUncachableSendGridClient() {
-  const { apiKey, email } = await getCredentials2();
-  sgMail.setApiKey(apiKey);
-  return {
-    client: sgMail,
-    fromEmail: email
-  };
-}
-async function sendEmail(options) {
+import * as nodemailer from "nodemailer";
+import * as fs from "node:fs";
+import * as path from "node:path";
+var CONFIG_PATH = path.join(process.cwd(), "platform-config.json");
+function getSmtpConfig() {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
-    await client.send({
-      to: options.to,
-      from: fromEmail,
-      subject: options.subject,
-      text: options.text,
-      html: options.html
-    });
-    console.log(`Email sent to ${options.to}: ${options.subject}`);
-    return true;
-  } catch (error) {
-    console.error("Failed to send email:", error);
-    return false;
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+    if (cfg.smtpHost && cfg.smtpUser && cfg.smtpPass) return cfg;
+  } catch {
   }
+  return null;
 }
-async function sendBookingConfirmationEmail(renterEmail, renterName, vehicleName, startDate, endDate, totalCost) {
-  const subject = `Booking Confirmed - ${vehicleName}`;
-  const formattedStart = new Date(startDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
+async function send(to, subject, html) {
+  const cfg = getSmtpConfig();
+  if (!cfg) {
+    console.log(`[EMAIL STUB] To: ${to} | Subject: ${subject}`);
+    return;
+  }
+  const transporter = nodemailer.createTransport({
+    host: cfg.smtpHost,
+    port: cfg.smtpPort || 587,
+    secure: (cfg.smtpPort || 587) === 465,
+    auth: { user: cfg.smtpUser, pass: cfg.smtpPass }
   });
-  const formattedEnd = new Date(endDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
+  await transporter.sendMail({
+    from: cfg.smtpFrom || cfg.smtpUser,
+    to,
+    subject,
+    html
   });
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7B801 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">Your ride is confirmed!</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Hi ${renterName},</h2>
-        <p style="color: #666;">Great news! Your booking has been confirmed.</p>
-        
-        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0;">
-          <h3 style="color: #FF6B35; margin-top: 0;">${vehicleName}</h3>
-          <p style="margin: 10px 0;"><strong>Pick-up:</strong> ${formattedStart}</p>
-          <p style="margin: 10px 0;"><strong>Return:</strong> ${formattedEnd}</p>
-          <p style="margin: 10px 0; font-size: 18px;"><strong>Total:</strong> $${totalCost.toFixed(2)}</p>
-        </div>
-        
-        <p style="color: #666;">Open the Rush app to view your trip details and contact the vehicle owner.</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const text2 = `Hi ${renterName},
-
-Your booking for ${vehicleName} has been confirmed.
-
-Pick-up: ${formattedStart}
-Return: ${formattedEnd}
-Total: $${totalCost.toFixed(2)}
-
-Open the Rush app to view your trip details.
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: renterEmail, subject, text: text2, html });
 }
-async function sendNewBookingNotificationToOwner(ownerEmail, ownerName, renterName, vehicleName, startDate, endDate, totalCost) {
-  const subject = `New Booking Request - ${vehicleName}`;
-  const formattedStart = new Date(startDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-  const formattedEnd = new Date(endDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #004E89 0%, #FF6B35 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">You have a new booking!</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Hi ${ownerName},</h2>
-        <p style="color: #666;">${renterName} has booked your vehicle.</p>
-        
-        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0;">
-          <h3 style="color: #004E89; margin-top: 0;">${vehicleName}</h3>
-          <p style="margin: 10px 0;"><strong>Renter:</strong> ${renterName}</p>
-          <p style="margin: 10px 0;"><strong>Pick-up:</strong> ${formattedStart}</p>
-          <p style="margin: 10px 0;"><strong>Return:</strong> ${formattedEnd}</p>
-          <p style="margin: 10px 0; font-size: 18px;"><strong>Your Earnings:</strong> $${(totalCost * 0.9).toFixed(2)}</p>
-        </div>
-        
-        <p style="color: #666;">Open the Rush app to view the booking details and message the renter.</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const text2 = `Hi ${ownerName},
-
-${renterName} has booked your vehicle ${vehicleName}.
-
-Pick-up: ${formattedStart}
-Return: ${formattedEnd}
-Your Earnings: $${(totalCost * 0.9).toFixed(2)}
-
-Open the Rush app to view the booking details.
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: ownerEmail, subject, text: text2, html });
+function bookingCard(fields) {
+  return fields.map((f) => `<tr><td style="padding:6px 12px;color:#94a3b8;font-size:13px;">${f.label}</td><td style="padding:6px 12px;font-size:13px;font-weight:600;">${f.value}</td></tr>`).join("");
 }
-async function sendVehicleVerificationApprovedEmail(ownerEmail, ownerName, vehicleName) {
-  const subject = `Vehicle Approved - ${vehicleName}`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">Your vehicle is approved!</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Congratulations ${ownerName}!</h2>
-        <p style="color: #666;">Your vehicle has been verified and approved.</p>
-        
-        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
-          <div style="font-size: 48px; margin-bottom: 10px;">&#10003;</div>
-          <h3 style="color: #28a745; margin: 0;">${vehicleName}</h3>
-          <p style="color: #666; margin-top: 10px;">Now available for bookings</p>
-        </div>
-        
-        <p style="color: #666;">Your vehicle is now live on Rush and can be booked by renters. Make sure your availability calendar is up to date!</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const text2 = `Congratulations ${ownerName}!
-
-Your vehicle ${vehicleName} has been verified and approved. It's now live on Rush and available for bookings.
-
-Make sure your availability calendar is up to date!
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: ownerEmail, subject, text: text2, html });
+function fmt(iso) {
+  return new Date(iso).toLocaleString(void 0, { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
-async function sendVehicleVerificationRejectedEmail(ownerEmail, ownerName, vehicleName, reason) {
-  const subject = `Vehicle Verification Update - ${vehicleName}`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">Verification Update</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Hi ${ownerName},</h2>
-        <p style="color: #666;">We were unable to approve your vehicle at this time.</p>
-        
-        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0;">
-          <h3 style="color: #dc3545; margin-top: 0;">${vehicleName}</h3>
-          ${reason ? `<p style="margin: 10px 0;"><strong>Reason:</strong> ${reason}</p>` : ""}
-        </div>
-        
-        <p style="color: #666;">Please review the feedback and update your vehicle listing. You can resubmit for verification through the Rush app.</p>
-        <p style="color: #666;">If you have questions, please contact our support team at ${RUSH_CONFIG.supportEmail}.</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const text2 = `Hi ${ownerName},
-
-We were unable to approve your vehicle ${vehicleName} at this time.
-
-${reason ? `Reason: ${reason}
-
-` : ""}Please review the feedback and update your vehicle listing. You can resubmit for verification through the Rush app.
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: ownerEmail, subject, text: text2, html });
+function wrap(title, body) {
+  return `<!DOCTYPE html><html><body style="margin:0;background:#07090f;font-family:'Outfit',sans-serif;color:#f8fafc;">
+<div style="max-width:540px;margin:32px auto;background:#0d1117;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+<div style="background:linear-gradient(135deg,#22d3ee,#fbbf24);padding:24px;text-align:center;">
+<div style="font-size:22px;font-weight:900;color:#07090f;letter-spacing:-0.5px;">Rush</div>
+</div>
+<div style="padding:28px 32px;">
+<h2 style="margin:0 0 16px;font-size:18px;font-weight:800;">${title}</h2>
+${body}
+</div>
+<div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.07);font-size:12px;color:#475569;text-align:center;">
+\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Rush Car Sharing \xB7 <a href="https://rush-enterprise.com" style="color:#22d3ee;">rush-enterprise.com</a>
+</div>
+</div></body></html>`;
 }
-async function sendTripCompletedEmail(renterEmail, renterName, vehicleName, ownerName) {
-  const subject = `Trip Completed - Rate Your Experience`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7B801 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">Thanks for riding with us!</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Hi ${renterName},</h2>
-        <p style="color: #666;">Your trip with ${vehicleName} has been completed.</p>
-        
-        <div style="background: white; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center;">
-          <h3 style="color: #FF6B35; margin-top: 0;">How was your trip?</h3>
-          <p style="color: #666;">Let ${ownerName} know how your experience was by leaving a review in the Rush app.</p>
-        </div>
-        
-        <p style="color: #666;">Your feedback helps other renters make informed decisions and helps vehicle owners improve their service.</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const text2 = `Hi ${renterName},
-
-Your trip with ${vehicleName} has been completed.
-
-We'd love to hear about your experience! Leave a review in the Rush app to help ${ownerName} and other renters.
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: renterEmail, subject, text: text2, html });
+async function sendBookingConfirmationEmail(to, name, vehicleName, startDate, endDate, totalCost) {
+  await send(to, `Booking confirmed \u2014 ${vehicleName}`, wrap(
+    "Your booking is confirmed!",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${name}, your reservation has been confirmed.</p>
+<table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+${bookingCard([
+      { label: "Vehicle", value: vehicleName },
+      { label: "Pick-up", value: fmt(startDate) },
+      { label: "Return", value: fmt(endDate) },
+      { label: "Total", value: `$${totalCost.toFixed(2)}` }
+    ])}</table>
+<p style="color:#94a3b8;font-size:13px;margin:0;">Questions? Reply to this email or visit your <a href="https://rush-enterprise.com/trips" style="color:#22d3ee;">trips dashboard</a>.</p>`
+  ));
 }
-async function sendPasswordResetEmail(email, name, resetLink, resetCode) {
-  const subject = `Reset Your Password - ${RUSH_CONFIG.appName}`;
-  const codeSection = resetCode ? `
-        <p style="color: #666; margin-top: 20px;">Or enter this code in the ${RUSH_CONFIG.appName} app:</p>
-        <div style="text-align: center; margin: 15px 0;">
-          <div style="background: #fff; border: 2px dashed #FF6B35; padding: 16px 24px; border-radius: 8px; display: inline-block;">
-            <code style="font-size: 14px; font-weight: 700; color: #333; letter-spacing: 1px; word-break: break-all;">${resetCode}</code>
-          </div>
-        </div>
-  ` : "";
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #FF6B35 0%, #F7B801 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Rush</h1>
-        <p style="color: white; margin: 10px 0 0 0;">Password Reset Request</p>
-      </div>
-      <div style="padding: 30px; background: #f9f9f9;">
-        <h2 style="color: #333; margin-top: 0;">Hi ${name},</h2>
-        <p style="color: #666;">We received a request to reset your password. Click the button below to create a new password.</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background: #FF6B35; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Reset Your Password</a>
-        </div>
-        ${codeSection}
-        <p style="color: #666; font-size: 14px;">This code and link will expire in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.</p>
-        <p style="color: #999; font-size: 12px; margin-top: 20px;">If the button doesn't work, copy and paste this link into your browser:<br>${resetLink}</p>
-      </div>
-      <div style="background: #333; padding: 20px; text-align: center;">
-        <p style="color: #999; margin: 0; font-size: 12px;">${RUSH_CONFIG.appName} Vehicle Rental | ${RUSH_CONFIG.domain}</p>
-        <p style="color: #999; margin: 5px 0 0 0; font-size: 11px;">Support: ${RUSH_CONFIG.supportEmail} | Contact: ${RUSH_CONFIG.contactEmail}</p>
-      </div>
-    </div>
-  `;
-  const codeText = resetCode ? `
-
-Or enter this code in the app: ${resetCode}` : "";
-  const text2 = `Hi ${name},
-
-We received a request to reset your password. Visit the following link to create a new password:
-
-${resetLink}${codeText}
-
-This code and link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
-
-Support: ${RUSH_CONFIG.supportEmail}
-
-- ${RUSH_CONFIG.appName} Team`;
-  return sendEmail({ to: email, subject, text: text2, html });
+async function sendNewBookingNotificationToOwner(to, ownerName, vehicleName, renterName, startDate, endDate, totalCost) {
+  await send(to, `New booking \u2014 ${vehicleName}`, wrap(
+    "You have a new booking!",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${ownerName}, ${renterName} just booked your ${vehicleName}.</p>
+<table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+${bookingCard([
+      { label: "Renter", value: renterName },
+      { label: "Pick-up", value: fmt(startDate) },
+      { label: "Return", value: fmt(endDate) },
+      { label: "Payout", value: `$${(totalCost * 0.88).toFixed(2)}` }
+    ])}</table>
+<p style="color:#94a3b8;font-size:13px;">Manage bookings in your <a href="https://rush-enterprise.com/host/dashboard" style="color:#22d3ee;">host dashboard</a>.</p>`
+  ));
+}
+async function sendVehicleVerificationApprovedEmail(to, ownerName, vehicleName) {
+  await send(to, `Vehicle approved \u2014 ${vehicleName}`, wrap(
+    "Your vehicle is live!",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${ownerName}, <strong style="color:#f8fafc;">${vehicleName}</strong> has been approved and is now live on Rush.</p>
+<p style="color:#94a3b8;font-size:13px;">View your listing in your <a href="https://rush-enterprise.com/host/dashboard" style="color:#22d3ee;">host dashboard</a>.</p>`
+  ));
+}
+async function sendVehicleVerificationRejectedEmail(to, ownerName, vehicleName, reason) {
+  await send(to, `Vehicle update required \u2014 ${vehicleName}`, wrap(
+    "Action required on your listing",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${ownerName}, your vehicle <strong style="color:#f8fafc;">${vehicleName}</strong> requires attention.</p>
+${reason ? `<div style="background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;">${reason}</div>` : ""}
+<p style="color:#94a3b8;font-size:13px;">Update your listing in your <a href="https://rush-enterprise.com/host/dashboard" style="color:#22d3ee;">host dashboard</a> and resubmit.</p>`
+  ));
+}
+async function sendTripCompletedEmail(to, name, vehicleName, totalCost) {
+  await send(to, `Trip complete \u2014 ${vehicleName}`, wrap(
+    "Thanks for riding with Rush!",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${name}, your trip in the <strong style="color:#f8fafc;">${vehicleName}</strong> is complete.</p>
+<p style="color:#94a3b8;margin:0 0 16px;">Total charged: <strong style="color:#22d3ee;">$${totalCost.toFixed(2)}</strong></p>
+<p style="color:#94a3b8;font-size:13px;">Leave a review in your <a href="https://rush-enterprise.com/trips" style="color:#22d3ee;">trips dashboard</a>.</p>`
+  ));
+}
+async function sendPasswordResetEmail(to, name, resetUrl) {
+  await send(to, "Reset your Rush password", wrap(
+    "Password reset request",
+    `<p style="color:#94a3b8;margin:0 0 16px;">Hi ${name}, we received a request to reset your password.</p>
+<div style="text-align:center;margin:24px 0;">
+<a href="${resetUrl}" style="background:#22d3ee;color:#07090f;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;display:inline-block;">Reset password</a>
+</div>
+<p style="color:#94a3b8;font-size:12px;text-align:center;">Link expires in 1 hour. If you didn't request this, ignore this email.</p>`
+  ));
+}
+async function sendSupportNotificationEmail(adminEmail, userName, userEmail, message) {
+  await send(adminEmail, `Support message from ${userName}`, wrap(
+    "New support message",
+    `<p style="color:#94a3b8;margin:0 0 16px;">A user has sent a support message.</p>
+<table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+${bookingCard([
+      { label: "From", value: userName },
+      { label: "Email", value: userEmail }
+    ])}</table>
+<div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;">
+  <p style="color:#f8fafc;font-size:14px;margin:0;white-space:pre-wrap;">${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+</div>
+<p style="color:#94a3b8;font-size:13px;">Reply via the <a href="https://rush-enterprise.com/messages" style="color:#22d3ee;">messages inbox</a> or reply to this email.</p>`
+  ));
 }
 
 // server/middleware.ts
@@ -1966,9 +1834,9 @@ async function registerRoutes(app2) {
       const hours = Math.ceil(
         (end.getTime() - start.getTime()) / (1e3 * 60 * 60)
       );
-      const days = Math.ceil(hours / 24);
-      const pricePerHour = parseFloat(vehicle.pricePerHour);
-      const baseCost = hours <= 24 ? hours * pricePerHour : days * pricePerHour * 20;
+      const days = Math.max(1, Math.ceil(hours / 24));
+      const pricePerDay = parseFloat(vehicle.pricePerHour);
+      const baseCost = days * pricePerDay;
       const insuranceCost = includeInsurance ? days * 15 : 0;
       const serviceFee = baseCost * 0.1;
       const totalCost = baseCost + insuranceCost + serviceFee;
@@ -1981,7 +1849,7 @@ async function registerRoutes(app2) {
         insuranceCost: insuranceCost.toFixed(2),
         serviceFee: serviceFee.toFixed(2),
         totalCost: totalCost.toFixed(2),
-        pricePerHour: pricePerHour.toFixed(2),
+        pricePerDay: pricePerDay.toFixed(2),
         vehicle: {
           id: vehicle.id,
           name: vehicle.name,
@@ -2179,7 +2047,10 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/trips", requireAuth, async (req, res) => {
     try {
-      const tripData = insertTripSchema.parse(req.body);
+      const rawBody = { ...req.body };
+      if (typeof rawBody.startDate === "string") rawBody.startDate = new Date(rawBody.startDate);
+      if (typeof rawBody.endDate === "string") rawBody.endDate = new Date(rawBody.endDate);
+      const tripData = insertTripSchema.parse(rawBody);
       if (tripData.userId !== req.user.id && !req.user.isAdmin) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -2211,6 +2082,14 @@ async function registerRoutes(app2) {
             ).catch(
               (err) => console.error("Failed to send owner notification email:", err)
             );
+            storage.createNotification({
+              userId: owner.id,
+              type: "booking_request",
+              title: "New booking request",
+              body: renter.name + " requested to rent " + vehicle.name + ".",
+              link: "/host/bookings"
+            }).catch(() => {
+            });
           }
         }
       } catch (emailError) {
@@ -2227,39 +2106,99 @@ async function registerRoutes(app2) {
       if (!existingTrip) {
         return res.status(404).json({ error: "Trip not found" });
       }
-      if (existingTrip.userId !== req.user.id && !req.user.isAdmin) {
+      const isRenter = existingTrip.userId === req.user.id;
+      let isHost = false;
+      if (!isRenter && !req.user.isAdmin) {
+        const owner = await getVehicleOwnerUser(existingTrip.vehicleId);
+        isHost = !!owner && owner.id === req.user.id;
+      }
+      if (!isRenter && !req.user.isAdmin && !isHost) {
         return res.status(403).json({ error: "Access denied" });
       }
       const trip = await storage.updateTrip(req.params.id, req.body);
       if (!trip) {
         return res.status(404).json({ error: "Trip not found" });
       }
-      if (req.body.status === "completed") {
-        try {
+      try {
+        const tripStatus = req.body.status;
+        if (tripStatus === "completed" || tripStatus === "accepted" || tripStatus === "declined" || tripStatus === "cancelled") {
           const renter = await storage.getUser(trip.userId);
           const vehicle = await storage.getVehicle(trip.vehicleId);
-          if (renter && vehicle && renter.email) {
-            let ownerName = "the host";
-            const owner = await getVehicleOwnerUser(vehicle.id);
-            if (owner) {
-              ownerName = owner.name;
-            }
-            sendTripCompletedEmail(
-              renter.email,
-              renter.name,
-              vehicle.name,
-              ownerName
-            ).catch(
-              (err) => console.error("Failed to send trip completed email:", err)
-            );
+          const owner = vehicle ? await getVehicleOwnerUser(vehicle.id) : null;
+          const vName = vehicle?.name || "the vehicle";
+          if (tripStatus === "completed") {
+            storage.createNotification({ userId: trip.userId, type: "trip_completed", title: "Trip completed", body: "Your trip with " + vName + " has ended. Leave a review!", link: "/trips" }).catch(() => {
+            });
+            if (renter?.email) sendTripCompletedEmail(renter.email, renter.name, vName, owner?.name || "the host").catch(() => {
+            });
+          } else if (tripStatus === "accepted") {
+            storage.createNotification({ userId: trip.userId, type: "booking_accepted", title: "Booking confirmed", body: "Your booking for " + vName + " was accepted.", link: "/trips" }).catch(() => {
+            });
+          } else if (tripStatus === "declined") {
+            storage.createNotification({ userId: trip.userId, type: "booking_declined", title: "Booking declined", body: "Your booking for " + vName + " was declined.", link: "/trips" }).catch(() => {
+            });
+          } else if (tripStatus === "cancelled" && owner) {
+            storage.createNotification({ userId: owner.id, type: "booking_cancelled", title: "Booking cancelled", body: (renter?.name || "A renter") + " cancelled their booking for " + vName + ".", link: "/host/bookings" }).catch(() => {
+            });
           }
-        } catch (emailError) {
-          console.error("Email notification error (non-blocking):", emailError);
         }
+      } catch (notifErr) {
+        console.error("Notification error (non-blocking):", notifErr);
       }
       res.json(trip);
     } catch (error) {
       res.status(500).json({ error: "Failed to update trip" });
+    }
+  });
+  app2.get("/api/trips", requireAuth, async (req, res) => {
+    try {
+      const trips2 = await storage.getTripsByUser(req.user.id);
+      const enriched = await Promise.all(
+        trips2.map(async (t) => ({ ...t, vehicle: await storage.getVehicle(t.vehicleId) || null }))
+      );
+      enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trips" });
+    }
+  });
+  app2.get("/api/owner/:ownerId/bookings", requireAuth, async (req, res) => {
+    try {
+      const owned = await storage.getOwnerVehicles(req.params.ownerId);
+      const vehicleIds = new Set(owned.map((o) => o.vehicleId));
+      const all = await storage.getAllTrips();
+      const mine = all.filter((t) => vehicleIds.has(t.vehicleId));
+      const enriched = await Promise.all(
+        mine.map(async (t) => {
+          const renter = await storage.getUser(t.userId);
+          return {
+            ...t,
+            vehicle: await storage.getVehicle(t.vehicleId) || null,
+            renterName: renter?.name || "Renter"
+          };
+        })
+      );
+      enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+  app2.patch("/api/users/:id", requireAuth, async (req, res) => {
+    try {
+      if (req.params.id !== req.user.id && !req.user.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updates = {};
+      for (const k of ["name", "phone", "avatarIndex", "avatarUrl"]) {
+        if (k in req.body) updates[k] = req.body[k];
+      }
+      const updated = await storage.updateUser(req.params.id, updates);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      const { password, ...safe } = updated;
+      res.json(safe);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
     }
   });
   app2.get("/api/users/:id/favorites", requireAuth, async (req, res) => {
@@ -2359,10 +2298,22 @@ async function registerRoutes(app2) {
           error: "Invalid documentType. Must be: drivers_license, insurance_card, or proof_of_identity"
         });
       }
+      let documentUrl = null;
+      if (documentData) {
+        const buffer = Buffer.from(documentData, "base64");
+        const extMap = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+        const ext = extMap[mimeType] || "bin";
+        const safeName = `doc_${Date.now()}_${crypto.randomBytes(6).toString("hex")}.${ext}`;
+        const docsDir = path2.resolve(process.cwd(), "uploads", "documents");
+        fs2.mkdirSync(docsDir, { recursive: true });
+        await fs2.promises.writeFile(path2.join(docsDir, safeName), buffer);
+        documentUrl = `/uploads/documents/${safeName}`;
+      }
       const doc = await storage.createUserDocument({
         userId,
         documentType,
-        documentData: documentData || null,
+        documentUrl,
+        documentData: null,
         fileName: fileName || null,
         mimeType: mimeType || null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
@@ -2387,6 +2338,38 @@ async function registerRoutes(app2) {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+  app2.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getNotifications(req.user.id);
+      res.json(items);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+  app2.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user.id);
+      res.json({ count });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch count" });
+    }
+  });
+  app2.patch("/api/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.user.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to mark read" });
+    }
+  });
+  app2.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id, req.user.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to mark read" });
     }
   });
   app2.post(
@@ -2463,12 +2446,74 @@ async function registerRoutes(app2) {
     async (req, res) => {
       try {
         const ownerVehicles2 = await storage.getOwnerVehicles(req.params.ownerId);
-        res.json(ownerVehicles2);
+        const enriched = await Promise.all(
+          ownerVehicles2.map(async (ov) => {
+            const vehicle = await storage.getVehicle(ov.vehicleId);
+            const verification = vehicle ? (await storage.getAllVerifications()).find(
+              (v) => v.vehicleId === vehicle.id && v.ownerId === ov.ownerId
+            ) : null;
+            return {
+              ...ov,
+              vehicle: vehicle || null,
+              verificationStatus: verification?.status || null,
+              verificationNotes: verification?.reviewNotes || null
+            };
+          })
+        );
+        res.json(enriched);
       } catch (error) {
         res.status(500).json({ error: "Failed to fetch owner vehicles" });
       }
     }
   );
+  app2.post("/api/upload/avatar", requireAuth, async (req, res) => {
+    try {
+      const { data, mimeType } = req.body;
+      if (!data) return res.status(400).json({ error: "No image data provided" });
+      const extMap = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const ext = extMap[mimeType] || "jpg";
+      const buffer = Buffer.from(data, "base64");
+      if (buffer.length > 5 * 1024 * 1024) return res.status(400).json({ error: "Image must be under 5 MB" });
+      const safeName = `avatar_${req.user.id}_${Date.now()}.${ext}`;
+      const avatarsDir = path2.resolve(process.cwd(), "uploads", "avatars");
+      fs2.mkdirSync(avatarsDir, { recursive: true });
+      await fs2.promises.writeFile(path2.join(avatarsDir, safeName), buffer);
+      const avatarUrl = `/uploads/avatars/${safeName}`;
+      await storage.updateUser(req.user.id, { avatarUrl });
+      res.json({ url: avatarUrl });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload avatar" });
+    }
+  });
+  app2.post("/api/upload/vehicle-image", requireAuth, async (req, res) => {
+    try {
+      const { filename, data, mimeType } = req.body;
+      if (!filename || !data || !mimeType) {
+        return res.status(400).json({ error: "filename, data, and mimeType are required" });
+      }
+      const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      if (!allowedMimeTypes.includes(mimeType)) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
+      const buffer = Buffer.from(data, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
+      const extMap = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const ext = extMap[mimeType];
+      if (!validateImageMagicBytes(buffer, ext)) {
+        return res.status(400).json({ error: "File content does not match declared type" });
+      }
+      const uploadsDir = path2.resolve(process.cwd(), "uploads", "vehicles");
+      fs2.mkdirSync(uploadsDir, { recursive: true });
+      const safeName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+      const filePath = path2.join(uploadsDir, safeName);
+      await fs2.promises.writeFile(filePath, buffer);
+      res.json({ url: `/uploads/vehicles/${safeName}` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
   app2.post("/api/owner/vehicles", requireAuth, async (req, res) => {
     try {
       const { ownerId, vehicleData } = req.body;
@@ -2480,6 +2525,11 @@ async function registerRoutes(app2) {
         ownerId,
         vehicleId: vehicle.id,
         listingStatus: "pending"
+      });
+      await storage.createVerification({
+        vehicleId: vehicle.id,
+        ownerId,
+        status: "pending"
       });
       res.status(201).json({ vehicle, ownerVehicle });
     } catch (error) {
@@ -2548,156 +2598,75 @@ async function registerRoutes(app2) {
       }
     }
   );
-  app2.get(
-    "/api/stripe/publishable-key",
-    async (_req, res) => {
-      try {
-        const publishableKey = await getStripePublishableKey();
-        res.json({ publishableKey });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to get Stripe key" });
-      }
+  app2.get("/api/paypal/client-id", (_req, res) => {
+    try {
+      const clientId = getPayPalClientId();
+      res.json({ clientId });
+    } catch (error) {
+      res.status(500).json({ error: "PayPal client ID not configured" });
     }
-  );
+  });
   app2.post(
-    "/api/stripe/create-payment-intent",
+    "/api/paypal/create-order",
     requireAuth,
     async (req, res) => {
       try {
-        const { tripId, amount } = req.body;
+        const { tripId } = req.body;
         const userId = req.user.id;
-        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 1e5) {
-          return res.status(400).json({ error: "Invalid payment parameters" });
+        if (!tripId) {
+          return res.status(400).json({ error: "tripId is required" });
         }
-        const stripe = await getUncachableStripeClient();
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
+        const trip = await storage.getTrip(tripId);
+        if (!trip) {
+          return res.status(404).json({ error: "Trip not found" });
         }
-        let customerId = user.stripeCustomerId;
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-            metadata: { userId: user.id }
-          });
-          customerId = customer.id;
-          await storage.updateUser(userId, {
-            stripeCustomerId: customerId
-          });
+        if (trip.userId !== userId) {
+          return res.status(403).json({ error: "Access denied" });
         }
-        const amountCents = Math.round(amount * 100);
-        const platformFeeCents = Math.round(amountCents * 0.1);
-        const ownerPayoutCents = amountCents - platformFeeCents;
-        const idempotencyKey = `pi-${userId}-${tripId}-${amountCents}`;
-        const paymentIntent = await stripe.paymentIntents.create(
-          {
-            amount: amountCents,
-            currency: "usd",
-            customer: customerId,
-            payment_method_types: ["card", "cashapp"],
-            metadata: { tripId, userId }
-          },
-          { idempotencyKey }
+        const amount = parseFloat(trip.totalCost);
+        if (isNaN(amount) || amount <= 0) {
+          return res.status(400).json({ error: "Invalid trip amount" });
+        }
+        const baseUrl = process.env.APP_BASE_URL || "https://rush-enterprise.com";
+        const amountStr = amount.toFixed(2);
+        const platformFee = (amount * 0.1).toFixed(2);
+        const ownerPayout = (amount * 0.9).toFixed(2);
+        const { id: orderId, approvalUrl } = await createPayPalOrder(
+          amountStr,
+          `${baseUrl}/api/paypal/return`,
+          `${baseUrl}/api/paypal/cancel`,
+          { tripId, userId }
         );
         const payment = await storage.createPayment({
           tripId,
           userId,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeCustomerId: customerId,
-          amount: (amountCents / 100).toFixed(2),
-          platformFee: (platformFeeCents / 100).toFixed(2),
-          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
+          paypalOrderId: orderId,
+          amount: amountStr,
+          platformFee,
+          ownerPayout,
           status: "pending"
         });
-        res.json({
-          clientSecret: paymentIntent.client_secret,
-          paymentId: payment.id
-        });
+        res.json({ orderId, approvalUrl, paymentId: payment.id });
       } catch (error) {
-        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: "Failed to create payment intent" });
+        res.status(500).json({ error: error.message || "Failed to create PayPal order" });
       }
     }
   );
+  app2.get("/api/paypal/return", (req, res) => {
+    const orderId = req.query.token || "";
+    res.redirect(`rush://payment/success?orderId=${encodeURIComponent(orderId)}`);
+  });
+  app2.get("/api/paypal/cancel", (_req, res) => {
+    res.redirect("rush://payment/cancel");
+  });
   app2.post(
-    "/api/stripe/payment-sheet",
+    "/api/paypal/capture-order",
     requireAuth,
     async (req, res) => {
       try {
-        const { tripId, amount } = req.body;
-        const userId = req.user.id;
-        if (!tripId || typeof amount !== "number" || amount <= 0 || amount > 1e5) {
-          return res.status(400).json({ error: "Invalid payment parameters" });
-        }
-        const stripe = await getUncachableStripeClient();
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ error: "User not found" });
-        }
-        let customerId = user.stripeCustomerId;
-        if (!customerId) {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-            metadata: { userId: user.id }
-          });
-          customerId = customer.id;
-          await storage.updateUser(userId, { stripeCustomerId: customerId });
-        }
-        const ephemeralKey = await stripe.ephemeralKeys.create(
-          { customer: customerId },
-          { apiVersion: "2024-06-20" }
-        );
-        const amountCents = Math.round(amount * 100);
-        const idempotencyKey = `ps-${userId}-${tripId}-${amountCents}`;
-        const paymentIntent = await stripe.paymentIntents.create(
-          {
-            amount: amountCents,
-            currency: "usd",
-            customer: customerId,
-            payment_method_types: ["card", "cashapp"],
-            metadata: { tripId, userId }
-          },
-          { idempotencyKey }
-        );
-        const platformFeeCents = Math.round(amountCents * 0.1);
-        const ownerPayoutCents = amountCents - platformFeeCents;
-        const payment = await storage.createPayment({
-          tripId,
-          userId,
-          stripePaymentIntentId: paymentIntent.id,
-          stripeCustomerId: customerId,
-          amount: (amountCents / 100).toFixed(2),
-          platformFee: (platformFeeCents / 100).toFixed(2),
-          ownerPayout: (ownerPayoutCents / 100).toFixed(2),
-          status: "pending"
-        });
-        res.json({
-          paymentIntent: paymentIntent.client_secret,
-          ephemeralKey: ephemeralKey.secret,
-          customer: customerId,
-          paymentId: payment.id,
-          publishableKey: await getStripePublishableKey()
-        });
-      } catch (error) {
-        if (error.type === "StripeCardError" || error.type === "StripeInvalidRequestError") {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({ error: "Failed to create payment sheet" });
-      }
-    }
-  );
-  app2.post(
-    "/api/stripe/confirm-payment",
-    requireAuth,
-    async (req, res) => {
-      try {
-        const { paymentId, tripId } = req.body;
-        if (!paymentId || !tripId) {
-          return res.status(400).json({ error: "Missing paymentId or tripId" });
+        const { orderId, paymentId, tripId } = req.body;
+        if (!orderId || !paymentId || !tripId) {
+          return res.status(400).json({ error: "Missing orderId, paymentId, or tripId" });
         }
         const payment = await storage.getPayment(paymentId);
         if (!payment) {
@@ -2706,11 +2675,16 @@ async function registerRoutes(app2) {
         if (payment.userId !== req.user.id && !req.user.isAdmin) {
           return res.status(403).json({ error: "Access denied" });
         }
+        const capture = await capturePayPalOrder(orderId);
+        const captureStatus = capture.purchase_units?.[0]?.payments?.captures?.[0]?.status;
+        if (capture.status !== "COMPLETED" && captureStatus !== "COMPLETED") {
+          return res.status(400).json({ error: `Payment capture status: ${capture.status}` });
+        }
         await storage.updatePayment(paymentId, { status: "completed" });
         await storage.updateTrip(tripId, { status: "upcoming" });
         res.json({ success: true });
       } catch (error) {
-        res.status(500).json({ error: "Failed to confirm payment" });
+        res.status(500).json({ error: error.message || "Failed to capture payment" });
       }
     }
   );
@@ -2862,6 +2836,12 @@ async function registerRoutes(app2) {
           updates.participant1Unread = (conv.participant1Unread || 0) + 1;
         }
         await storage.updateConversation(conversationId, updates);
+        try {
+          const recipientId = conv.participant1Id === senderId ? conv.participant2Id : conv.participant1Id;
+          const senderUser = await storage.getUser(senderId);
+          await storage.createNotification({ userId: recipientId, type: "new_message", title: "New message", body: (senderUser ? senderUser.name + ": " : "") + content.slice(0, 80), link: "/messages/" + conversationId });
+        } catch {
+        }
         const sender = await storage.getUser(senderId);
         res.status(201).json({
           ...msg,
@@ -2906,6 +2886,53 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to create insurance policy" });
     }
   });
+  app2.post("/api/support/thread", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { message } = req.body;
+      if (!message?.trim()) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      const admins = await storage.getAllUsers();
+      const supportUser = admins.find((u) => u.isAdmin && u.id !== userId) ?? await storage.getUserByEmail("admin@rush.com");
+      if (!supportUser) {
+        return res.status(500).json({ error: "Support account not found" });
+      }
+      if (supportUser.id === userId) {
+        return res.status(400).json({ error: "You are the support account" });
+      }
+      let conv = await storage.findExistingConversation(userId, supportUser.id);
+      if (!conv) {
+        conv = await storage.createConversation({
+          participant1Id: userId,
+          participant2Id: supportUser.id,
+          vehicleId: null,
+          tripId: null,
+          lastMessageAt: /* @__PURE__ */ new Date()
+        });
+      }
+      const msg = await storage.createMessage({
+        conversationId: conv.id,
+        senderId: userId,
+        content: message.trim(),
+        messageType: "text"
+      });
+      await storage.updateConversation(conv.id, { lastMessageAt: /* @__PURE__ */ new Date(), lastMessagePreview: message.trim().slice(0, 100) });
+      const sender = await storage.getUser(userId);
+      try {
+        await sendSupportNotificationEmail(
+          supportUser.email,
+          sender?.name || "Unknown",
+          sender?.email || "",
+          message.trim()
+        );
+      } catch {
+      }
+      res.json({ conversationId: conv.id, messageId: msg.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send support message" });
+    }
+  });
   app2.post(
     "/api/admin/migrate-from-dev",
     requireAdmin,
@@ -2943,11 +2970,11 @@ async function registerRoutes(app2) {
       if (!validateImageMagicBytes(buffer, ext)) {
         return res.status(400).json({ error: "File content does not match declared type" });
       }
-      const uploadsDir = path.resolve(process.cwd(), "uploads", "vehicles");
-      fs.mkdirSync(uploadsDir, { recursive: true });
+      const uploadsDir = path2.resolve(process.cwd(), "uploads", "vehicles");
+      fs2.mkdirSync(uploadsDir, { recursive: true });
       const safeName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-      const filePath = path.join(uploadsDir, safeName);
-      await fs.promises.writeFile(filePath, buffer);
+      const filePath = path2.join(uploadsDir, safeName);
+      await fs2.promises.writeFile(filePath, buffer);
       res.json({ url: `/uploads/vehicles/${safeName}` });
     } catch (error) {
       res.status(500).json({ error: "Failed to upload image" });
@@ -3029,9 +3056,16 @@ async function registerRoutes(app2) {
   });
   app2.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ error: "User not found" });
       await storage.deleteUser(req.params.id);
-      res.status(204).send();
+      res.json({ success: true });
     } catch (error) {
+      const msg = error?.message || error?.detail || "";
+      const isFk = error?.code === "23503" || error?.cause?.code === "23503" || msg.includes("foreign key") || msg.includes("violates");
+      if (isFk) {
+        return res.status(409).json({ error: "Cannot delete this user \u2014 they have existing trips, bookings, or other records. Remove those first." });
+      }
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
@@ -3279,6 +3313,31 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: "Failed to fetch payments" });
     }
   });
+  app2.post("/api/admin/payments/:id/refund", requireAdmin, async (req, res) => {
+    try {
+      const payment = await storage.updatePayment(req.params.id, { status: "refunded" });
+      if (!payment) return res.status(404).json({ error: "Payment not found" });
+      if (payment.tripId) {
+        await storage.updateTrip(payment.tripId, { status: "cancelled" });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process refund" });
+    }
+  });
+  app2.post("/api/admin/trips/:id/send-confirmation", requireAdmin, async (req, res) => {
+    try {
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ error: "Trip not found" });
+      const [user, vehicle] = await Promise.all([storage.getUser(trip.userId), storage.getVehicle(trip.vehicleId)]);
+      if (user && user.email && vehicle) {
+        await sendBookingConfirmationEmail(user.email, user.name, vehicle.name, trip.startDate.toISOString(), trip.endDate.toISOString(), Number(trip.totalCost));
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
   app2.get("/api/admin/payouts", requireAdmin, async (_req, res) => {
     try {
       const payouts2 = await storage.getAllPayouts();
@@ -3331,12 +3390,146 @@ async function registerRoutes(app2) {
         if (!doc) {
           return res.status(404).json({ error: "Document not found" });
         }
+        try {
+          const notifTitle = verificationStatus === "approved" ? "Document approved" : "Document rejected";
+          const docLabel = doc.documentType.replace(/_/g, " ");
+          const notifBody = verificationStatus === "approved" ? "Your " + docLabel + " was approved." : "Your " + docLabel + " was rejected. Please re-upload a clearer copy.";
+          await storage.createNotification({ userId: doc.userId, type: "document_" + verificationStatus, title: notifTitle, body: notifBody, link: "/profile" });
+        } catch {
+        }
         res.json(doc);
       } catch (error) {
         res.status(500).json({ error: "Failed to update document" });
       }
     }
   );
+  const CONFIG_PATH2 = path2.join(process.cwd(), "platform-config.json");
+  const AUDIT_PATH = path2.join(process.cwd(), "audit-log.json");
+  function readConfig() {
+    try {
+      return JSON.parse(fs2.readFileSync(CONFIG_PATH2, "utf8"));
+    } catch {
+      return {};
+    }
+  }
+  function writeConfig(cfg) {
+    fs2.writeFileSync(CONFIG_PATH2, JSON.stringify(cfg, null, 2), "utf8");
+  }
+  function appendAudit(entry) {
+    let log2 = [];
+    try {
+      log2 = JSON.parse(fs2.readFileSync(AUDIT_PATH, "utf8"));
+    } catch {
+      log2 = [];
+    }
+    log2.unshift({ ts: (/* @__PURE__ */ new Date()).toISOString(), ...entry });
+    if (log2.length > 1e3) log2 = log2.slice(0, 1e3);
+    fs2.writeFileSync(AUDIT_PATH, JSON.stringify(log2, null, 2), "utf8");
+  }
+  const AREAS_KEY = "serviceAreas";
+  function readAreas() {
+    return readConfig()[AREAS_KEY] || [];
+  }
+  app2.get("/api/service-areas", async (_req, res) => {
+    res.json(readAreas().filter((a) => a.active));
+  });
+  app2.get("/api/admin/service-areas", requireAdmin, async (_req, res) => {
+    res.json(readAreas());
+  });
+  app2.put("/api/admin/service-areas", requireAdmin, async (req, res) => {
+    const { areas } = req.body;
+    if (!Array.isArray(areas)) return res.status(400).json({ error: "areas must be an array" });
+    const cfg = { ...readConfig(), [AREAS_KEY]: areas };
+    writeConfig(cfg);
+    appendAudit({ adminId: req.user.id, adminEmail: req.user.email, action: "service_areas_updated", detail: `Updated service areas: ${areas.map((a) => `${a.city}, ${a.stateCode}`).join(", ")}` });
+    res.json(areas);
+  });
+  app2.get("/api/admin/config", requireAdmin, async (_req, res) => {
+    res.json({ platformFeePercent: 12, insuranceRatePerDay: 15, minBookingHours: 2, ...readConfig() });
+  });
+  app2.put("/api/admin/config", requireAdmin, async (req, res) => {
+    const cfg = { ...readConfig(), ...req.body };
+    writeConfig(cfg);
+    appendAudit({ adminId: req.user.id, adminEmail: req.user.email, action: "config_update", detail: `Updated platform config: ${Object.keys(req.body).join(", ")}` });
+    res.json(cfg);
+  });
+  app2.get("/api/admin/audit-log", requireAdmin, async (_req, res) => {
+    try {
+      res.json(JSON.parse(fs2.readFileSync(AUDIT_PATH, "utf8")));
+    } catch {
+      res.json([]);
+    }
+  });
+  app2.get("/api/admin/users/:id/documents", requireAdmin, async (req, res) => {
+    try {
+      const docs = await storage.getUserDocuments(req.params.id);
+      const user = await storage.getUser(req.params.id);
+      const enriched = docs.map((d) => ({ ...d, userName: user?.name || "Unknown", userEmail: user?.email || "" }));
+      res.json(enriched);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch user documents" });
+    }
+  });
+  app2.post("/api/admin/user-documents", requireAdmin, async (req, res) => {
+    try {
+      const { userId, documentType, notes } = req.body;
+      if (!userId || !documentType) return res.status(400).json({ error: "userId and documentType required" });
+      const doc = await storage.createUserDocument({
+        userId,
+        documentType,
+        documentData: null,
+        fileName: null,
+        mimeType: null,
+        expiryDate: null,
+        verificationStatus: "pending",
+        submittedAt: /* @__PURE__ */ new Date(),
+        reviewNotes: notes || null
+      });
+      appendAudit({ adminId: req.user.id, adminEmail: req.user.email, action: "document_created", detail: `Created ${documentType} record for user ${userId}` });
+      res.status(201).json(doc);
+    } catch {
+      res.status(500).json({ error: "Failed to create document" });
+    }
+  });
+  const MANUAL_PAYMENTS_PATH = path2.join(process.cwd(), "manual-payments.json");
+  function readManualPayments() {
+    try {
+      return JSON.parse(fs2.readFileSync(MANUAL_PAYMENTS_PATH, "utf8"));
+    } catch {
+      return [];
+    }
+  }
+  app2.post("/api/admin/payments/manual", requireAdmin, async (req, res) => {
+    try {
+      const { userId, amount, description } = req.body;
+      if (!userId || !amount) return res.status(400).json({ error: "userId and amount required" });
+      const amountStr = Number(amount).toFixed(2);
+      const fee = (Number(amount) * 0.12).toFixed(2);
+      const payout = (Number(amount) - Number(fee)).toFixed(2);
+      const entry = {
+        id: `MANUAL-${Date.now()}`,
+        tripId: null,
+        userId,
+        paypalOrderId: `MANUAL-${Date.now()}`,
+        amount: amountStr,
+        platformFee: fee,
+        ownerPayout: payout,
+        status: "completed",
+        description,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      const ledger = readManualPayments();
+      ledger.unshift(entry);
+      fs2.writeFileSync(MANUAL_PAYMENTS_PATH, JSON.stringify(ledger, null, 2), "utf8");
+      appendAudit({ adminId: req.user.id, adminEmail: req.user.email, action: "manual_charge", detail: `Manual charge $${amountStr} for user ${userId}: ${description}` });
+      res.status(201).json(entry);
+    } catch {
+      res.status(500).json({ error: "Failed to create manual payment" });
+    }
+  });
+  app2.get("/api/admin/payments/manual-ledger", requireAdmin, async (_req, res) => {
+    res.json(readManualPayments());
+  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -3359,8 +3552,8 @@ async function getVehicleOwnerUser(vehicleId) {
 }
 
 // server/index.ts
-import * as fs2 from "fs";
-import * as path2 from "path";
+import * as fs3 from "fs";
+import * as path3 from "path";
 var app = express();
 var log = console.log;
 function setupSecurity(app2) {
@@ -3370,12 +3563,16 @@ function setupSecurity(app2) {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'"],
           fontSrc: ["'self'", "https:"],
           objectSrc: ["'none'"],
-          frameSrc: ["'none'"]
+          frameSrc: ["'none'"],
+          // Disabled until TLS fronts this server: with it on, browsers
+          // upgrade same-origin fetches to https:// and they fail on the
+          // plain-HTTP IP with "Failed to fetch".
+          upgradeInsecureRequests: null
         }
       },
       crossOriginEmbedderPolicy: false
@@ -3460,19 +3657,19 @@ function setupRequestLogging(app2) {
   });
 }
 function serveExpoManifest(platform, res) {
-  const manifestPath = path2.resolve(
+  const manifestPath = path3.resolve(
     process.cwd(),
     "static-build",
     platform,
     "manifest.json"
   );
-  if (!fs2.existsSync(manifestPath)) {
+  if (!fs3.existsSync(manifestPath)) {
     return res.status(404).json({ error: `Manifest not found for platform: ${platform}` });
   }
   res.setHeader("expo-protocol-version", "1");
   res.setHeader("expo-sfv-version", "0");
   res.setHeader("content-type", "application/json");
-  const manifest = fs2.readFileSync(manifestPath, "utf-8");
+  const manifest = fs3.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
 function serveHtmlFile(res, content) {
@@ -3483,13 +3680,13 @@ function serveHtmlFile(res, content) {
   res.status(200).send(content);
 }
 function readTemplate(filename) {
-  const filePath = path2.resolve(
+  const filePath = path3.resolve(
     process.cwd(),
     "server",
     "templates",
     filename
   );
-  return fs2.readFileSync(filePath, "utf-8");
+  return fs3.readFileSync(filePath, "utf-8");
 }
 function serveLandingPage({
   res,
@@ -3513,13 +3710,13 @@ function serveResetPasswordPage(res) {
   serveHtmlFile(res, readTemplate("reset-password.html"));
 }
 function configureExpoAndLanding(app2) {
-  const templatePath = path2.resolve(
+  const templatePath = path3.resolve(
     process.cwd(),
     "server",
     "templates",
     "landing-page.html"
   );
-  const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
+  const landingPageTemplate = fs3.readFileSync(templatePath, "utf-8");
   log("Serving static Expo files with dynamic manifest routing");
   app2.use((req, res, next) => {
     if (req.path.startsWith("/api")) {
@@ -3559,9 +3756,9 @@ function configureExpoAndLanding(app2) {
     }
     next();
   });
-  app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
-  app2.use("/uploads", express.static(path2.resolve(process.cwd(), "uploads")));
-  app2.use(express.static(path2.resolve(process.cwd(), "static-build")));
+  app2.use("/assets", express.static(path3.resolve(process.cwd(), "assets")));
+  app2.use("/uploads", express.static(path3.resolve(process.cwd(), "uploads")));
+  app2.use(express.static(path3.resolve(process.cwd(), "static-build")));
   log("Expo routing: Checking expo-platform header on / and /manifest");
 }
 function setupErrorHandler(app2) {
@@ -3577,6 +3774,7 @@ function setupErrorHandler(app2) {
   });
 }
 (async () => {
+  app.set("trust proxy", 1);
   setupSecurity(app);
   setupCors(app);
   setupBodyParsing(app);
