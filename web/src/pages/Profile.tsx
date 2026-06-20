@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, User, Upload, Trash2, ExternalLink, FileText, ShieldCheck } from "lucide-react";
-import { updateProfile, getUserDocuments, uploadUserDocument, deleteUserDocument, UserOwnDocument } from "../lib/api";
+import { Loader2, Check, User, Upload, Trash2, ExternalLink, FileText, ShieldCheck, Camera } from "lucide-react";
+import { updateProfile, getUserDocuments, uploadUserDocument, deleteUserDocument, uploadAvatar, UserOwnDocument } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
 const AVATAR_COLORS = [
@@ -148,6 +148,10 @@ export default function Profile() {
   const [phone, setPhone] = useState(user?.phone || "");
   const [avatarIndex, setAvatarIndex] = useState(user?.avatarIndex ?? 0);
   const [saved, setSaved] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarErr, setAvatarErr] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
 
   const save = useMutation({
     mutationFn: () => updateProfile(user!.id, { name, phone }),
@@ -164,7 +168,22 @@ export default function Profile() {
     await updateProfile(user!.id, { name, phone });
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg","image/png","image/webp"].includes(file.type)) { setAvatarErr("JPG, PNG or WebP only."); return; }
+    if (file.size > 5 * 1024 * 1024) { setAvatarErr("Photo must be under 5 MB."); return; }
+    setAvatarErr(""); setAvatarUploading(true);
+    try {
+      const { url } = await uploadAvatar(file);
+      patchUser({ avatarUrl: url });
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    } catch { setAvatarErr("Upload failed. Please try again."); }
+    finally { setAvatarUploading(false); }
+  };
+
   const color = AVATAR_COLORS[avatarIndex % AVATAR_COLORS.length];
+  const currentAvatar = user?.avatarUrl;
   const initial = (name || user?.name || "?")[0].toUpperCase();
 
   return (
@@ -173,18 +192,37 @@ export default function Profile() {
         <div className="text-sm font-bold uppercase tracking-widest text-brand-cyan">Account</div>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Your profile</h1>
         <div className="mt-8 flex items-center gap-5">
-          <div className={"flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black ring-2 " + color.bg + " " + color.text + " " + color.ring + "/40"}>
-            {initial}
+          <div className="relative shrink-0">
+            {currentAvatar ? (
+              <img src={currentAvatar} alt="Profile" className="h-20 w-20 rounded-full object-cover ring-2 ring-white/10" />
+            ) : (
+              <div className={"flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black ring-2 " + color.bg + " " + color.text + " " + color.ring + "/40"}>
+                {initial}
+              </div>
+            )}
+            <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-brand-cyan text-ink-900 shadow-lg hover:bg-brand-cyan/80 transition">
+              {avatarUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              <input ref={avatarInputRef} type="file" className="sr-only" accept=".jpg,.jpeg,.png,.webp" onChange={handleAvatarUpload} />
+            </label>
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-200">Avatar color</p>
-            <div className="mt-2 flex gap-2">
-              {AVATAR_COLORS.map((c, i) => (
-                <button key={i} onClick={() => handleAvatarPick(i)}
-                  className={"h-7 w-7 rounded-full transition " + c.bg + (i === avatarIndex ? " ring-2 ring-offset-2 ring-offset-ink-900 " + c.ring : " opacity-60 hover:opacity-100")}
-                  aria-label={"Color " + (i + 1)} />
-              ))}
-            </div>
+            <p className="text-sm font-semibold text-slate-200">{currentAvatar ? "Profile photo" : "Avatar color"}</p>
+            {avatarErr && <p className="text-xs text-red-400 mt-1">{avatarErr}</p>}
+            {!currentAvatar && (
+              <div className="mt-2 flex gap-2">
+                {AVATAR_COLORS.map((c, i) => (
+                  <button key={i} onClick={() => handleAvatarPick(i)}
+                    className={"h-7 w-7 rounded-full transition " + c.bg + (i === avatarIndex ? " ring-2 ring-offset-2 ring-offset-ink-900 " + c.ring : " opacity-60 hover:opacity-100")}
+                    aria-label={"Color " + (i + 1)} />
+                ))}
+              </div>
+            )}
+            {currentAvatar && (
+              <button onClick={async () => {
+                try { await updateProfile(user!.id, { avatarUrl: null }); patchUser({ avatarUrl: null }); }
+                catch { setAvatarErr("Failed to remove photo."); }
+              }} className="mt-2 text-xs text-slate-500 hover:text-red-400 transition">Remove photo</button>
+            )}
           </div>
         </div>
         <div className="mt-8 panel p-6">

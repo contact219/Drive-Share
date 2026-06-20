@@ -608,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       const updates: Record<string, any> = {};
-      for (const k of ["name", "phone", "avatarIndex"]) {
+      for (const k of ["name", "phone", "avatarIndex", "avatarUrl"]) {
         if (k in req.body) updates[k] = req.body[k];
       }
       const updated = await storage.updateUser(req.params.id, updates);
@@ -882,6 +882,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+
+  app.post("/api/upload/avatar", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { data, mimeType } = req.body;
+      if (!data) return res.status(400).json({ error: "No image data provided" });
+      const extMap: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const ext = extMap[mimeType] || "jpg";
+      const buffer = Buffer.from(data, "base64");
+      if (buffer.length > 5 * 1024 * 1024) return res.status(400).json({ error: "Image must be under 5 MB" });
+      const safeName = `avatar_${req.user!.id}_${Date.now()}.${ext}`;
+      const avatarsDir = path.resolve(process.cwd(), "uploads", "avatars");
+      fs.mkdirSync(avatarsDir, { recursive: true });
+      await fs.promises.writeFile(path.join(avatarsDir, safeName), buffer);
+      const avatarUrl = `/uploads/avatars/${safeName}`;
+      await storage.updateUser(req.user!.id, { avatarUrl });
+      res.json({ url: avatarUrl });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload avatar" });
+    }
+  });
 
   app.post("/api/upload/vehicle-image", requireAuth, async (req: Request, res: Response) => {
     try {

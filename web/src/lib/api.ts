@@ -65,7 +65,7 @@ export function fetchVehicles(filters: VehicleFilters = {}): Promise<Vehicle[]> 
 export const fetchVehicle = (id: string) => http<Vehicle>(`/vehicles/${id}`);
 export const fetchReviews = (id: string) => http<Review[]>(`/vehicles/${id}/reviews`);
 
-export interface AuthUser { id: string; email: string; name: string; phone?: string | null; avatarIndex?: number; isAdmin?: boolean; isOwner?: boolean; }
+export interface AuthUser { id: string; email: string; name: string; phone?: string | null; avatarIndex?: number; avatarUrl?: string | null; isAdmin?: boolean; isOwner?: boolean; }
 export interface AuthResult { user: AuthUser; token: string; }
 
 export const login = (email: string, password: string) =>
@@ -180,7 +180,7 @@ export const removeFavorite = (userId: string, vehicleId: string) =>
   fetch(`/api/favorites/${userId}/${vehicleId}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
 
 // ── Profile ───────────────────────────────────────────────────────────────
-export const updateProfile = (userId: string, fields: { name?: string; phone?: string }) =>
+export const updateProfile = (userId: string, fields: { name?: string; phone?: string; avatarUrl?: string | null }) =>
   http<AuthUser>(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(fields) });
 
 // ── Admin ─────────────────────────────────────────────────────────────────
@@ -319,6 +319,20 @@ export const sendMessage = (conversationId: string, content: string) =>
 export const getOrCreateConversation = (p1: string, p2: string, vehicleId?: string) =>
   http<{ id: string }>("/conversations", { method: "POST", body: JSON.stringify({ participant1Id: p1, participant2Id: p2, vehicleId }) });
 export const getUnreadCount = (userId: string) => http<{ unreadCount: number }>(`/messages/unread/${userId}`);
+
+// -- Avatar
+export async function uploadAvatar(file: File): Promise<{ url: string }> {
+  const data: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  return http<{ url: string }>('/upload/avatar', {
+    method: 'POST',
+    body: JSON.stringify({ data, mimeType: file.type }),
+  });
+}
 
 // -- User documents
 export const getUserDocuments = (userId: string) => http<UserOwnDocument[]>(`/user/${userId}/documents`);

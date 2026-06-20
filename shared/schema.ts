@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   phone: text("phone"),
   avatarIndex: integer("avatar_index").default(0),
+  avatarUrl: text("avatar_url"),
   rating: decimal("rating", { precision: 2, scale: 1 }).default("5.0"),
   tripsCompleted: integer("trips_completed").default(0),
   isAdmin: boolean("is_admin").default(false),
