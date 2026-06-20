@@ -320,6 +320,10 @@ export const getOrCreateConversation = (p1: string, p2: string, vehicleId?: stri
   http<{ id: string }>("/conversations", { method: "POST", body: JSON.stringify({ participant1Id: p1, participant2Id: p2, vehicleId }) });
 export const getUnreadCount = (userId: string) => http<{ unreadCount: number }>(`/messages/unread/${userId}`);
 
+// -- Support
+export const startSupportThread = (message: string) =>
+  http<{ conversationId: string; messageId: string }>('/support/thread', { method: 'POST', body: JSON.stringify({ message }) });
+
 // -- Avatar
 export async function uploadAvatar(file: File): Promise<{ url: string }> {
   const data: string = await new Promise((resolve, reject) => {

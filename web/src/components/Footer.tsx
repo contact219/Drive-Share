@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 export default function Footer() {
   return (
     <footer className="mt-24 border-t border-white/10 bg-ink-850">
-      <div className="container-rush grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
+      <div className="container-rush grid grid-cols-2 gap-8 py-12 lg:grid-cols-4 lg:gap-10 lg:py-14">
+        <div className="col-span-2 lg:col-span-1">
           <div className="text-2xl font-black">R<span className="gradient-text">u</span>sh</div>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-slate-400">
-            Peer-to-peer car sharing. Rent from trusted local hosts by the hour or day — or list your
-            car and turn idle hours into income.
+            Peer-to-peer car sharing. Rent from trusted local hosts by the day — or list your
+            car and turn idle time into income.
           </p>
         </div>
         <div>
@@ -33,7 +33,7 @@ export default function Footer() {
           <ul className="space-y-2 text-sm text-slate-400">
             <li><a href="/privacy" className="hover:text-white">Privacy</a></li>
             <li><a href="/terms" className="hover:text-white">Terms</a></li>
-            <li><a href="mailto:support@rush-enterprise.com" className="hover:text-white">Support</a></li>
+            <li><a href="/support" className="hover:text-white">Contact Support</a></li>
           </ul>
         </div>
       </div>

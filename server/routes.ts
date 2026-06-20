@@ -20,6 +20,7 @@ import {
 } from "./paypalClient";
 import {
   sendBookingConfirmationEmail,
+  sendSupportNotificationEmail,
   sendNewBookingNotificationToOwner,
   sendVehicleVerificationApprovedEmail,
   sendVehicleVerificationRejectedEmail,
@@ -1383,6 +1384,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(policy);
     } catch (error) {
       res.status(500).json({ error: "Failed to create insurance policy" });
+    }
+  });
+
+  // ==================== SUPPORT ====================
+  app.post("/api/support/thread", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { message } = req.body;
+      if (!message?.trim()) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Find primary support/admin account
+      const admins = await storage.getAllUsers();
+      const supportUser = admins.find((u: any) => u.isAdmin && u.id !== userId)
+        ?? await storage.getUserByEmail("admin@rush.com");
+
+      if (!supportUser) {
+        return res.status(500).json({ error: "Support account not found" });
+      }
+      if (supportUser.id === userId) {
+        return res.status(400).json({ error: "You are the support account" });
+      }
+
+      // Get or create conversation
+      let conv = await storage.findExistingConversation(userId, supportUser.id);
+      if (!conv) {
+        conv = await storage.createConversation({
+          participant1Id: userId,
+          participant2Id: supportUser.id,
+          vehicleId: null,
+          tripId: null,
+          lastMessageAt: new Date(),
+        });
+      }
+
+      // Send the message
+      const msg = await storage.createMessage({
+        conversationId: conv.id,
+        senderId: userId,
+        content: message.trim(),
+        messageType: "text",
+      });
+      await storage.updateConversation(conv.id, { lastMessageAt: new Date(), lastMessagePreview: message.trim().slice(0, 100) });
+
+      // Email admin
+      const sender = await storage.getUser(userId);
+      try {
+        await sendSupportNotificationEmail(
+          supportUser.email,
+          sender?.name || "Unknown",
+          sender?.email || "",
+          message.trim()
+        );
+      } catch {}
+
+      res.json({ conversationId: conv.id, messageId: msg.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send support message" });
     }
   });
 
