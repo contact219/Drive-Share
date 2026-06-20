@@ -70,6 +70,8 @@ export interface AuthResult { user: AuthUser; token: string; }
 
 export const login = (email: string, password: string) =>
   http<AuthResult>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+export const socialAuth = (provider: string, token: string, name?: string) =>
+  http<AuthResult>("/auth/social", { method: "POST", body: JSON.stringify({ provider, token, ...(name ? { name } : {}) }) });
 export const register = (name: string, email: string, password: string) =>
   http<AuthResult>("/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
 
@@ -211,7 +213,7 @@ export const adminUpdateUser = (id: string, data: Partial<AdminUser>) =>
 export const adminResetPassword = (id: string, password: string) =>
   http(`/admin/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) });
 export const adminDeleteUser = (id: string) =>
-  fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
+  http<{ success: boolean }>(`/admin/users/${id}`, { method: 'DELETE' });
 export const adminGetVehicles = () => http<Vehicle[]>('/admin/vehicles');
 export const adminUpdateVehicle = (id: string, data: Partial<Vehicle>) =>
   http<Vehicle>(`/admin/vehicles/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
@@ -222,20 +224,48 @@ export const adminSendBookingEmail = (tripId: string) =>
   http(`/admin/trips/${tripId}/send-confirmation`, { method: 'POST' });
 export const adminGetVerifications = () => http<Verification[]>('/admin/verifications');
 export const adminVerifyDecision = (id: string, status: string, reviewerId: string, reviewNotes?: string, rejectionReason?: string) =>
-  http(`/admin/verifications/${id}/decision`, { method: 'POST', body: JSON.stringify({ status, reviewerId, reviewNotes, rejectionReason }) });
+  http(`/admin/verifications/${id}/decision`, { method: 'PATCH', body: JSON.stringify({ status, reviewerId, reviewNotes, rejectionReason }) });
 export const adminGetPayments = () => http<Payment[]>('/admin/payments');
 export const adminRefundPayment = (id: string) =>
   http(`/admin/payments/${id}/refund`, { method: 'POST' });
 export const adminGetDocuments = () => http<UserDocument[]>('/admin/user-documents');
+export const adminGetUserDocuments = (userId: string) => http<UserDocument[]>(`/admin/users/${userId}/documents`);
+export const adminCreateDocument = (userId: string, documentType: string, notes?: string) =>
+  http<UserDocument>('/admin/user-documents', { method: 'POST', body: JSON.stringify({ userId, documentType, notes }) });
 export const adminReviewDocument = (id: string, verificationStatus: string, reviewerId: string, reviewNotes?: string) =>
   http(`/admin/user-documents/${id}`, { method: 'PATCH', body: JSON.stringify({ verificationStatus, reviewerId, reviewNotes }) });
 
+export interface PlatformConfig {
+  platformFeePercent: number; insuranceRatePerDay: number; minBookingHours: number;
+  smtpHost?: string; smtpPort?: number; smtpUser?: string; smtpPass?: string; smtpFrom?: string;
+  terms?: string; supportEmail?: string;
+}
+export const adminGetConfig = () => http<PlatformConfig>('/admin/config');
+export const adminSaveConfig = (cfg: Partial<PlatformConfig>) =>
+  http<PlatformConfig>('/admin/config', { method: 'PUT', body: JSON.stringify(cfg) });
+
+export interface AuditEntry { ts: string; adminId: string; adminEmail: string; action: string; detail: string; }
+export const adminGetAuditLog = () => http<AuditEntry[]>('/admin/audit-log');
+
+export interface ManualCharge { userId: string; amount: number; description: string; tripId?: string; }
+export const adminCreateManualCharge = (data: ManualCharge) =>
+  http<Payment>('/admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });
+
+export interface ServiceArea {
+  id: string; city: string; state: string; stateCode: string;
+  active: boolean; addedAt: string; note?: string;
+}
+export const getServiceAreas = () => http<ServiceArea[]>('/service-areas');
+export const adminGetServiceAreas = () => http<ServiceArea[]>('/admin/service-areas');
+export const adminSaveServiceAreas = (areas: ServiceArea[]) =>
+  http<ServiceArea[]>('/admin/service-areas', { method: 'PUT', body: JSON.stringify({ areas }) });
+
 // ── PayPal ────────────────────────────────────────────────────────────────
 export const getPayPalClientId = () => http<{ clientId: string }>("/paypal/client-id");
-export const createPayPalOrder = (tripId: string, amount: number) =>
+export const createPayPalOrder = (tripId: string) =>
   http<{ orderId: string; approvalUrl: string; paymentId: string }>("/paypal/create-order", {
     method: "POST",
-    body: JSON.stringify({ tripId, amount }),
+    body: JSON.stringify({ tripId }),
   });
 export const capturePayPalOrder = (orderId: string, paymentId: string, tripId: string) =>
   http<{ success: boolean }>("/paypal/capture-order", {
