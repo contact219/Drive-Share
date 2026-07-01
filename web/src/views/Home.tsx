@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Car, Truck, Gauge, Bus, Zap, ShieldCheck, Clock, KeyRound, ArrowRight } from "lucide-react";
+import { Car, Truck, Gauge, Bus, Zap, ShieldCheck, Clock, KeyRound, ArrowRight, UserCheck, Lock } from "lucide-react";
 import { fetchVehicles } from "../lib/api";
 import SearchBar from "../components/SearchBar";
 import VehicleCard from "../components/VehicleCard";
@@ -57,6 +57,45 @@ export default function Home() {
                 </div>
                 <div className="text-right"><div className="text-lg font-extrabold text-brand-cyan">$59</div><div className="text-xs text-slate-400">/hr</div></div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust & Safety Panel */}
+      <section className="container-rush pb-12">
+        <div className="panel grid gap-6 p-8 md:grid-cols-3 bg-gradient-to-br from-brand-cyan/[0.03] to-transparent border-white/10">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan">
+              <UserCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-white">100% Verification</h3>
+              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                Every renter and host is fully verified before booking. We check state licenses and driving histories for complete safety.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-white">Fully Insured Trips</h3>
+              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                Travel with total peace of mind. Every trip is automatically backed by comprehensive physical damage and liability insurance.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan">
+              <Lock className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-white">Secure Payments</h3>
+              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                Transactions are securely processed using Stripe. Your financial data stays encrypted, and hosts are paid automatically.
+              </p>
             </div>
           </div>
         </div>

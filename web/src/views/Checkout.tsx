@@ -174,7 +174,7 @@ function PayPalCheckout({
               status: "pending",
             });
             // 2. Create PayPal order tied to trip
-            const pp = await createPayPalOrder(trip.id, parseFloat(quote.totalCost));
+            const pp = await createPayPalOrder(trip.id);
             pendingRef.current = { tripId: trip.id, paymentId: pp.paymentId };
             return pp.orderId;
           } catch (e: any) {

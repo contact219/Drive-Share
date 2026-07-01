@@ -32,5 +32,6 @@ npm-debug.*
 web-build/
 web/dist
 web/node_modules
+web/.next
 yarn-debug.*
 yarn-error.*

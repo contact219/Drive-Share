@@ -25,11 +25,14 @@ export default function Browse() {
   });
   const favSet = useMemo(() => new Set(favorites.map((f) => f.vehicleId)), [favorites]);
 
-  const toggleFav = useMutation({
-    mutationFn: (vehicleId: string) =>
-      favSet.has(vehicleId)
-        ? removeFavorite(user!.id, vehicleId)
-        : addFavorite(user!.id, vehicleId),
+  const toggleFav = useMutation<any, Error, string>({
+    mutationFn: async (vehicleId: string) => {
+      if (favSet.has(vehicleId)) {
+        await removeFavorite(user!.id, vehicleId);
+      } else {
+        await addFavorite(user!.id, vehicleId);
+      }
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["favorites", user?.id] }),
   });
 
